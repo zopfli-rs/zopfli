@@ -1,0 +1,18 @@
+[package]
+name = "zopfli"
+version = "0.1.0"
+authors = ["Carol (Nichols || Goulding) <carol.nichols@gmail.com>"]
+description = "This is mostly the C zopfli implementation, with some functions replaced by Rust"
+license = "MIT"
+keywords = ["compression"]
+homepage = "https://github.com/carols10cents/zopfli-1"
+repository = "https://github.com/carols10cents/zopfli-1"
+readme = "README.md"
+
+[lib]
+path = "src/zopfli/lib.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+libc = "*"
+
