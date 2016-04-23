@@ -541,9 +541,22 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   assert(pos + *length <= size);
 }
 
+
+typedef struct lz77_store_S lz77_store_t;
+extern lz77_store_t * lz77_store_from_c(ZopfliLZ77Store *);
+
+/*
+extern void lz77_store_free(lz77_store_t *);
+extern void lz77_store_lit_len_dist(lz77_store_t *, unsigned short length, unsigned short dist, size_t pos);
+extern void lz77_store_result(lz77_store_t *, ZopfliLZ77Store *);
+*/
+
 void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
                       size_t instart, size_t inend,
                       ZopfliLZ77Store* store, ZopfliHash* h) {
+
+  lz77_store_t *rust_store = lz77_store_from_c(store);
+
   size_t i = 0, j;
   unsigned short leng;
   unsigned short dist;
@@ -582,6 +595,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
       match_available = 0;
       if (lengthscore > prevlengthscore + 1) {
         ZopfliStoreLitLenDist(in[i - 1], 0, i - 1, store);
+        /* lz77_store_lit_len_dist(rust_store, in[i - 1], 0, i - 1); */
         if (lengthscore >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
           match_available = 1;
           prev_length = leng;
@@ -596,6 +610,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
         /* Add to output. */
         ZopfliVerifyLenDist(in, inend, i - 1, dist, leng);
         ZopfliStoreLitLenDist(leng, dist, i - 1, store);
+        /* lz77_store_lit_len_dist(rust_store, leng, dist, i - 1); */
         for (j = 2; j < leng; j++) {
           assert(i < inend);
           i++;
@@ -617,9 +632,11 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
     if (lengthscore >= ZOPFLI_MIN_MATCH) {
       ZopfliVerifyLenDist(in, inend, i, dist, leng);
       ZopfliStoreLitLenDist(leng, dist, i, store);
+      /* lz77_store_lit_len_dist(rust_store, leng, dist, i); */
     } else {
       leng = 1;
       ZopfliStoreLitLenDist(in[i], 0, i, store);
+      /* lz77_store_lit_len_dist(rust_store, in[i], 0, i); */
     }
     for (j = 1; j < leng; j++) {
       assert(i < inend);
@@ -627,4 +644,9 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
       ZopfliUpdateHash(in, i, inend, h);
     }
   }
+
+/*
+  lz77_store_result(rust_store, store);
+  lz77_store_free(rust_store);
+*/
 }
