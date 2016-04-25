@@ -43,3 +43,38 @@ const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
 pub extern fn ZopfliGetLengthSymbol(length: c_int) -> c_int {
     LENGTH_SYMBOL_TABLE[length as usize]
 }
+
+/// Gets the symbol for the given dist, cfr. the DEFLATE spec.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliGetDistSymbol(dist: c_int) -> c_int {
+    match dist {
+        0...4 => dist - 1,
+        5...6 => 4,
+        7...8 => 5,
+        9...12 => 6,
+        13...16 => 7,
+        17...24 => 8,
+        25...32 => 9,
+        33...48 => 10,
+        49...64 => 11,
+        65...96 => 12,
+        97...128 => 13,
+        129...192 => 14,
+        193...256 => 15,
+        257...384 => 16,
+        385...512 => 17,
+        513...768 => 18,
+        769...1024 => 19,
+        1025...1536 => 20,
+        1537...2048 => 21,
+        2049...3072 => 22,
+        3073...4096 => 23,
+        4097...6144 => 24,
+        6145...8192 => 25,
+        8193...12288 => 26,
+        12289...16384 => 27,
+        16385...24576 => 28,
+        _ => 29,
+    }
+}

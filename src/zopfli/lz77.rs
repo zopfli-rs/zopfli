@@ -2,7 +2,7 @@ use std::slice;
 
 use libc::{size_t, c_ushort, c_uchar, c_int};
 
-use symbols::ZopfliGetLengthSymbol;
+use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol};
 
 const ZOPFLI_NUM_LL: size_t = 288;
 const ZOPFLI_NUM_D: size_t = 32;
@@ -108,9 +108,9 @@ impl Lz77Store {
             self.ll_counts[llstart + length as usize] += 1;
         } else {
             self.ll_symbol.push(ZopfliGetLengthSymbol(length as c_int) as c_ushort);
-            self.d_symbol.push(dist_symbol(dist));
+            self.d_symbol.push(ZopfliGetDistSymbol(dist as c_int) as c_ushort);
             self.ll_counts[llstart + ZopfliGetLengthSymbol(length as c_int) as usize] += 1;
-            self.d_counts[dstart + dist_symbol(dist) as usize] += 1;
+            self.d_counts[dstart + ZopfliGetDistSymbol(dist as c_int) as usize] += 1;
         }
     }
 }
@@ -191,36 +191,4 @@ pub extern fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store
     store.d_symbol = lz77.d_symbol.as_mut_ptr();
     store.ll_counts = lz77.ll_counts.as_mut_ptr();
     store.d_counts = lz77.d_counts.as_mut_ptr();
-}
-
-fn dist_symbol(dist: c_ushort) -> c_ushort {
-    match dist {
-        0...4 => dist - 1,
-        5...6 => 4,
-        7...8 => 5,
-        9...12 => 6,
-        13...16 => 7,
-        17...24 => 8,
-        25...32 => 9,
-        33...48 => 10,
-        49...64 => 11,
-        65...96 => 12,
-        97...128 => 13,
-        129...192 => 14,
-        193...256 => 15,
-        257...384 => 16,
-        385...512 => 17,
-        513...768 => 18,
-        769...1024 => 19,
-        1025...1536 => 20,
-        1537...2048 => 21,
-        2049...3072 => 22,
-        3073...4096 => 23,
-        4097...6144 => 24,
-        6145...8192 => 25,
-        8193...12288 => 26,
-        12289...16384 => 27,
-        16385...24576 => 28,
-        _ => 29,
-    }
 }
