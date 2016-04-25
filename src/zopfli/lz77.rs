@@ -1,6 +1,8 @@
 use std::slice;
 
-use libc::{size_t, c_ushort, c_uchar};
+use libc::{size_t, c_ushort, c_uchar, c_int};
+
+use symbols::ZopfliGetLengthSymbol;
 
 const ZOPFLI_NUM_LL: size_t = 288;
 const ZOPFLI_NUM_D: size_t = 32;
@@ -105,9 +107,9 @@ impl Lz77Store {
             self.d_symbol.push(0);
             self.ll_counts[llstart + length as usize] += 1;
         } else {
-            self.ll_symbol.push(length_symbol(length));
+            self.ll_symbol.push(ZopfliGetLengthSymbol(length as c_int) as c_ushort);
             self.d_symbol.push(dist_symbol(dist));
-            self.ll_counts[llstart + length_symbol(length) as usize] += 1;
+            self.ll_counts[llstart + ZopfliGetLengthSymbol(length as c_int) as usize] += 1;
             self.d_counts[dstart + dist_symbol(dist) as usize] += 1;
         }
     }
@@ -189,46 +191,6 @@ pub extern fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store
     store.d_symbol = lz77.d_symbol.as_mut_ptr();
     store.ll_counts = lz77.ll_counts.as_mut_ptr();
     store.d_counts = lz77.d_counts.as_mut_ptr();
-}
-
-// Returns symbol in range [257-285] (inclusive).
-const LENGTH_SYMBOL_TABLE: [c_ushort; 259] = [
-    0, 0, 0,
-    257, 258, 259, 260, 261, 262, 263, 264,
-    265, 265, 266, 266, 267, 267, 268, 268,
-    269, 269, 269, 269, 270, 270, 270, 270,
-    271, 271, 271, 271, 272, 272, 272, 272,
-    273, 273, 273, 273, 273, 273, 273, 273,
-    274, 274, 274, 274, 274, 274, 274, 274,
-    275, 275, 275, 275, 275, 275, 275, 275,
-    276, 276, 276, 276, 276, 276, 276, 276,
-    277, 277, 277, 277, 277, 277, 277, 277,
-    277, 277, 277, 277, 277, 277, 277, 277,
-    278, 278, 278, 278, 278, 278, 278, 278,
-    278, 278, 278, 278, 278, 278, 278, 278,
-    279, 279, 279, 279, 279, 279, 279, 279,
-    279, 279, 279, 279, 279, 279, 279, 279,
-    280, 280, 280, 280, 280, 280, 280, 280,
-    280, 280, 280, 280, 280, 280, 280, 280,
-    281, 281, 281, 281, 281, 281, 281, 281,
-    281, 281, 281, 281, 281, 281, 281, 281,
-    281, 281, 281, 281, 281, 281, 281, 281,
-    281, 281, 281, 281, 281, 281, 281, 281,
-    282, 282, 282, 282, 282, 282, 282, 282,
-    282, 282, 282, 282, 282, 282, 282, 282,
-    282, 282, 282, 282, 282, 282, 282, 282,
-    282, 282, 282, 282, 282, 282, 282, 282,
-    283, 283, 283, 283, 283, 283, 283, 283,
-    283, 283, 283, 283, 283, 283, 283, 283,
-    283, 283, 283, 283, 283, 283, 283, 283,
-    283, 283, 283, 283, 283, 283, 283, 283,
-    284, 284, 284, 284, 284, 284, 284, 284,
-    284, 284, 284, 284, 284, 284, 284, 284,
-    284, 284, 284, 284, 284, 284, 284, 284,
-    284, 284, 284, 284, 284, 284, 284, 285,
-];
-fn length_symbol(length: c_ushort) -> c_ushort {
-    LENGTH_SYMBOL_TABLE[length as usize]
 }
 
 fn dist_symbol(dist: c_ushort) -> c_ushort {
