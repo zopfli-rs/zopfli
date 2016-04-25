@@ -72,23 +72,23 @@ impl Lz77Store {
         let dstart = ZOPFLI_NUM_D * (origsize / ZOPFLI_NUM_D);
 
         if origsize % ZOPFLI_NUM_LL == 0 {
-            let llsize = origsize;
             for i in 0..ZOPFLI_NUM_LL {
                 if origsize == 0 {
-                    self.ll_counts[llsize + i] = 0;
+                    self.ll_counts.push(0);
                 } else {
-                    self.ll_counts[llsize + i] = self.ll_counts[origsize - ZOPFLI_NUM_LL + i];
+                    let last_histogram_value = self.ll_counts[origsize - ZOPFLI_NUM_LL + i];
+                    self.ll_counts.push(last_histogram_value);
                 }
             }
         }
 
         if origsize % ZOPFLI_NUM_D == 0 {
-            let dsize = origsize;
             for i in 0..ZOPFLI_NUM_D {
                 if origsize == 0 {
-                    self.d_counts[dsize + i] = 0;
+                    self.d_counts.push(0);
                 } else {
-                    self.d_counts[origsize - ZOPFLI_NUM_D + i];
+                    let last_histogram_value = self.d_counts[origsize - ZOPFLI_NUM_D + i];
+                    self.d_counts.push(last_histogram_value);
                 }
             }
         }
@@ -149,19 +149,17 @@ impl From<*const ZopfliLZ77Store> for Lz77Store {
         let ll_len = (ZOPFLI_NUM_LL * (store.size / ZOPFLI_NUM_LL) + ZOPFLI_NUM_LL) as usize;
         let d_len = (ZOPFLI_NUM_D * (store.size / ZOPFLI_NUM_D) + ZOPFLI_NUM_D) as usize;
 
-        unsafe {
-            Lz77Store {
-                litlens: ptr_to_vec(store.litlens, len),
-                dists: ptr_to_vec(store.dists, len),
+        Lz77Store {
+            litlens: ptr_to_vec(store.litlens, len),
+            dists: ptr_to_vec(store.dists, len),
 
-                pos: ptr_to_vec(store.pos, len),
+            pos: ptr_to_vec(store.pos, len),
 
-                ll_symbol: ptr_to_vec(store.ll_symbol, len),
-                d_symbol: ptr_to_vec(store.d_symbol, len),
+            ll_symbol: ptr_to_vec(store.ll_symbol, len),
+            d_symbol: ptr_to_vec(store.d_symbol, len),
 
-                ll_counts: ptr_to_vec(store.ll_counts, ll_len),
-                d_counts: ptr_to_vec(store.d_counts, d_len),
-            }
+            ll_counts: ptr_to_vec(store.ll_counts, ll_len),
+            d_counts: ptr_to_vec(store.d_counts, d_len),
         }
     }
 }
