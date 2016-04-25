@@ -34,28 +34,7 @@ Utilities for using the lz77 symbols of the deflate spec.
 # define ZOPFLI_HAS_BUILTIN_CLZ
 #endif
 
-/* Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec. */
-static int ZopfliGetDistExtraBits(int dist) {
-#ifdef ZOPFLI_HAS_BUILTIN_CLZ
-  if (dist < 5) return 0;
-  return (31 ^ __builtin_clz(dist - 1)) - 1; /* log2(dist - 1) - 1 */
-#else
-  if (dist < 5) return 0;
-  else if (dist < 9) return 1;
-  else if (dist < 17) return 2;
-  else if (dist < 33) return 3;
-  else if (dist < 65) return 4;
-  else if (dist < 129) return 5;
-  else if (dist < 257) return 6;
-  else if (dist < 513) return 7;
-  else if (dist < 1025) return 8;
-  else if (dist < 2049) return 9;
-  else if (dist < 4097) return 10;
-  else if (dist < 8193) return 11;
-  else if (dist < 16385) return 12;
-  else return 13;
-#endif
-}
+extern int ZopfliGetDistExtraBits(int dist);
 
 /* Gets value of the extra bits for the given dist, cfr. the DEFLATE spec. */
 static int ZopfliGetDistExtraBitsValue(int dist) {
