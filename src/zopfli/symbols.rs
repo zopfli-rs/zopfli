@@ -1,4 +1,7 @@
-use libc::{c_int};
+use libc::{c_int, size_t};
+
+pub const ZOPFLI_NUM_LL: size_t = 288;
+pub const ZOPFLI_NUM_D: size_t = 32;
 
 const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
     0, 0, 0,

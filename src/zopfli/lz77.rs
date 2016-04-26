@@ -2,10 +2,7 @@ use std::slice;
 
 use libc::{size_t, c_ushort, c_uchar, c_int};
 
-use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol};
-
-const ZOPFLI_NUM_LL: size_t = 288;
-const ZOPFLI_NUM_D: size_t = 32;
+use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 
 // Comment from C:
 // Stores lit/length and dist pairs for LZ77.
