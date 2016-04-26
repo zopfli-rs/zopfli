@@ -1,4 +1,6 @@
-use libc::{c_int, c_void, c_uint, c_double};
+use std::slice;
+
+use libc::{c_void, c_uint, c_double, c_int, size_t};
 
 use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol};
 
@@ -58,4 +60,22 @@ pub extern fn InitRanState(state_ptr: *mut RanState) {
     };
     state.m_w = 1;
     state.m_z = 2;
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn RandomizeFreqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_int) {
+    let freqs = unsafe {
+        assert!(!freqs_ptr.is_null());
+        slice::from_raw_parts_mut(freqs_ptr, n as usize)
+    };
+    let mut i: usize = 0;
+    let end = n as usize;
+    while i < end {
+        if (Ran(state_ptr) >> 4) % 3 == 0 {
+            let index = Ran(state_ptr) % n as c_uint;
+            freqs[i] = freqs[index as usize];
+        }
+        i += 1;
+    }
 }
