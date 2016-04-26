@@ -118,26 +118,7 @@ litlen: means literal symbol if dist is 0, length otherwise.
 */
 typedef double CostModelFun(unsigned litlen, unsigned dist, void* context);
 
-/*
-Cost model which should exactly match fixed tree.
-type: CostModelFun
-*/
-static double GetCostFixed(unsigned litlen, unsigned dist, void* unused) {
-  (void)unused;
-  if (dist == 0) {
-    if (litlen <= 143) return 8;
-    else return 9;
-  } else {
-    int dbits = ZopfliGetDistExtraBits(dist);
-    int lbits = ZopfliGetLengthExtraBits(litlen);
-    int lsym = ZopfliGetLengthSymbol(litlen);
-    int cost = 0;
-    if (lsym <= 279) cost += 7;
-    else cost += 8;
-    cost += 5;  /* Every dist symbol has length 5. */
-    return cost + dbits + lbits;
-  }
-}
+extern double GetCostFixed(unsigned litlen, unsigned dist, void* unused);
 
 /*
 Cost model based on symbol statistics.
