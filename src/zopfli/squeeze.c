@@ -86,12 +86,7 @@ static void InitRanState(RanState* state) {
   state->m_z = 2;
 }
 
-/* Get random number: "Multiply-With-Carry" generator of G. Marsaglia */
-static unsigned int Ran(RanState* state) {
-  state->m_z = 36969 * (state->m_z & 65535) + (state->m_z >> 16);
-  state->m_w = 18000 * (state->m_w & 65535) + (state->m_w >> 16);
-  return (state->m_z << 16) + state->m_w;  /* 32-bit result. */
-}
+extern unsigned int Ran(RanState* state);
 
 static void RandomizeFreqs(RanState* state, size_t* freqs, int n) {
   int i;
