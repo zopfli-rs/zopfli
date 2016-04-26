@@ -48,3 +48,14 @@ pub extern fn Ran(state_ptr: *mut RanState) -> c_uint {
     state.m_w = 18000 * (state.m_w & 65535) + (state.m_w >> 16);
     (state.m_z << 16) + state.m_w // 32-bit result.
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn InitRanState(state_ptr: *mut RanState) {
+    let state = unsafe {
+        assert!(!state_ptr.is_null());
+        &mut *state_ptr
+    };
+    state.m_w = 1;
+    state.m_z = 2;
+}

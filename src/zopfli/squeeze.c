@@ -81,12 +81,8 @@ typedef struct RanState {
   unsigned int m_w, m_z;
 } RanState;
 
-static void InitRanState(RanState* state) {
-  state->m_w = 1;
-  state->m_z = 2;
-}
-
 extern unsigned int Ran(RanState* state);
+extern void InitRanState(RanState* state);
 
 static void RandomizeFreqs(RanState* state, size_t* freqs, int n) {
   int i;
