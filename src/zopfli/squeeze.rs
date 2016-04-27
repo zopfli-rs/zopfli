@@ -156,6 +156,32 @@ pub extern fn CopyStats(source_ptr: *mut SymbolStats, dest_ptr: *mut SymbolStats
     *dest = *source;
 }
 
+/// Adds the bit lengths.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn AddWeighedStatFreqs(stats1_ptr: *mut SymbolStats, w1: c_double, stats2_ptr: *mut SymbolStats, w2: c_double, result_ptr: *mut SymbolStats) {
+    let stats1 = unsafe {
+        assert!(!stats1_ptr.is_null());
+        &mut *stats1_ptr
+    };
+    let stats2 = unsafe {
+        assert!(!stats2_ptr.is_null());
+        &mut *stats2_ptr
+    };
+    let result = unsafe {
+        assert!(!result_ptr.is_null());
+        &mut *result_ptr
+    };
+
+    for i in 0..ZOPFLI_NUM_LL {
+        result.litlens[i] = (stats1.litlens[i] as c_double * w1 + stats2.litlens[i] as c_double * w2) as size_t;
+    }
+    for i in 0..ZOPFLI_NUM_D {
+        result.dists[i] = (stats1.dists[i] as c_double * w1 + stats2.dists[i] as c_double * w2) as size_t;
+    }
+    result.litlens[256] = 1; // End symbol.
+}
+
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn RandomizeStatFreqs(state_ptr: *mut RanState, stats_ptr: *mut SymbolStats) {
