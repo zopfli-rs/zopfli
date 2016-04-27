@@ -126,6 +126,17 @@ pub extern fn InitStats(stats_ptr: *mut SymbolStats) {
 
 #[no_mangle]
 #[allow(non_snake_case)]
+pub extern fn ClearStatFreqs(stats_ptr: *mut SymbolStats) {
+    let stats = unsafe {
+        assert!(!stats_ptr.is_null());
+        &mut *stats_ptr
+    };
+    stats.litlens = [0; ZOPFLI_NUM_LL];
+    stats.dists = [0; ZOPFLI_NUM_D];
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
 pub extern fn RandomizeStatFreqs(state_ptr: *mut RanState, stats_ptr: *mut SymbolStats) {
     let stats = unsafe {
         assert!(!stats_ptr.is_null());

@@ -74,13 +74,7 @@ typedef struct RanState RanState;
 
 extern RanState* ran_state_new();
 extern void RandomizeStatFreqs(RanState* state, SymbolStats* stats);
-
-static void ClearStatFreqs(SymbolStats* stats) {
-  size_t i;
-  for (i = 0; i < ZOPFLI_NUM_LL; i++) stats->litlens[i] = 0;
-  for (i = 0; i < ZOPFLI_NUM_D; i++) stats->dists[i] = 0;
-}
-
+extern void ClearStatFreqs(SymbolStats* stats);
 /*
 Function that calculates a cost based on a model for the given LZ77 symbol.
 litlen: means literal symbol if dist is 0, length otherwise.
