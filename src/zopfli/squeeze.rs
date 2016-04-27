@@ -1,5 +1,3 @@
-use std::slice;
-
 use libc::{c_void, c_uint, c_double, c_int, size_t};
 
 use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
@@ -126,24 +124,17 @@ impl SymbolStats {
     /// values are fractional, they cannot be used to encode the tree specified by
     /// DEFLATE.
     pub fn calculate_entropy(&mut self) {
-        fn calculate_and_store_entropy(count_ptr: *const size_t, n: size_t, bitlengths_ptr: *mut c_double) {
-            let count = unsafe {
-                assert!(!count_ptr.is_null());
-                slice::from_raw_parts(count_ptr, n as usize)
-            };
-            let bitlengths = unsafe {
-                assert!(!bitlengths_ptr.is_null());
-                slice::from_raw_parts_mut(bitlengths_ptr, n as usize)
-            };
+        fn calculate_and_store_entropy(count: &[size_t], bitlengths: &mut [c_double]) {
+            let n = count.len();
 
             let mut sum = 0;
-            for i in 0..(n as usize) {
+            for i in 0..n {
                 sum += count[i];
             }
 
             let log2sum = (if sum == 0 { n } else { sum } as c_double).ln() * K_INV_LOG2;
 
-            for i in 0..n as usize {
+            for i in 0..n {
                 // When the count of the symbol is 0, but its cost is requested anyway, it
                 // means the symbol will appear at least once anyway, so give it the cost as if
                 // its count is 1.
@@ -165,8 +156,8 @@ impl SymbolStats {
             }
         }
 
-        calculate_and_store_entropy(self.litlens.as_ptr(), ZOPFLI_NUM_LL as size_t, self.ll_symbols.as_mut_ptr());
-        calculate_and_store_entropy(self.dists.as_ptr(), ZOPFLI_NUM_D as size_t, self.d_symbols.as_mut_ptr());
+        calculate_and_store_entropy(&self.litlens, &mut self.ll_symbols);
+        calculate_and_store_entropy(&self.dists, &mut self.d_symbols);
 
     }
 }
