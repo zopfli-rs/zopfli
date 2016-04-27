@@ -77,6 +77,7 @@ pub extern fn ran_state_new() -> *mut RanState {
 
 
 #[repr(C)]
+#[derive(Copy)]
 pub struct SymbolStats {
   /* The literal and length symbols. */
   litlens: [size_t; ZOPFLI_NUM_LL],
@@ -87,6 +88,12 @@ pub struct SymbolStats {
   ll_symbols: [c_double; ZOPFLI_NUM_LL],
   /* Length of each dist symbol in bits. */
   d_symbols: [c_double; ZOPFLI_NUM_D],
+}
+
+impl Clone for SymbolStats {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl SymbolStats {
@@ -133,6 +140,20 @@ pub extern fn ClearStatFreqs(stats_ptr: *mut SymbolStats) {
     };
     stats.litlens = [0; ZOPFLI_NUM_LL];
     stats.dists = [0; ZOPFLI_NUM_D];
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CopyStats(source_ptr: *mut SymbolStats, dest_ptr: *mut SymbolStats) {
+    let source = unsafe {
+        assert!(!source_ptr.is_null());
+        &mut *source_ptr
+    };
+    let dest = unsafe {
+        assert!(!dest_ptr.is_null());
+        &mut *dest_ptr
+    };
+    *dest = *source;
 }
 
 #[no_mangle]

@@ -42,17 +42,7 @@ typedef struct SymbolStats {
 } SymbolStats;
 
 extern void InitStats(SymbolStats* stats);
-
-static void CopyStats(SymbolStats* source, SymbolStats* dest) {
-  memcpy(dest->litlens, source->litlens,
-         ZOPFLI_NUM_LL * sizeof(dest->litlens[0]));
-  memcpy(dest->dists, source->dists, ZOPFLI_NUM_D * sizeof(dest->dists[0]));
-
-  memcpy(dest->ll_symbols, source->ll_symbols,
-         ZOPFLI_NUM_LL * sizeof(dest->ll_symbols[0]));
-  memcpy(dest->d_symbols, source->d_symbols,
-         ZOPFLI_NUM_D * sizeof(dest->d_symbols[0]));
-}
+extern void CopyStats(SymbolStats* source, SymbolStats* dest);
 
 /* Adds the bit lengths. */
 static void AddWeighedStatFreqs(const SymbolStats* stats1, double w1,
