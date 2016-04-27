@@ -1,5 +1,3 @@
-use std::slice;
-
 use libc::{c_void, c_uint, c_double, c_int, size_t};
 
 use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
@@ -91,25 +89,24 @@ pub struct SymbolStats {
   d_symbols: [c_double; ZOPFLI_NUM_D],
 }
 
-pub fn randomize_freqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_int) {
-    let freqs = unsafe {
-        assert!(!freqs_ptr.is_null());
-        slice::from_raw_parts_mut(freqs_ptr, n as usize)
-    };
-    let state = unsafe {
-        assert!(!state_ptr.is_null());
-        &mut *state_ptr
-    };
+impl SymbolStats {
+    pub fn randomize_stat_freqs(&mut self, state: &mut RanState) {
+        fn randomize_freqs(freqs: &mut [size_t], state: &mut RanState) {
+            let n = freqs.len();
+            let mut i: usize = 0;
+            let end = n as usize;
 
-    let mut i: usize = 0;
-    let end = n as usize;
-
-    while i < end {
-        if (state.random_marsaglia() >> 4) % 3 == 0 {
-            let index = state.random_marsaglia() % n as c_uint;
-            freqs[i] = freqs[index as usize];
+            while i < end {
+                if (state.random_marsaglia() >> 4) % 3 == 0 {
+                    let index = state.random_marsaglia() % n as c_uint;
+                    freqs[i] = freqs[index as usize];
+                }
+                i += 1;
+            }
         }
-        i += 1;
+        randomize_freqs(&mut self.litlens, state);
+        randomize_freqs(&mut self.dists, state);
+        self.litlens[256] = 1; // End symbol.
     }
 }
 
@@ -120,8 +117,10 @@ pub extern fn RandomizeStatFreqs(state_ptr: *mut RanState, stats_ptr: *mut Symbo
         assert!(!stats_ptr.is_null());
         &mut *stats_ptr
     };
+    let state = unsafe {
+        assert!(!state_ptr.is_null());
+        &mut *state_ptr
+    };
 
-    randomize_freqs(state_ptr, stats.litlens.as_mut_ptr(), ZOPFLI_NUM_LL as c_int);
-    randomize_freqs(state_ptr, stats.dists.as_mut_ptr(), ZOPFLI_NUM_D as c_int);
-    stats.litlens[256] = 1; // End symbol.
+    stats.randomize_stat_freqs(state);
 }
