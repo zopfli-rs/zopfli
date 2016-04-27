@@ -37,8 +37,8 @@ pub struct ZopfliLZ77Store {
 #[derive(Debug)]
 #[repr(C)]
 pub struct Lz77Store {
-   litlens: Vec<c_ushort>,
-   dists: Vec<c_ushort>,
+   pub litlens: Vec<c_ushort>,
+   pub dists: Vec<c_ushort>,
 
    pos: Vec<size_t>,
 

@@ -295,22 +295,7 @@ static void FollowPath(ZopfliBlockState* s,
 }
 
 extern void CalculateStatistics(SymbolStats* stats);
-
-/* Appends the symbol statistics from the store. */
-static void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats) {
-  size_t i;
-  for (i = 0; i < store->size; i++) {
-    if (store->dists[i] == 0) {
-      stats->litlens[store->litlens[i]]++;
-    } else {
-      stats->litlens[ZopfliGetLengthSymbol(store->litlens[i])]++;
-      stats->dists[ZopfliGetDistSymbol(store->dists[i])]++;
-    }
-  }
-  stats->litlens[256] = 1;  /* End symbol. */
-
-  CalculateStatistics(stats);
-}
+extern void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats);
 
 /*
 Does a single run for ZopfliLZ77Optimal. For good compression, repeated runs
