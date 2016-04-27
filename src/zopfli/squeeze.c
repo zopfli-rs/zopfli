@@ -294,11 +294,7 @@ static void FollowPath(ZopfliBlockState* s,
   }
 }
 
-/* Calculates the entropy of the statistics */
-static void CalculateStatistics(SymbolStats* stats) {
-  ZopfliCalculateEntropy(stats->litlens, ZOPFLI_NUM_LL, stats->ll_symbols);
-  ZopfliCalculateEntropy(stats->dists, ZOPFLI_NUM_D, stats->d_symbols);
-}
+extern void CalculateStatistics(SymbolStats* stats);
 
 /* Appends the symbol statistics from the store. */
 static void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats) {

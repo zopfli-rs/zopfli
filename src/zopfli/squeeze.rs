@@ -1,6 +1,7 @@
 use libc::{c_void, c_uint, c_double, c_int, size_t};
 
 use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use tree::ZopfliCalculateEntropy;
 
 /// Cost model which should exactly match fixed tree.
 /// type: CostModelFun
@@ -195,4 +196,17 @@ pub extern fn RandomizeStatFreqs(state_ptr: *mut RanState, stats_ptr: *mut Symbo
     };
 
     stats.randomize_stat_freqs(state);
+}
+
+/// Calculates the entropy of the statistics
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CalculateStatistics(stats_ptr: *mut SymbolStats) {
+    let stats = unsafe {
+        assert!(!stats_ptr.is_null());
+        &mut *stats_ptr
+    };
+
+  ZopfliCalculateEntropy(stats.litlens.as_ptr(), ZOPFLI_NUM_LL as size_t, stats.ll_symbols.as_mut_ptr());
+  ZopfliCalculateEntropy(stats.dists.as_ptr(), ZOPFLI_NUM_D as size_t, stats.d_symbols.as_mut_ptr());
 }
