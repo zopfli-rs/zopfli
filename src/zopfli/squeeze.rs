@@ -51,20 +51,32 @@ pub extern fn GetCostStat(litlen: c_uint, dist: c_uint, context: *const c_void) 
     }
 }
 
-#[repr(C)]
 pub struct RanState {
-    m_w: c_uint,
-    m_z: c_uint,
+    m_w: u32,
+    m_z: u32,
 }
 
 impl RanState {
+    pub fn new() -> RanState {
+        RanState {
+            m_w: 1,
+            m_z: 2,
+        }
+    }
+
     /// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
-    pub fn random_marsaglia(&mut self) -> c_uint {
+    pub fn random_marsaglia(&mut self) -> u32 {
         self.m_z = 36969 * (self.m_z & 65535) + (self.m_z >> 16);
         self.m_w = 18000 * (self.m_w & 65535) + (self.m_w >> 16);
         (self.m_z << 16) + self.m_w // 32-bit result.
     }
 }
+
+#[no_mangle]
+pub extern fn ran_state_new() -> *mut RanState {
+    Box::into_raw(Box::new(RanState::new()))
+}
+
 
 #[repr(C)]
 pub struct SymbolStats {
@@ -77,17 +89,6 @@ pub struct SymbolStats {
   ll_symbols: [c_double; ZOPFLI_NUM_LL],
   /* Length of each dist symbol in bits. */
   d_symbols: [c_double; ZOPFLI_NUM_D],
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn InitRanState(state_ptr: *mut RanState) {
-    let state = unsafe {
-        assert!(!state_ptr.is_null());
-        &mut *state_ptr
-    };
-    state.m_w = 1;
-    state.m_z = 2;
 }
 
 pub fn randomize_freqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_int) {

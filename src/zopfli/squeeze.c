@@ -77,11 +77,9 @@ static void AddWeighedStatFreqs(const SymbolStats* stats1, double w1,
   result->litlens[256] = 1;  /* End symbol. */
 }
 
-typedef struct RanState {
-  unsigned int m_w, m_z;
-} RanState;
+typedef struct RanState RanState;
 
-extern void InitRanState(RanState* state);
+extern RanState* ran_state_new();
 extern void RandomizeStatFreqs(RanState* state, SymbolStats* stats);
 
 static void ClearStatFreqs(SymbolStats* stats) {
@@ -407,13 +405,13 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   double bestcost = ZOPFLI_LARGE_FLOAT;
   double lastcost = 0;
   /* Try randomizing the costs a bit once the size stabilizes. */
-  RanState ran_state;
+  RanState *ran_state;
   int lastrandomstep = -1;
 
   if (!costs) exit(-1); /* Allocation failed. */
   if (!length_array) exit(-1); /* Allocation failed. */
 
-  InitRanState(&ran_state);
+  ran_state = ran_state_new();
   InitStats(&stats);
   ZopfliInitLZ77Store(in, &currentstore);
   ZopfliAllocHash(ZOPFLI_WINDOW_SIZE, h);
@@ -455,7 +453,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     }
     if (i > 5 && cost == lastcost) {
       CopyStats(&beststats, &stats);
-      RandomizeStatFreqs(&ran_state, &stats);
+      RandomizeStatFreqs(ran_state, &stats);
       CalculateStatistics(&stats);
       lastrandomstep = i;
     }
