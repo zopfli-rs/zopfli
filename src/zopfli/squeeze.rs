@@ -79,7 +79,6 @@ pub extern fn ran_state_new() -> *mut RanState {
 }
 
 
-#[repr(C)]
 #[derive(Copy)]
 pub struct SymbolStats {
   /* The literal and length symbols. */
@@ -100,6 +99,15 @@ impl Clone for SymbolStats {
 }
 
 impl SymbolStats {
+    pub fn new() -> SymbolStats {
+        SymbolStats {
+            litlens: [0; ZOPFLI_NUM_LL],
+            dists: [0; ZOPFLI_NUM_D],
+            ll_symbols: [0.0; ZOPFLI_NUM_LL],
+            d_symbols: [0.0; ZOPFLI_NUM_D],
+        }
+    }
+
     pub fn randomize_stat_freqs(&mut self, state: &mut RanState) {
         fn randomize_freqs(freqs: &mut [size_t], state: &mut RanState) {
             let n = freqs.len();
@@ -163,18 +171,9 @@ impl SymbolStats {
     }
 }
 
-/* Sets everything to 0. */
 #[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn InitStats(stats_ptr: *mut SymbolStats) {
-    let stats = unsafe {
-        assert!(!stats_ptr.is_null());
-        &mut *stats_ptr
-    };
-    stats.litlens = [0; ZOPFLI_NUM_LL];
-    stats.dists = [0; ZOPFLI_NUM_D];
-    stats.ll_symbols = [0.0; ZOPFLI_NUM_LL];
-    stats.d_symbols = [0.0; ZOPFLI_NUM_D];
+pub extern fn symbol_stats_new() -> *mut SymbolStats {
+    Box::into_raw(Box::new(SymbolStats::new()))
 }
 
 #[no_mangle]
