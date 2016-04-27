@@ -2,7 +2,7 @@ use std::slice;
 
 use libc::{c_void, c_uint, c_double, c_int, size_t};
 
-use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 
 /// Cost model which should exactly match fixed tree.
 /// type: CostModelFun
@@ -29,6 +29,26 @@ pub extern fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: c_void) -> c_d
         cost + dbits + lbits
     };
     result as c_double
+}
+
+/// Cost model based on symbol statistics.
+/// type: CostModelFun
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn GetCostStat(litlen: c_uint, dist: c_uint, context: *const c_void) -> c_double {
+    let stats = unsafe {
+        assert!(!context.is_null());
+        &*(context as *const SymbolStats)
+    };
+    if dist == 0 {
+        stats.ll_symbols[litlen as usize]
+    } else {
+        let lsym = ZopfliGetLengthSymbol(litlen as c_int) as usize;
+        let lbits = ZopfliGetLengthExtraBits(litlen as c_int) as c_double;
+        let dsym = ZopfliGetDistSymbol(dist as c_int) as usize;
+        let dbits = ZopfliGetDistExtraBits(dist as c_int) as c_double;
+        stats.ll_symbols[lsym] + lbits + stats.d_symbols[dsym] + dbits
+    }
 }
 
 #[repr(C)]

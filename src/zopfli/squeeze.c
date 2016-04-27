@@ -100,22 +100,7 @@ typedef double CostModelFun(unsigned litlen, unsigned dist, void* context);
 
 extern double GetCostFixed(unsigned litlen, unsigned dist, void* unused);
 
-/*
-Cost model based on symbol statistics.
-type: CostModelFun
-*/
-static double GetCostStat(unsigned litlen, unsigned dist, void* context) {
-  SymbolStats* stats = (SymbolStats*)context;
-  if (dist == 0) {
-    return stats->ll_symbols[litlen];
-  } else {
-    int lsym = ZopfliGetLengthSymbol(litlen);
-    int lbits = ZopfliGetLengthExtraBits(litlen);
-    int dsym = ZopfliGetDistSymbol(dist);
-    int dbits = ZopfliGetDistExtraBits(dist);
-    return lbits + dbits + stats->ll_symbols[lsym] + stats->d_symbols[dsym];
-  }
-}
+extern double GetCostStat(unsigned litlen, unsigned dist, void* context);
 
 /*
 Finds the minimum possible cost this cost model can return for valid length and
