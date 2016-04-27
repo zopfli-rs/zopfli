@@ -70,10 +70,8 @@ pub struct SymbolStats {
   d_symbols: [c_double; ZOPFLI_NUM_D],
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
 /// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
-pub extern fn Ran(state_ptr: *mut RanState) -> c_uint {
+pub fn random_marsaglia(state_ptr: *mut RanState) -> c_uint {
     let state = unsafe {
         assert!(!state_ptr.is_null());
         &mut *state_ptr
@@ -103,8 +101,8 @@ pub fn randomize_freqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_in
     let mut i: usize = 0;
     let end = n as usize;
     while i < end {
-        if (Ran(state_ptr) >> 4) % 3 == 0 {
-            let index = Ran(state_ptr) % n as c_uint;
+        if (random_marsaglia(state_ptr) >> 4) % 3 == 0 {
+            let index = random_marsaglia(state_ptr) % n as c_uint;
             freqs[i] = freqs[index as usize];
         }
         i += 1;
