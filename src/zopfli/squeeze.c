@@ -41,14 +41,7 @@ typedef struct SymbolStats {
   double d_symbols[ZOPFLI_NUM_D];
 } SymbolStats;
 
-/* Sets everything to 0. */
-static void InitStats(SymbolStats* stats) {
-  memset(stats->litlens, 0, ZOPFLI_NUM_LL * sizeof(stats->litlens[0]));
-  memset(stats->dists, 0, ZOPFLI_NUM_D * sizeof(stats->dists[0]));
-
-  memset(stats->ll_symbols, 0, ZOPFLI_NUM_LL * sizeof(stats->ll_symbols[0]));
-  memset(stats->d_symbols, 0, ZOPFLI_NUM_D * sizeof(stats->d_symbols[0]));
-}
+extern void InitStats(SymbolStats* stats);
 
 static void CopyStats(SymbolStats* source, SymbolStats* dest) {
   memcpy(dest->litlens, source->litlens,
