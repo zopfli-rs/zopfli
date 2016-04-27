@@ -95,9 +95,7 @@ pub extern fn InitRanState(state_ptr: *mut RanState) {
     state.m_z = 2;
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn RandomizeFreqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_int) {
+pub fn randomize_freqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_int) {
     let freqs = unsafe {
         assert!(!freqs_ptr.is_null());
         slice::from_raw_parts_mut(freqs_ptr, n as usize)
@@ -121,7 +119,7 @@ pub extern fn RandomizeStatFreqs(state_ptr: *mut RanState, stats_ptr: *mut Symbo
         &mut *stats_ptr
     };
 
-    RandomizeFreqs(state_ptr, stats.litlens.as_mut_ptr(), ZOPFLI_NUM_LL as c_int);
-    RandomizeFreqs(state_ptr, stats.dists.as_mut_ptr(), ZOPFLI_NUM_D as c_int);
+    randomize_freqs(state_ptr, stats.litlens.as_mut_ptr(), ZOPFLI_NUM_LL as c_int);
+    randomize_freqs(state_ptr, stats.dists.as_mut_ptr(), ZOPFLI_NUM_D as c_int);
     stats.litlens[256] = 1; // End symbol.
 }
