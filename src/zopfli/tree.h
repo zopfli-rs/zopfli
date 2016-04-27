@@ -39,13 +39,4 @@ Converts a series of Huffman tree bitlengths, to the bit values of the symbols.
 void ZopfliLengthsToSymbols(const unsigned* lengths, size_t n, unsigned maxbits,
                             unsigned* symbols);
 
-/*
-Calculates the entropy of each symbol, based on the counts of each symbol. The
-result is similar to the result of ZopfliCalculateBitLengths, but with the
-actual theoritical bit lengths according to the entropy. Since the resulting
-values are fractional, they cannot be used to encode the tree specified by
-DEFLATE.
-*/
-void ZopfliCalculateEntropy(const size_t* count, size_t n, double* bitlengths);
-
 #endif  /* ZOPFLI_TREE_H_ */

@@ -4,6 +4,11 @@ use libc::{c_double, size_t};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
+/// Calculates the entropy of each symbol, based on the counts of each symbol. The
+/// result is similar to the result of ZopfliCalculateBitLengths, but with the
+/// actual theoritical bit lengths according to the entropy. Since the resulting
+/// values are fractional, they cannot be used to encode the tree specified by
+/// DEFLATE.
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliCalculateEntropy(count_ptr: *const size_t, n: size_t, bitlengths_ptr: *mut c_double) {
