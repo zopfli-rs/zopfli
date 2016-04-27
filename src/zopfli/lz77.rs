@@ -2,7 +2,9 @@ use std::slice;
 
 use libc::{size_t, c_ushort, c_uchar, c_int};
 
+use cache::ZopfliLongestMatchCache;
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use zopfli::ZopfliOptions;
 
 // Comment from C:
 // Stores lit/length and dist pairs for LZ77.
@@ -188,4 +190,17 @@ pub extern fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store
     store.d_symbol = lz77.d_symbol.as_mut_ptr();
     store.ll_counts = lz77.ll_counts.as_mut_ptr();
     store.d_counts = lz77.d_counts.as_mut_ptr();
+}
+
+/// Some state information for compressing a block.
+/// This is currently a bit under-used (with mainly only the longest match cache),
+/// but is kept for easy future expansion.
+#[repr(C)]
+pub struct ZopfliBlockState {
+    options: *const ZopfliOptions,
+    /* Cache for length/distance pairs found so far. */
+    lmc: *mut ZopfliLongestMatchCache,
+    /* The start (inclusive) and end (not inclusive) of the current block. */
+    blockstart: size_t,
+    blockend: size_t,
 }
