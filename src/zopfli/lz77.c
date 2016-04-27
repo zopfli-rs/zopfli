@@ -25,17 +25,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store) {
-  store->size = 0;
-  store->litlens = 0;
-  store->dists = 0;
-  store->pos = 0;
-  store->data = data;
-  store->ll_symbol = 0;
-  store->d_symbol = 0;
-  store->ll_counts = 0;
-  store->d_counts = 0;
-}
+extern void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store);
 
 void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
   free(store->litlens);

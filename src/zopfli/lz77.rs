@@ -1,4 +1,4 @@
-use std::slice;
+use std::{slice, ptr};
 
 use libc::{size_t, c_ushort, c_uchar, c_int};
 
@@ -190,6 +190,25 @@ pub extern fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store
     store.d_symbol = lz77.d_symbol.as_mut_ptr();
     store.ll_counts = lz77.ll_counts.as_mut_ptr();
     store.d_counts = lz77.d_counts.as_mut_ptr();
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliInitLZ77Store(data: *mut c_uchar, store_ptr: *mut ZopfliLZ77Store) {
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+
+    store.size = 0;
+    store.litlens = ptr::null_mut();
+    store.dists = ptr::null_mut();
+    store.pos = ptr::null_mut();
+    store.data = data;
+    store.ll_symbol = ptr::null_mut();
+    store.d_symbol = ptr::null_mut();
+    store.ll_counts = ptr::null_mut();
+    store.d_counts = ptr::null_mut();
 }
 
 /// Some state information for compressing a block.
