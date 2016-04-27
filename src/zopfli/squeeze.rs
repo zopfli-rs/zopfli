@@ -2,7 +2,7 @@ use std::slice;
 
 use libc::{c_void, c_uint, c_double, c_int, size_t};
 
-use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol};
+use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 
 /// Cost model which should exactly match fixed tree.
 /// type: CostModelFun
@@ -35,6 +35,19 @@ pub extern fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: c_void) -> c_d
 pub struct RanState {
     m_w: c_uint,
     m_z: c_uint,
+}
+
+#[repr(C)]
+pub struct SymbolStats {
+  /* The literal and length symbols. */
+  litlens: [size_t; ZOPFLI_NUM_LL],
+  /* The 32 unique dist symbols, not the 32768 possible dists. */
+  dists: [size_t; ZOPFLI_NUM_D],
+
+  /* Length of each lit/len symbol in bits. */
+  ll_symbols: [c_double; ZOPFLI_NUM_LL],
+  /* Length of each dist symbol in bits. */
+  d_symbols: [c_double; ZOPFLI_NUM_D],
 }
 
 #[no_mangle]
@@ -78,4 +91,17 @@ pub extern fn RandomizeFreqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n
         }
         i += 1;
     }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn RandomizeStatFreqs(state_ptr: *mut RanState, stats_ptr: *mut SymbolStats) {
+    let stats = unsafe {
+        assert!(!stats_ptr.is_null());
+        &mut *stats_ptr
+    };
+
+    RandomizeFreqs(state_ptr, stats.litlens.as_mut_ptr(), ZOPFLI_NUM_LL as c_int);
+    RandomizeFreqs(state_ptr, stats.dists.as_mut_ptr(), ZOPFLI_NUM_D as c_int);
+    stats.litlens[256] = 1; // End symbol.
 }

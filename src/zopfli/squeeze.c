@@ -84,12 +84,7 @@ typedef struct RanState {
 extern unsigned int Ran(RanState* state);
 extern void InitRanState(RanState* state);
 extern void RandomizeFreqs(RanState* state, size_t* freqs, int n);
-
-static void RandomizeStatFreqs(RanState* state, SymbolStats* stats) {
-  RandomizeFreqs(state, stats->litlens, ZOPFLI_NUM_LL);
-  RandomizeFreqs(state, stats->dists, ZOPFLI_NUM_D);
-  stats->litlens[256] = 1;  /* End symbol. */
-}
+extern void RandomizeStatFreqs(RanState* state, SymbolStats* stats);
 
 static void ClearStatFreqs(SymbolStats* stats) {
   size_t i;
