@@ -57,6 +57,15 @@ pub struct RanState {
     m_z: c_uint,
 }
 
+impl RanState {
+    /// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
+    pub fn random_marsaglia(&mut self) -> c_uint {
+        self.m_z = 36969 * (self.m_z & 65535) + (self.m_z >> 16);
+        self.m_w = 18000 * (self.m_w & 65535) + (self.m_w >> 16);
+        (self.m_z << 16) + self.m_w // 32-bit result.
+    }
+}
+
 #[repr(C)]
 pub struct SymbolStats {
   /* The literal and length symbols. */
@@ -68,18 +77,6 @@ pub struct SymbolStats {
   ll_symbols: [c_double; ZOPFLI_NUM_LL],
   /* Length of each dist symbol in bits. */
   d_symbols: [c_double; ZOPFLI_NUM_D],
-}
-
-/// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
-pub fn random_marsaglia(state_ptr: *mut RanState) -> c_uint {
-    let state = unsafe {
-        assert!(!state_ptr.is_null());
-        &mut *state_ptr
-    };
-
-    state.m_z = 36969 * (state.m_z & 65535) + (state.m_z >> 16);
-    state.m_w = 18000 * (state.m_w & 65535) + (state.m_w >> 16);
-    (state.m_z << 16) + state.m_w // 32-bit result.
 }
 
 #[no_mangle]
@@ -98,11 +95,17 @@ pub fn randomize_freqs(state_ptr: *mut RanState, freqs_ptr: *mut size_t, n: c_in
         assert!(!freqs_ptr.is_null());
         slice::from_raw_parts_mut(freqs_ptr, n as usize)
     };
+    let state = unsafe {
+        assert!(!state_ptr.is_null());
+        &mut *state_ptr
+    };
+
     let mut i: usize = 0;
     let end = n as usize;
+
     while i < end {
-        if (random_marsaglia(state_ptr) >> 4) % 3 == 0 {
-            let index = random_marsaglia(state_ptr) % n as c_uint;
+        if (state.random_marsaglia() >> 4) % 3 == 0 {
+            let index = state.random_marsaglia() % n as c_uint;
             freqs[i] = freqs[index as usize];
         }
         i += 1;
