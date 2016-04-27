@@ -116,6 +116,11 @@ impl SymbolStats {
         randomize_freqs(&mut self.dists, state);
         self.litlens[256] = 1; // End symbol.
     }
+
+    pub fn calculate_entropy(&mut self) {
+        ZopfliCalculateEntropy(self.litlens.as_ptr(), ZOPFLI_NUM_LL as size_t, self.ll_symbols.as_mut_ptr());
+        ZopfliCalculateEntropy(self.dists.as_ptr(), ZOPFLI_NUM_D as size_t, self.d_symbols.as_mut_ptr());
+    }
 }
 
 /* Sets everything to 0. */
@@ -207,6 +212,5 @@ pub extern fn CalculateStatistics(stats_ptr: *mut SymbolStats) {
         &mut *stats_ptr
     };
 
-  ZopfliCalculateEntropy(stats.litlens.as_ptr(), ZOPFLI_NUM_LL as size_t, stats.ll_symbols.as_mut_ptr());
-  ZopfliCalculateEntropy(stats.dists.as_ptr(), ZOPFLI_NUM_D as size_t, stats.d_symbols.as_mut_ptr());
+    stats.calculate_entropy();
 }
