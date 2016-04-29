@@ -114,3 +114,13 @@ pub extern fn ZopfliHashPrev(h_ptr: *const ZopfliHash) -> *mut c_ushort {
     };
     h.prev
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliHashHashval(h_ptr: *const ZopfliHash) -> *mut c_int {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.hashval
+}
