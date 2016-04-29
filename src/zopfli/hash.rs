@@ -94,3 +94,13 @@ pub extern fn ZopfliUpdateHash(array: *const c_uchar, pos: size_t, end: size_t, 
         *h.head2.offset(h.val2 as isize) = hpos as c_int;
     }
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliHashHead(h_ptr: *const ZopfliHash) -> *mut c_int {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.head
+}
