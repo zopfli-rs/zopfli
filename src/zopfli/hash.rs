@@ -40,11 +40,15 @@ impl ZopfliHash {
            same: vec![0; window_size],
        }
     }
+
+    /// Update the sliding hash value with the given byte. All calls to this function
+    /// must be made on consecutive input characters. Since the hash value exists out
+    /// of multiple input bytes, a few warmups with this function are needed initially.
+    pub fn update(&mut self, c: c_uchar) {
+        self.val = ((self.val << HASH_SHIFT) ^ c as c_int) & HASH_MASK;
+    }
 }
 
-/// Update the sliding hash value with the given byte. All calls to this function
-/// must be made on consecutive input characters. Since the hash value exists out
-/// of multiple input bytes, a few warmups with this function are needed initially.
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn UpdateHashValue(h_ptr: *mut ZopfliHash, c: c_uchar) {
@@ -52,7 +56,7 @@ pub extern fn UpdateHashValue(h_ptr: *mut ZopfliHash, c: c_uchar) {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.val = ((h.val << HASH_SHIFT) ^ c as c_int) & HASH_MASK;
+    h.update(c);
 }
 
 #[no_mangle]
