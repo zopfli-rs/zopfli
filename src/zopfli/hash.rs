@@ -50,12 +50,12 @@ impl ZopfliHash {
         self.val = ((self.val << HASH_SHIFT) ^ c as c_int) & HASH_MASK;
     }
 
-    pub fn update(&mut self, array: *const c_uchar, pos: size_t, end: size_t) {
+    pub fn update(&mut self, array: &[c_uchar], pos: size_t) {
         let hpos = (pos & ZOPFLI_WINDOW_MASK) as usize;
         let mut amount: c_int = 0;
 
-        let hash_value = if pos + ZOPFLI_MIN_MATCH as size_t <= end {
-            unsafe { *array.offset((pos + ZOPFLI_MIN_MATCH as size_t - 1) as isize) }
+        let hash_value = if pos + ZOPFLI_MIN_MATCH as size_t <= array.len() {
+            array[(pos + ZOPFLI_MIN_MATCH as size_t - 1) as usize]
         } else {
             0
         };
@@ -78,10 +78,8 @@ impl ZopfliHash {
             amount = self.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] as c_int - 1;
         }
 
-        unsafe {
-            while pos + amount as size_t + 1 < end && *array.offset(pos as isize) == *array.offset((pos + amount as size_t + 1) as isize) && amount < -1 {
-                amount += 1;
-            }
+        while pos + amount as size_t + 1 < array.len() && array[pos as usize] == array[(pos + amount as size_t + 1) as usize] && amount < -1 {
+            amount += 1;
         }
         self.same[hpos] = amount as c_ushort;
 
@@ -132,7 +130,8 @@ pub extern fn ZopfliUpdateHash(array: *const c_uchar, pos: size_t, end: size_t, 
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.update(array, pos, end);
+    let arr = unsafe { slice::from_raw_parts(array, end) };
+    h.update(arr, pos);
 }
 
 #[no_mangle]
