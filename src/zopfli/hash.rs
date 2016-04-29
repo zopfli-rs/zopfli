@@ -124,3 +124,13 @@ pub extern fn ZopfliHashHashval(h_ptr: *const ZopfliHash) -> *mut c_int {
     };
     h.hashval
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliHashVal(h_ptr: *const ZopfliHash) -> c_int {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.val
+}
