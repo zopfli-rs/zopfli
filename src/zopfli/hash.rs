@@ -98,16 +98,6 @@ impl ZopfliHash {
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn UpdateHashValue(h_ptr: *mut ZopfliHash, c: c_uchar) {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    h.update_val(c);
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
 pub extern fn ZopfliWarmupHash(array: *const c_uchar, pos: size_t, end: size_t, h_ptr: *mut ZopfliHash) {
     let h = unsafe {
         assert!(!h_ptr.is_null());
