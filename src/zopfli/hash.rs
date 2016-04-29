@@ -1,3 +1,5 @@
+use std::slice;
+
 use libc::{c_int, c_ushort, c_uchar, size_t};
 
 use symbols::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH};
@@ -113,11 +115,12 @@ pub extern fn ZopfliWarmupHash(array: *const c_uchar, pos: size_t, end: size_t, 
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    let c = unsafe { *array.offset((pos + 0) as isize) };
+    let arr = unsafe { slice::from_raw_parts(array, end) };
+    let c = arr[pos];
     h.update_val(c);
 
     if pos + 1 < end {
-        let c = unsafe { *array.offset((pos + 1) as isize) };
+        let c = arr[pos + 1];
         h.update_val(c);
     }
 }
