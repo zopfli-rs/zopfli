@@ -137,6 +137,46 @@ pub extern fn ZopfliHashVal(h_ptr: *const ZopfliHash) -> c_int {
 
 #[no_mangle]
 #[allow(non_snake_case)]
+pub extern fn ZopfliHashHead2(h_ptr: *const ZopfliHash) -> *mut c_int {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.head2
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliHashPrev2(h_ptr: *const ZopfliHash) -> *mut c_ushort {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.prev2
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliHashHashval2(h_ptr: *const ZopfliHash) -> *mut c_int {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.hashval2
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliHashVal2(h_ptr: *const ZopfliHash) -> c_int {
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &*h_ptr
+    };
+    h.val2
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
 pub extern fn ZopfliHashSame(h_ptr: *const ZopfliHash) -> *mut c_ushort {
     let h = unsafe {
         assert!(!h_ptr.is_null());

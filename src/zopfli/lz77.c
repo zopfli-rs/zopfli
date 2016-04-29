@@ -398,6 +398,10 @@ extern int* ZopfliHashHead(const ZopfliHash* h);
 extern unsigned short* ZopfliHashPrev(const ZopfliHash* h);
 extern int* ZopfliHashHashval(const ZopfliHash* h);
 extern int ZopfliHashVal(const ZopfliHash* h);
+extern int* ZopfliHashHead2(const ZopfliHash* h);
+extern unsigned short* ZopfliHashPrev2(const ZopfliHash* h);
+extern int* ZopfliHashHashval2(const ZopfliHash* h);
+extern int ZopfliHashVal2(const ZopfliHash* h);
 extern unsigned short* ZopfliHashSame(const ZopfliHash* h);
 
 void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
@@ -411,6 +415,13 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   const unsigned char* match;
   const unsigned char* arrayend;
   const unsigned char* arrayend_safe;
+  int* hhead2;
+  unsigned short* hprev2;
+  int* hhashval2;
+  int hval2;
+  unsigned short* hsame;
+  unsigned short same0;
+
 #if ZOPFLI_MAX_CHAIN_HITS < ZOPFLI_WINDOW_SIZE
   int chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
 #endif
@@ -474,9 +485,9 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       if (pos + bestlength >= size
           || *(scan + bestlength) == *(match + bestlength)) {
 
-        unsigned short* hsame = ZopfliHashSame(h);
+        hsame = ZopfliHashSame(h);
 
-        unsigned short same0 = hsame[pos & ZOPFLI_WINDOW_MASK];
+        same0 = hsame[pos & ZOPFLI_WINDOW_MASK];
         if (same0 > 2 && *scan == *match) {
           unsigned short same1 = hsame[(pos - dist) & ZOPFLI_WINDOW_MASK];
           unsigned short same = same0 < same1 ? same0 : same1;
@@ -501,18 +512,21 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       }
     }
 
+    hhead2 = ZopfliHashHead2(h);
+    hprev2 = ZopfliHashPrev2(h);
+    hhashval2 = ZopfliHashHashval2(h);
+    hval2 = ZopfliHashVal2(h);
+    hsame = ZopfliHashSame(h);
 
-#ifdef ZOPFLI_HASH_SAME_HASH
     /* Switch to the other hash once this will be more efficient. */
-    if (hhead != h->head2 && bestlength >= h->same[hpos] &&
-        h->val2 == h->hashval2[p]) {
+    if (hhead != hhead2 && bestlength >= hsame[hpos] &&
+        hval2 == hhashval2[p]) {
       /* Now use the hash that encodes the length and first byte. */
-      hhead = h->head2;
-      hprev = h->prev2;
-      hhashval = h->hashval2;
-      hval = h->val2;
+      hhead = hhead2;
+      hprev = hprev2;
+      hhashval = hhashval2;
+      hval = hval2;
     }
-#endif
 
     pp = p;
     p = hprev[p];
