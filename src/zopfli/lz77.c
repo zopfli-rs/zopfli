@@ -398,6 +398,7 @@ extern int* ZopfliHashHead(const ZopfliHash* h);
 extern unsigned short* ZopfliHashPrev(const ZopfliHash* h);
 extern int* ZopfliHashHashval(const ZopfliHash* h);
 extern int ZopfliHashVal(const ZopfliHash* h);
+extern unsigned short* ZopfliHashSame(const ZopfliHash* h);
 
 void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
     const unsigned char* array,
@@ -473,16 +474,16 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       if (pos + bestlength >= size
           || *(scan + bestlength) == *(match + bestlength)) {
 
-#ifdef ZOPFLI_HASH_SAME
-        unsigned short same0 = h->same[pos & ZOPFLI_WINDOW_MASK];
+        unsigned short* hsame = ZopfliHashSame(h);
+
+        unsigned short same0 = hsame[pos & ZOPFLI_WINDOW_MASK];
         if (same0 > 2 && *scan == *match) {
-          unsigned short same1 = h->same[(pos - dist) & ZOPFLI_WINDOW_MASK];
+          unsigned short same1 = hsame[(pos - dist) & ZOPFLI_WINDOW_MASK];
           unsigned short same = same0 < same1 ? same0 : same1;
           if (same > limit) same = limit;
           scan += same;
           match += same;
         }
-#endif
         scan = GetMatch(scan, match, arrayend, arrayend_safe);
         currentlength = scan - &array[pos];  /* The found length. */
       }
