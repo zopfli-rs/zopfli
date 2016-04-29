@@ -26,7 +26,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #define HASH_SHIFT 5
 #define HASH_MASK 32767
 
-
 extern ZopfliHash* ZopfliInitHash(size_t window_size);
 extern void ZopfliResetHash(size_t window_size, ZopfliHash* h);
 extern void ZopfliCleanHash(ZopfliHash* h);
