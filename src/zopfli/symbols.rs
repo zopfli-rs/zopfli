@@ -1,7 +1,11 @@
-use libc::{c_int, size_t};
+use libc::{c_int, c_ushort, size_t};
 
 pub const ZOPFLI_NUM_LL: size_t = 288;
 pub const ZOPFLI_NUM_D: size_t = 32;
+
+pub const ZOPFLI_WINDOW_SIZE: size_t = 32768;
+pub const ZOPFLI_WINDOW_MASK: size_t = 32767; // ZOPFLI_WINDOW_SIZE - 1
+pub const ZOPFLI_MIN_MATCH: c_ushort = 3;
 
 const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
     0, 0, 0,
