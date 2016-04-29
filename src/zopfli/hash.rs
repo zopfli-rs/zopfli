@@ -1,4 +1,4 @@
-use libc::{c_int, c_ushort, c_uchar};
+use libc::{c_int, c_ushort, c_uchar, size_t};
 
 const HASH_SHIFT: c_int = 5;
 const HASH_MASK: c_int = 32767;
@@ -31,4 +31,17 @@ pub extern fn UpdateHashValue(h_ptr: *mut ZopfliHash, c: c_uchar) {
         &mut *h_ptr
     };
     h.val = ((h.val << HASH_SHIFT) ^ c as c_int) & HASH_MASK;
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliWarmupHash(array: *const c_uchar, pos: size_t, end: size_t, h_ptr: *mut ZopfliHash) {
+    unsafe {
+        UpdateHashValue(h_ptr, *array.offset((pos + 0) as isize));
+    }
+    if pos + 1 < end {
+        unsafe {
+            UpdateHashValue(h_ptr, *array.offset((pos + 1) as isize));
+        }
+    }
 }

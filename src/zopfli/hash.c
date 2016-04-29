@@ -129,8 +129,4 @@ void ZopfliUpdateHash(const unsigned char* array, size_t pos, size_t end,
 #endif
 }
 
-void ZopfliWarmupHash(const unsigned char* array, size_t pos, size_t end,
-                ZopfliHash* h) {
-  UpdateHashValue(h, array[pos + 0]);
-  if (pos + 1 < end) UpdateHashValue(h, array[pos + 1]);
-}
+extern void ZopfliWarmupHash(const unsigned char* array, size_t pos, size_t end, ZopfliHash* h);
