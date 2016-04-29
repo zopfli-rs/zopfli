@@ -47,6 +47,53 @@ impl ZopfliHash {
     pub fn update_val(&mut self, c: c_uchar) {
         self.val = ((self.val << HASH_SHIFT) ^ c as c_int) & HASH_MASK;
     }
+
+    pub fn update(&mut self, array: *const c_uchar, pos: size_t, end: size_t) {
+        let hpos = (pos & ZOPFLI_WINDOW_MASK) as usize;
+        let mut amount: c_int = 0;
+
+        let hash_value = if pos + ZOPFLI_MIN_MATCH as size_t <= end {
+            unsafe { *array.offset((pos + ZOPFLI_MIN_MATCH as size_t - 1) as isize) }
+        } else {
+            0
+        };
+        self.update_val(hash_value);
+
+        self.hashval[hpos] = self.val;
+
+        let index = self.val as usize;
+
+        if self.head[index] != -1 && self.hashval[self.head[index] as usize] == self.val {
+            self.prev[hpos] = self.head[index] as c_ushort;
+        } else {
+            self.prev[hpos] = hpos as c_ushort;
+        }
+
+        self.head[index] = hpos as c_int;
+
+        // Update "same".
+        if self.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] > 1 {
+            amount = self.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] as c_int - 1;
+        }
+
+        unsafe {
+            while pos + amount as size_t + 1 < end && *array.offset(pos as isize) == *array.offset((pos + amount as size_t + 1) as isize) && amount < -1 {
+                amount += 1;
+            }
+        }
+        self.same[hpos] = amount as c_ushort;
+
+        self.val2 = (((self.same[hpos] - ZOPFLI_MIN_MATCH) & 255) ^ self.val as c_ushort) as c_int;
+        self.hashval2[hpos] = self.val2;
+
+        let index2 = self.val2 as usize;
+        if self.head2[index2] != -1 as i32 && self.hashval2[self.head2[index2] as usize] == self.val2 {
+            self.prev2[hpos] = self.head2[index2] as c_ushort;
+        } else {
+            self.prev2[hpos] = hpos as c_ushort;
+        }
+        self.head2[index2] = hpos as c_int;
+    }
 }
 
 #[no_mangle]
@@ -78,50 +125,11 @@ pub extern fn ZopfliWarmupHash(array: *const c_uchar, pos: size_t, end: size_t, 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliUpdateHash(array: *const c_uchar, pos: size_t, end: size_t, h_ptr: *mut ZopfliHash) {
-    let hpos = (pos & ZOPFLI_WINDOW_MASK) as usize;
-    let mut amount: c_int = 0;
-
-    let hash_value = if pos + ZOPFLI_MIN_MATCH as size_t <= end {
-        unsafe { *array.offset((pos + ZOPFLI_MIN_MATCH as size_t - 1) as isize) }
-    } else {
-        0
-    };
-    UpdateHashValue(h_ptr, hash_value);
-
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.hashval[hpos] = h.val;
-
-    if h.head[h.val as usize] != -1 && h.hashval[h.head[h.val as usize] as usize] == h.val {
-        h.prev[hpos] = h.head[h.val as usize] as c_ushort;
-    } else {
-        h.prev[hpos] = hpos as c_ushort;
-    }
-
-    h.head[h.val as usize] = hpos as c_int;
-
-    /* Update "same". */
-    if h.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] > 1 {
-        amount = h.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] as c_int - 1;
-    }
-
-    unsafe {
-        while pos + amount as size_t + 1 < end && *array.offset(pos as isize) == *array.offset((pos + amount as size_t + 1) as isize) && amount < -1 {
-            amount += 1;
-        }
-    }
-    h.same[hpos] = amount as c_ushort;
-
-    h.val2 = (((h.same[hpos] - ZOPFLI_MIN_MATCH) & 255) ^ h.val as c_ushort) as c_int;
-    h.hashval2[hpos] = h.val2;
-    if h.head2[h.val2 as usize] != -1 as i32 && h.hashval2[h.head2[h.val2 as usize] as usize] == h.val2 {
-        h.prev2[hpos] = h.head2[h.val2 as usize] as c_ushort;
-    } else {
-        h.prev2[hpos] = hpos as c_ushort;
-    }
-    h.head2[h.val2 as usize] = hpos as c_int;
+    h.update(array, pos, end);
 }
 
 #[no_mangle]
