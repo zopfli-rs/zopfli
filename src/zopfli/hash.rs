@@ -62,13 +62,16 @@ pub extern fn UpdateHashValue(h_ptr: *mut ZopfliHash, c: c_uchar) {
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliWarmupHash(array: *const c_uchar, pos: size_t, end: size_t, h_ptr: *mut ZopfliHash) {
-    unsafe {
-        UpdateHashValue(h_ptr, *array.offset((pos + 0) as isize));
-    }
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &mut *h_ptr
+    };
+    let c = unsafe { *array.offset((pos + 0) as isize) };
+    h.update(c);
+
     if pos + 1 < end {
-        unsafe {
-            UpdateHashValue(h_ptr, *array.offset((pos + 1) as isize));
-        }
+        let c = unsafe { *array.offset((pos + 1) as isize) };
+        h.update(c);
     }
 }
 
