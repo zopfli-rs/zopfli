@@ -26,28 +26,9 @@ The hash for ZopfliFindLongestMatch of lz77.c.
 
 #include "util.h"
 
-typedef struct ZopfliHash {
-  int* head;  /* Hash value to index of its most recent occurrence. */
-  unsigned short* prev;  /* Index to index of prev. occurrence of same hash. */
-  int* hashval;  /* Index to hash value at this index. */
-  int val;  /* Current hash value. */
+typedef struct ZopfliHash ZopfliHash;
 
-#ifdef ZOPFLI_HASH_SAME_HASH
-  /* Fields with similar purpose as the above hash, but for the second hash with
-  a value that is calculated differently.  */
-  int* head2;  /* Hash value to index of its most recent occurrence. */
-  unsigned short* prev2;  /* Index to index of prev. occurrence of same hash. */
-  int* hashval2;  /* Index to hash value at this index. */
-  int val2;  /* Current hash value. */
-#endif
-
-#ifdef ZOPFLI_HASH_SAME
-  unsigned short* same;  /* Amount of repetitions of same byte after this .*/
-#endif
-} ZopfliHash;
-
-/* Allocates ZopfliHash memory. */
-void ZopfliAllocHash(size_t window_size, ZopfliHash* h);
+ZopfliHash* ZopfliInitHash(size_t window_size);
 
 /* Resets all fields of ZopfliHash. */
 void ZopfliResetHash(size_t window_size, ZopfliHash* h);
