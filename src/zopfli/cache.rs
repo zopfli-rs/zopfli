@@ -15,9 +15,23 @@ pub struct ZopfliLongestMatchCache {
     sublen: *mut c_uchar,
 }
 
-#[link(name = "zopfli")]
-extern {
-    fn ZopfliMaxCachedSublen(lmc: *const ZopfliLongestMatchCache, pos: size_t, length: size_t) -> c_uint;
+/// Returns the length up to which could be stored in the cache.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliMaxCachedSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, _length: size_t) -> c_uint {
+
+    let lmc = unsafe {
+        assert!(!lmc_ptr.is_null());
+        &mut *lmc_ptr
+    };
+
+    unsafe {
+        let cache = lmc.sublen.offset((ZOPFLI_CACHE_LENGTH * pos * 3) as isize);
+        if *cache.offset(1) == 0 && *cache.offset(2) == 0 {
+            return 0;  // No sublen cached.
+        }
+        *cache.offset(((ZOPFLI_CACHE_LENGTH - 1) * 3) as isize) as c_uint + 3
+    }
 }
 
 #[no_mangle]
@@ -28,7 +42,7 @@ pub extern fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: si
         &mut *lmc_ptr
     };
 
-    let maxlength = unsafe { ZopfliMaxCachedSublen(lmc_ptr, pos, length) };
+    let maxlength = ZopfliMaxCachedSublen(lmc_ptr, pos, length);
     let mut prevlength = 0;
 
     if length < 3 {
