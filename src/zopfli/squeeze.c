@@ -125,6 +125,7 @@ static double GetBestLengths(ZopfliBlockState *s,
   size_t i = 0, k, kend;
   unsigned short leng;
   unsigned short dist;
+  LongestMatch longest_match;
   unsigned short sublen[259];
   size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
       ? instart - ZOPFLI_WINDOW_SIZE : 0;
@@ -170,8 +171,9 @@ static double GetBestLengths(ZopfliBlockState *s,
       }
     }
 
-    ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, sublen,
-                           &dist, &leng);
+    longest_match = ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, sublen);
+    dist = longest_match.distance;
+    leng = longest_match.length;
 
     /* Literal. */
     if (i + 1 <= inend) {
@@ -258,6 +260,7 @@ static void FollowPath(ZopfliBlockState* s,
     unsigned short length = path[i];
     unsigned short dummy_length;
     unsigned short dist;
+    LongestMatch longest_match;
     assert(pos < inend);
 
     ZopfliUpdateHash(in, pos, inend, h);
@@ -266,8 +269,9 @@ static void FollowPath(ZopfliBlockState* s,
     if (length >= ZOPFLI_MIN_MATCH) {
       /* Get the distance by recalculating longest match. The found length
       should match the length from the path. */
-      ZopfliFindLongestMatch(s, h, in, pos, inend, length, 0,
-                             &dist, &dummy_length);
+      longest_match = ZopfliFindLongestMatch(s, h, in, pos, inend, length, 0);
+      dist = longest_match.distance;
+      dummy_length = longest_match.length;
       assert(!(dummy_length != length && length > 2 && dummy_length > 2));
       ZopfliVerifyLenDist(in, inend, pos, dist, length);
       ZopfliStoreLitLenDist(length, dist, pos, store);

@@ -101,6 +101,12 @@ void ZopfliInitBlockState(const ZopfliOptions* options,
                           ZopfliBlockState* s);
 void ZopfliCleanBlockState(ZopfliBlockState* s);
 
+typedef struct LongestMatch {
+    unsigned short distance;
+    unsigned short length;
+    int from_cache;
+} LongestMatch;
+
 /*
 Finds the longest match (length and corresponding distance) for LZ77
 compression.
@@ -117,10 +123,10 @@ sublen: output array of 259 elements, or null. Has, for each length, the
     are used, the first 3 are ignored (the shortest length is 3. It is purely
     for convenience that the array is made 3 longer).
 */
-void ZopfliFindLongestMatch(
+LongestMatch ZopfliFindLongestMatch(
     ZopfliBlockState *s, const ZopfliHash* h, const unsigned char* array,
     size_t pos, size_t size, size_t limit,
-    unsigned short* sublen, unsigned short* distance, unsigned short* length);
+    unsigned short* sublen);
 
 /*
 Verifies if length and dist are indeed valid, only used for assertion.
