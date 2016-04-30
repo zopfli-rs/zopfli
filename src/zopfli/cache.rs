@@ -67,3 +67,47 @@ pub extern fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: si
         }
     }
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliSublenToCache(sublen: *mut c_ushort, pos: size_t, length: size_t, lmc_ptr: *mut ZopfliLongestMatchCache) {
+    let lmc = unsafe {
+        assert!(!lmc_ptr.is_null());
+        &mut *lmc_ptr
+    };
+
+    let mut j: isize = 0;
+    let mut bestlength: c_uint = 0;
+
+    if length < 3 {
+        return;
+    }
+
+    unsafe {
+
+        let cache = lmc.sublen.offset((ZOPFLI_CACHE_LENGTH * pos * 3) as isize);
+
+        let mut i: isize = 3;
+        while i <= length as isize {
+            if i == length as isize || *sublen.offset(i) != *sublen.offset(i + 1) {
+                *cache.offset(j * 3) = (i - 3) as c_uchar;
+                *cache.offset(j * 3 + 1) = (*sublen.offset(i)).wrapping_rem(256) as c_uchar;
+                *cache.offset(j * 3 + 2) = ((*sublen.offset(i) >> 8)).wrapping_rem(256) as c_uchar;
+                bestlength = i as c_uint;
+                j += 1;
+                if j >= ZOPFLI_CACHE_LENGTH as isize {
+                    break;
+                }
+            }
+            i += 1;
+        }
+
+        if j < ZOPFLI_CACHE_LENGTH as isize {
+            assert!(bestlength == length as c_uint);
+            *cache.offset(((ZOPFLI_CACHE_LENGTH - 1) * 3) as isize) = (bestlength - 3) as c_uchar;
+        } else {
+            assert!(bestlength <= length as c_uint);
+        }
+        assert!(bestlength == ZopfliMaxCachedSublen(lmc, pos, length));
+    }
+}
