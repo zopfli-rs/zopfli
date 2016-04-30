@@ -1,4 +1,6 @@
-use libc::{c_ushort, c_uchar, size_t, c_uint};
+use std::mem;
+
+use libc::{c_ushort, c_uchar, size_t, c_uint, malloc};
 
 use symbols::{ZOPFLI_CACHE_LENGTH};
 
@@ -14,6 +16,35 @@ pub struct ZopfliLongestMatchCache {
     dist: *mut c_ushort,
     sublen: *mut c_uchar,
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliInitCache(blocksize: size_t, lmc_ptr: *mut ZopfliLongestMatchCache) {
+    let lmc = unsafe {
+        assert!(!lmc_ptr.is_null());
+        &mut *lmc_ptr
+    };
+
+    unsafe {
+        lmc.length = malloc(mem::size_of::<c_ushort>() as size_t * blocksize) as *mut c_ushort;
+        lmc.dist = malloc(mem::size_of::<c_ushort>() as size_t * blocksize) as *mut c_ushort;
+        /* Rather large amount of memory. */
+        lmc.sublen = malloc(ZOPFLI_CACHE_LENGTH * 3 * blocksize) as *mut c_uchar;
+        // Not doing null checks; hopefully in a min won't be necessary
+
+        /* length > 0 and dist 0 is invalid combination, which indicates on purpose
+        that this cache value is not filled in yet. */
+        for i in 0..blocksize as isize {
+            *lmc.length.offset(i) = 1;
+            *lmc.dist.offset(i) = 0;
+        }
+
+        for i in 0..(ZOPFLI_CACHE_LENGTH * blocksize * 3) as isize {
+            *lmc.sublen.offset(i) = 0;
+        }
+    }
+}
+
 
 /// Returns the length up to which could be stored in the cache.
 #[no_mangle]
