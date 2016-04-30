@@ -1,6 +1,6 @@
 use std::mem;
 
-use libc::{c_ushort, c_uchar, size_t, c_uint, malloc};
+use libc::{c_ushort, c_uchar, size_t, c_uint, malloc, free, c_void};
 
 use symbols::{ZOPFLI_CACHE_LENGTH};
 
@@ -45,6 +45,19 @@ pub extern fn ZopfliInitCache(blocksize: size_t, lmc_ptr: *mut ZopfliLongestMatc
     }
 }
 
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCleanCache(lmc_ptr: *mut ZopfliLongestMatchCache) {
+    let lmc = unsafe {
+        assert!(!lmc_ptr.is_null());
+        &mut *lmc_ptr
+    };
+    unsafe {
+        free(lmc.length as *mut c_void);
+        free(lmc.dist as *mut c_void);
+        free(lmc.sublen as *mut c_void);
+    }
+}
 
 /// Returns the length up to which could be stored in the cache.
 #[no_mangle]

@@ -27,11 +27,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 extern void ZopfliInitCache(size_t blocksize, ZopfliLongestMatchCache* lmc);
 
-void ZopfliCleanCache(ZopfliLongestMatchCache* lmc) {
-  free(lmc->length);
-  free(lmc->dist);
-  free(lmc->sublen);
-}
+extern void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
 
 extern void ZopfliSublenToCache(const unsigned short* sublen, size_t pos, size_t length, ZopfliLongestMatchCache* lmc);
 extern void ZopfliCacheToSublen(const ZopfliLongestMatchCache* lmc, size_t pos, size_t length, unsigned short* sublen);
