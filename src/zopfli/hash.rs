@@ -43,6 +43,16 @@ impl ZopfliHash {
        }
     }
 
+    pub fn warmup(&mut self, arr: &[c_uchar], pos: size_t, end: size_t) {
+        let c = arr[pos];
+        self.update_val(c);
+
+        if pos + 1 < end {
+            let c = arr[pos + 1];
+            self.update_val(c);
+        }
+    }
+
     /// Update the sliding hash value with the given byte. All calls to this function
     /// must be made on consecutive input characters. Since the hash value exists out
     /// of multiple input bytes, a few warmups with this function are needed initially.
@@ -104,13 +114,7 @@ pub extern fn ZopfliWarmupHash(array: *const c_uchar, pos: size_t, end: size_t, 
         &mut *h_ptr
     };
     let arr = unsafe { slice::from_raw_parts(array, end) };
-    let c = arr[pos];
-    h.update_val(c);
-
-    if pos + 1 < end {
-        let c = arr[pos + 1];
-        h.update_val(c);
-    }
+    h.warmup(arr, pos, end);
 }
 
 #[no_mangle]
