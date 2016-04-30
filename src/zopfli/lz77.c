@@ -328,7 +328,7 @@ Updates the limit value to a smaller one if possible with more limited
 information from the cache.
 */
 static LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s,
-    size_t pos, size_t* limit,
+    size_t pos, size_t limit,
     unsigned short* sublen) {
 
   LongestMatch longest_match;
@@ -343,19 +343,19 @@ static LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s,
   unsigned char cache_available = s->lmc && (s->lmc->length[lmcpos] == 0 ||
       s->lmc->dist[lmcpos] != 0);
   unsigned char limit_ok_for_cache = cache_available &&
-      (*limit == ZOPFLI_MAX_MATCH || s->lmc->length[lmcpos] <= *limit ||
+      (limit == ZOPFLI_MAX_MATCH || s->lmc->length[lmcpos] <= limit ||
       (sublen && ZopfliMaxCachedSublen(s->lmc,
-          lmcpos, s->lmc->length[lmcpos]) >= *limit));
+          lmcpos, s->lmc->length[lmcpos]) >= limit));
 
   if (s->lmc && limit_ok_for_cache && cache_available) {
     if (!sublen || s->lmc->length[lmcpos]
         <= ZopfliMaxCachedSublen(s->lmc, lmcpos, s->lmc->length[lmcpos])) {
       length = s->lmc->length[lmcpos];
-      if (length > *limit) length = *limit;
+      if (length > limit) length = limit;
       if (sublen) {
         ZopfliCacheToSublen(s->lmc, lmcpos, length, sublen);
         distance = sublen[length];
-        if (*limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH) {
+        if (limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH) {
           assert(sublen[length] == s->lmc->dist[lmcpos]);
         }
       } else {
@@ -368,12 +368,14 @@ static LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s,
     }
     /* Can't use much of the cache, since the "sublens" need to be calculated,
        but at least we already know when to stop. */
-    *limit = s->lmc->length[lmcpos];
+    limit = s->lmc->length[lmcpos];
+    longest_match.limit = limit;
   }
 
   longest_match.distance = 0;
   longest_match.length = 0;
   longest_match.from_cache = 0;
+  longest_match.limit = limit;
 
   return longest_match;
 }
@@ -446,12 +448,14 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   int* hhashval = ZopfliHashHashval(h);
   int hval = ZopfliHashVal(h);
 
-  longest_match = TryGetFromLongestMatchCache(s, pos, &limit, sublen);
+  longest_match = TryGetFromLongestMatchCache(s, pos, limit, sublen);
 
   if (longest_match.from_cache) {
     assert(pos + longest_match.length <= size);
     return longest_match;
   }
+
+  limit = longest_match.limit;
 
   assert(limit <= ZOPFLI_MAX_MATCH);
   assert(limit >= ZOPFLI_MIN_MATCH);
@@ -463,6 +467,7 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       longest_match.distance = 0;
       longest_match.length = 0;
       longest_match.from_cache = 0;
+      longest_match.limit = 0;
     return longest_match;
   }
 
@@ -564,6 +569,7 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   longest_match.distance = bestdist;
   longest_match.length = bestlength;
   longest_match.from_cache = 0;
+  longest_match.limit = limit;
   return longest_match;
 }
 

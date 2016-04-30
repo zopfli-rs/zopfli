@@ -105,6 +105,7 @@ typedef struct LongestMatch {
     unsigned short distance;
     unsigned short length;
     int from_cache;
+    size_t limit;
 } LongestMatch;
 
 /*
