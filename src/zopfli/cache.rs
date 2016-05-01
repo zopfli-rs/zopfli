@@ -155,3 +155,27 @@ pub extern fn ZopfliSublenToCache(sublen: *mut c_ushort, pos: size_t, length: si
         assert!(bestlength == ZopfliMaxCachedSublen(lmc, pos, length));
     }
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCacheLengthAt(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t) -> c_ushort {
+    let lmc = unsafe {
+        assert!(!lmc_ptr.is_null());
+        &mut *lmc_ptr
+    };
+    unsafe {
+        *lmc.length.offset(pos as isize)
+    }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCacheDistAt(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t) -> c_ushort {
+    let lmc = unsafe {
+        assert!(!lmc_ptr.is_null());
+        &mut *lmc_ptr
+    };
+    unsafe {
+        *lmc.dist.offset(pos as isize)
+    }
+}

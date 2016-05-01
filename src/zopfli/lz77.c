@@ -25,6 +25,9 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
+extern unsigned short ZopfliCacheLengthAt(const ZopfliLongestMatchCache* c, size_t lmcpos);
+extern unsigned short ZopfliCacheDistAt(const ZopfliLongestMatchCache* c, size_t lmcpos);
+
 extern void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store);
 
 void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
@@ -345,8 +348,8 @@ static LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s,
   if (s->lmc) {
     /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
       that this cache value is not filled in yet. */
-    length_lmcpos = s->lmc->length[lmcpos];
-    dist_lmcpos = s->lmc->dist[lmcpos];
+    length_lmcpos = ZopfliCacheLengthAt(s->lmc, lmcpos);
+    dist_lmcpos = ZopfliCacheDistAt(s->lmc, lmcpos);
     cache_available = (length_lmcpos == 0 || dist_lmcpos != 0);
     limit_ok_for_cache = cache_available &&
        (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit ||
@@ -405,8 +408,8 @@ static void StoreInLongestMatchCache(ZopfliBlockState* s,
   if (s->lmc) {
     /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
       that this cache value is not filled in yet. */
-    length_lmcpos = s->lmc->length[lmcpos];
-    dist_lmcpos = s->lmc->dist[lmcpos];
+    length_lmcpos = ZopfliCacheLengthAt(s->lmc, lmcpos);
+    dist_lmcpos = ZopfliCacheDistAt(s->lmc, lmcpos);
 
     cache_available = (length_lmcpos == 0 || dist_lmcpos != 0);
 
@@ -420,6 +423,7 @@ static void StoreInLongestMatchCache(ZopfliBlockState* s,
   }
 }
 #endif
+
 
 extern int* ZopfliHashHead(const ZopfliHash* h);
 extern unsigned short* ZopfliHashPrev(const ZopfliHash* h);
