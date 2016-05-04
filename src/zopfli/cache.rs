@@ -35,7 +35,7 @@ impl ZopfliLongestMatchCache {
     }
 
     /// Returns the length up to which could be stored in the cache.
-    pub fn max_sublen(&self, pos: size_t, _length: size_t) -> c_uint {
+    pub fn max_sublen(&self, pos: size_t) -> c_uint {
         let start = ZOPFLI_CACHE_LENGTH * pos * 3;
         if self.sublen[start + 1] == 0 && self.sublen[start + 2] == 0 {
             return 0;  // No sublen cached.
@@ -77,12 +77,12 @@ impl ZopfliLongestMatchCache {
         } else {
             assert!(bestlength <= length as c_uint);
         }
-        assert!(bestlength == self.max_sublen(pos, length));
+        assert!(bestlength == self.max_sublen(pos));
     }
 
     /// Extracts sublen array from the cache.
     pub fn fetch_sublen(&self, pos: size_t, length: size_t, sublen: *mut c_ushort) {
-        let maxlength = self.max_sublen(pos, length);
+        let maxlength = self.max_sublen(pos);
         let mut prevlength = 0;
 
         if length < 3 {

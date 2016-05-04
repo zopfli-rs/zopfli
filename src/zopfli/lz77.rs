@@ -264,7 +264,7 @@ pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: siz
     let length_lmcpos = unsafe { (*s.lmc).length_at(lmcpos) };
     let dist_lmcpos = unsafe { (*s.lmc).dist_at(lmcpos) };
     let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
-    let max_sublen = unsafe { (*s.lmc).max_sublen(lmcpos, length_lmcpos as size_t) };
+    let max_sublen = unsafe { (*s.lmc).max_sublen(lmcpos) };
     let limit_ok_for_cache = cache_available &&
        (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as c_ushort ||
        (!sublen.is_null() && max_sublen >= limit as c_uint));
