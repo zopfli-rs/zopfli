@@ -217,8 +217,7 @@ void ZopfliInitBlockState(const ZopfliOptions* options,
   s->blockend = blockend;
 #ifdef ZOPFLI_LONGEST_MATCH_CACHE
   if (add_lmc) {
-    s->lmc = (ZopfliLongestMatchCache*)malloc(sizeof(ZopfliLongestMatchCache));
-    ZopfliInitCache(blockend - blockstart, s->lmc);
+    s->lmc = ZopfliInitCache(blockend - blockstart);
   } else {
     s->lmc = 0;
   }

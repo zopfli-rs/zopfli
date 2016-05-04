@@ -10,39 +10,40 @@ use symbols::{ZOPFLI_CACHE_LENGTH};
 // the same position.
 // Uses large amounts of memory, since it has to remember the distance belonging
 // to every possible shorter-than-the-best length (the so called "sublen" array).
-#[repr(C)]
 pub struct ZopfliLongestMatchCache {
     length: *mut c_ushort,
     dist: *mut c_ushort,
     sublen: *mut c_uchar,
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliInitCache(blocksize: size_t, lmc_ptr: *mut ZopfliLongestMatchCache) {
-    let lmc = unsafe {
-        assert!(!lmc_ptr.is_null());
-        &mut *lmc_ptr
-    };
+impl ZopfliLongestMatchCache {
+    pub fn new(blocksize: size_t) -> ZopfliLongestMatchCache {
+        unsafe {
+            let lmc = ZopfliLongestMatchCache {
+                length: malloc(mem::size_of::<c_ushort>() as size_t * blocksize) as *mut c_ushort,
+                dist: malloc(mem::size_of::<c_ushort>() as size_t * blocksize) as *mut c_ushort,
+                /* Rather large amount of memory. */
+                sublen: malloc(ZOPFLI_CACHE_LENGTH * 3 * blocksize) as *mut c_uchar,
+            };
+            /* length > 0 and dist 0 is invalid combination, which indicates on purpose
+            that this cache value is not filled in yet. */
+            for i in 0..blocksize as isize {
+                *lmc.length.offset(i) = 1;
+                *lmc.dist.offset(i) = 0;
+            }
 
-    unsafe {
-        lmc.length = malloc(mem::size_of::<c_ushort>() as size_t * blocksize) as *mut c_ushort;
-        lmc.dist = malloc(mem::size_of::<c_ushort>() as size_t * blocksize) as *mut c_ushort;
-        /* Rather large amount of memory. */
-        lmc.sublen = malloc(ZOPFLI_CACHE_LENGTH * 3 * blocksize) as *mut c_uchar;
-        // Not doing null checks; hopefully in a min won't be necessary
-
-        /* length > 0 and dist 0 is invalid combination, which indicates on purpose
-        that this cache value is not filled in yet. */
-        for i in 0..blocksize as isize {
-            *lmc.length.offset(i) = 1;
-            *lmc.dist.offset(i) = 0;
-        }
-
-        for i in 0..(ZOPFLI_CACHE_LENGTH * blocksize * 3) as isize {
-            *lmc.sublen.offset(i) = 0;
+            for i in 0..(ZOPFLI_CACHE_LENGTH * blocksize * 3) as isize {
+                *lmc.sublen.offset(i) = 0;
+            }
+            lmc
         }
     }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliInitCache(blocksize: size_t) -> *mut ZopfliLongestMatchCache {
+    Box::into_raw(Box::new(ZopfliLongestMatchCache::new(blocksize)))
 }
 
 #[no_mangle]

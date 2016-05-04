@@ -36,14 +36,10 @@ the same position.
 Uses large amounts of memory, since it has to remember the distance belonging
 to every possible shorter-than-the-best length (the so called "sublen" array).
 */
-typedef struct ZopfliLongestMatchCache {
-  unsigned short* length;
-  unsigned short* dist;
-  unsigned char* sublen;
-} ZopfliLongestMatchCache;
+typedef struct ZopfliLongestMatchCache ZopfliLongestMatchCache;
 
 /* Initializes the ZopfliLongestMatchCache. */
-void ZopfliInitCache(size_t blocksize, ZopfliLongestMatchCache* lmc);
+extern ZopfliLongestMatchCache* ZopfliInitCache(size_t blocksize);
 
 /* Frees up the memory of the ZopfliLongestMatchCache. */
 void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
