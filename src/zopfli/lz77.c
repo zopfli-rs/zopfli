@@ -321,43 +321,9 @@ static const unsigned char* GetMatch(const unsigned char* scan,
   return scan;
 }
 
-#ifdef ZOPFLI_LONGEST_MATCH_CACHE
 extern LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s, size_t pos, size_t limit, unsigned short* sublen);
 
-/*
-Stores the found sublen, distance and length in the longest match cache, if
-possible.
-*/
-static void StoreInLongestMatchCache(ZopfliBlockState* s,
-    size_t pos, size_t limit,
-    const unsigned short* sublen,
-    unsigned short distance, unsigned short length) {
-  /* The LMC cache starts at the beginning of the block rather than the
-     beginning of the whole array. */
-  size_t lmcpos = pos - s->blockstart;
-  unsigned char cache_available;
-  unsigned short length_lmcpos;
-  unsigned short dist_lmcpos;
-
-  if (s->lmc) {
-    /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
-      that this cache value is not filled in yet. */
-    length_lmcpos = ZopfliCacheLengthAt(s->lmc, lmcpos);
-    dist_lmcpos = ZopfliCacheDistAt(s->lmc, lmcpos);
-
-    cache_available = (length_lmcpos == 0 || dist_lmcpos != 0);
-
-    if (limit == ZOPFLI_MAX_MATCH && sublen && !cache_available) {
-      assert(length_lmcpos == 1 && dist_lmcpos == 0);
-      dist_lmcpos = length < ZOPFLI_MIN_MATCH ? 0 : distance;
-      length_lmcpos = length < ZOPFLI_MIN_MATCH ? 0 : length;
-      assert(!(length_lmcpos== 1 && dist_lmcpos == 0));
-      ZopfliSublenToCache(sublen, lmcpos, length, s->lmc);
-    }
-  }
-}
-#endif
-
+extern void StoreInLongestMatchCache(ZopfliBlockState* s, size_t pos, size_t limit, const unsigned short* sublen, unsigned short distance, unsigned short length);
 
 extern int* ZopfliHashHead(const ZopfliHash* h);
 extern unsigned short* ZopfliHashPrev(const ZopfliHash* h);

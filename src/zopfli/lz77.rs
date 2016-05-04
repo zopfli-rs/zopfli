@@ -2,7 +2,7 @@ use std::{slice, ptr};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache, ZopfliMaxCachedSublen, ZopfliCacheToSublen, ZopfliCacheLengthAt, ZopfliCacheDistAt};
+use cache::{ZopfliLongestMatchCache, ZopfliMaxCachedSublen, ZopfliCacheToSublen, ZopfliSublenToCache, ZopfliCacheLengthAt, ZopfliCacheDistAt};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
 use zopfli::ZopfliOptions;
 
@@ -301,4 +301,43 @@ pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: siz
     }
 
     longest_match
+}
+
+/// Stores the found sublen, distance and length in the longest match cache, if
+/// possible.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+
+    /* The LMC cache starts at the beginning of the block rather than the
+    beginning of the whole array. */
+    let lmcpos = pos - s.blockstart;
+
+    if s.lmc.is_null() {
+        return;
+    }
+
+    /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
+    that this cache value is not filled in yet. */
+    let mut length_lmcpos = ZopfliCacheLengthAt(s.lmc, lmcpos);
+    let mut dist_lmcpos = ZopfliCacheDistAt(s.lmc, lmcpos);
+
+    let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
+
+    if limit == ZOPFLI_MAX_MATCH && !sublen.is_null() && !cache_available {
+        assert!(length_lmcpos == 1 && dist_lmcpos == 0);
+        if length < ZOPFLI_MIN_MATCH {
+            dist_lmcpos = 0;
+            length_lmcpos = 0;
+        } else {
+            dist_lmcpos = distance;
+            length_lmcpos = length;
+        }
+        assert!(!(length_lmcpos == 1 && dist_lmcpos == 0));
+        ZopfliSublenToCache(sublen, lmcpos, length as size_t, s.lmc);
+    }
 }
