@@ -25,9 +25,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-extern unsigned short ZopfliCacheLengthAt(const ZopfliLongestMatchCache* c, size_t lmcpos);
-extern unsigned short ZopfliCacheDistAt(const ZopfliLongestMatchCache* c, size_t lmcpos);
-
 extern void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store);
 
 void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
