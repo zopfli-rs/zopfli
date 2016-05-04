@@ -34,6 +34,15 @@ impl ZopfliLongestMatchCache {
         self.dist[pos]
     }
 
+    /// Returns the length up to which could be stored in the cache.
+    pub fn max_sublen(&self, pos: size_t, _length: size_t) -> c_uint {
+        let start = ZOPFLI_CACHE_LENGTH * pos * 3;
+        if self.sublen[start + 1] == 0 && self.sublen[start + 2] == 0 {
+            return 0;  // No sublen cached.
+        }
+        self.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] as c_uint + 3
+    }
+
     /// Stores sublen array in the cache.
     pub fn store_sublen(&mut self, sublen: *mut c_ushort, pos: size_t, length: size_t) {
         let mut j: usize = 0;
@@ -68,7 +77,7 @@ impl ZopfliLongestMatchCache {
         } else {
             assert!(bestlength <= length as c_uint);
         }
-        assert!(bestlength == ZopfliMaxCachedSublen(self, pos, length));
+        assert!(bestlength == self.max_sublen(pos, length));
     }
 }
 
@@ -85,22 +94,6 @@ pub extern fn ZopfliCleanCache(ptr: *mut ZopfliLongestMatchCache) {
     unsafe { Box::from_raw(ptr); }
 }
 
-/// Returns the length up to which could be stored in the cache.
-#[allow(non_snake_case)]
-pub fn ZopfliMaxCachedSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, _length: size_t) -> c_uint {
-
-    let lmc = unsafe {
-        assert!(!lmc_ptr.is_null());
-        &mut *lmc_ptr
-    };
-
-    let start = ZOPFLI_CACHE_LENGTH * pos * 3;
-    if lmc.sublen[start + 1] == 0 && lmc.sublen[start + 2] == 0 {
-        return 0;  // No sublen cached.
-    }
-    lmc.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] as c_uint + 3
-}
-
 /// Extracts sublen array from the cache.
 #[allow(non_snake_case)]
 pub fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, length: size_t, sublen: *mut c_ushort) {
@@ -109,7 +102,7 @@ pub fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, l
         &mut *lmc_ptr
     };
 
-    let maxlength = ZopfliMaxCachedSublen(lmc_ptr, pos, length);
+    let maxlength = lmc.max_sublen(pos, length);
     let mut prevlength = 0;
 
     if length < 3 {
