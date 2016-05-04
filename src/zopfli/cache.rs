@@ -33,6 +33,43 @@ impl ZopfliLongestMatchCache {
     pub fn dist_at(&self, pos: size_t) -> c_ushort {
         self.dist[pos]
     }
+
+    /// Stores sublen array in the cache.
+    pub fn store_sublen(&mut self, sublen: *mut c_ushort, pos: size_t, length: size_t) {
+        let mut j: usize = 0;
+        let mut bestlength: c_uint = 0;
+
+        if length < 3 {
+            return;
+        }
+
+        let start = ZOPFLI_CACHE_LENGTH * pos * 3;
+
+        let mut i: isize = 3;
+        while i <= length as isize {
+            unsafe {
+                if i == length as isize || *sublen.offset(i) != *sublen.offset(i + 1) {
+                    self.sublen[start + (j * 3)] = (i - 3) as c_uchar;
+                    self.sublen[start + (j * 3 + 1)] = (*sublen.offset(i)).wrapping_rem(256) as c_uchar;
+                    self.sublen[start + (j * 3 + 2)] = ((*sublen.offset(i) >> 8)).wrapping_rem(256) as c_uchar;
+                    bestlength = i as c_uint;
+                    j += 1;
+                    if j >= ZOPFLI_CACHE_LENGTH {
+                        break;
+                    }
+                }
+            }
+            i += 1;
+        }
+
+        if j < ZOPFLI_CACHE_LENGTH {
+            assert!(bestlength == length as c_uint);
+            self.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] = (bestlength - 3) as c_uchar;
+        } else {
+            assert!(bestlength <= length as c_uint);
+        }
+        assert!(bestlength == ZopfliMaxCachedSublen(self, pos, length));
+    }
 }
 
 #[no_mangle]
@@ -97,47 +134,4 @@ pub fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, l
         }
         prevlength = length + 1;
     }
-}
-
-/// Stores sublen array in the cache.
-#[allow(non_snake_case)]
-pub fn ZopfliSublenToCache(sublen: *mut c_ushort, pos: size_t, length: size_t, lmc_ptr: *mut ZopfliLongestMatchCache) {
-    let lmc = unsafe {
-        assert!(!lmc_ptr.is_null());
-        &mut *lmc_ptr
-    };
-
-    let mut j: usize = 0;
-    let mut bestlength: c_uint = 0;
-
-    if length < 3 {
-        return;
-    }
-
-    let start = ZOPFLI_CACHE_LENGTH * pos * 3;
-
-    let mut i: isize = 3;
-    while i <= length as isize {
-        unsafe {
-            if i == length as isize || *sublen.offset(i) != *sublen.offset(i + 1) {
-                lmc.sublen[start + (j * 3)] = (i - 3) as c_uchar;
-                lmc.sublen[start + (j * 3 + 1)] = (*sublen.offset(i)).wrapping_rem(256) as c_uchar;
-                lmc.sublen[start + (j * 3 + 2)] = ((*sublen.offset(i) >> 8)).wrapping_rem(256) as c_uchar;
-                bestlength = i as c_uint;
-                j += 1;
-                if j >= ZOPFLI_CACHE_LENGTH {
-                    break;
-                }
-            }
-        }
-        i += 1;
-    }
-
-    if j < ZOPFLI_CACHE_LENGTH {
-        assert!(bestlength == length as c_uint);
-        lmc.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] = (bestlength - 3) as c_uchar;
-    } else {
-        assert!(bestlength <= length as c_uint);
-    }
-    assert!(bestlength == ZopfliMaxCachedSublen(lmc, pos, length));
 }

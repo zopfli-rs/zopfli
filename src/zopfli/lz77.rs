@@ -2,7 +2,7 @@ use std::{slice, ptr};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache, ZopfliMaxCachedSublen, ZopfliCacheToSublen, ZopfliSublenToCache};
+use cache::{ZopfliLongestMatchCache, ZopfliMaxCachedSublen, ZopfliCacheToSublen};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
 use zopfli::ZopfliOptions;
 
@@ -338,6 +338,8 @@ pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t
             length_lmcpos = length;
         }
         assert!(!(length_lmcpos == 1 && dist_lmcpos == 0));
-        ZopfliSublenToCache(sublen, lmcpos, length as size_t, s.lmc);
+        unsafe {
+            (*s.lmc).store_sublen(sublen, lmcpos, length as size_t);
+        }
     }
 }
