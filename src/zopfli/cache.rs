@@ -49,9 +49,8 @@ pub extern fn ZopfliCleanCache(ptr: *mut ZopfliLongestMatchCache) {
 }
 
 /// Returns the length up to which could be stored in the cache.
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliMaxCachedSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, _length: size_t) -> c_uint {
+pub fn ZopfliMaxCachedSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, _length: size_t) -> c_uint {
 
     let lmc = unsafe {
         assert!(!lmc_ptr.is_null());
@@ -65,9 +64,9 @@ pub extern fn ZopfliMaxCachedSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: 
     lmc.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] as c_uint + 3
 }
 
-#[no_mangle]
+/// Extracts sublen array from the cache.
 #[allow(non_snake_case)]
-pub extern fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, length: size_t, sublen: *mut c_ushort) {
+pub fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, length: size_t, sublen: *mut c_ushort) {
     let lmc = unsafe {
         assert!(!lmc_ptr.is_null());
         &mut *lmc_ptr
@@ -100,9 +99,9 @@ pub extern fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: si
     }
 }
 
-#[no_mangle]
+/// Stores sublen array in the cache.
 #[allow(non_snake_case)]
-pub extern fn ZopfliSublenToCache(sublen: *mut c_ushort, pos: size_t, length: size_t, lmc_ptr: *mut ZopfliLongestMatchCache) {
+pub fn ZopfliSublenToCache(sublen: *mut c_ushort, pos: size_t, length: size_t, lmc_ptr: *mut ZopfliLongestMatchCache) {
     let lmc = unsafe {
         assert!(!lmc_ptr.is_null());
         &mut *lmc_ptr

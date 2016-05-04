@@ -29,8 +29,4 @@ extern ZopfliLongestMatchCache* ZopfliInitCache(size_t blocksize);
 
 extern void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
 
-extern void ZopfliSublenToCache(const unsigned short* sublen, size_t pos, size_t length, ZopfliLongestMatchCache* lmc);
-extern void ZopfliCacheToSublen(const ZopfliLongestMatchCache* lmc, size_t pos, size_t length, unsigned short* sublen);
-extern unsigned ZopfliMaxCachedSublen(const ZopfliLongestMatchCache* lmc, size_t pos, size_t length);
-
 #endif  /* ZOPFLI_LONGEST_MATCH_CACHE */

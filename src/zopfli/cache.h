@@ -44,19 +44,6 @@ extern ZopfliLongestMatchCache* ZopfliInitCache(size_t blocksize);
 /* Frees up the memory of the ZopfliLongestMatchCache. */
 void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
 
-/* Stores sublen array in the cache. */
-void ZopfliSublenToCache(const unsigned short* sublen,
-                         size_t pos, size_t length,
-                         ZopfliLongestMatchCache* lmc);
-
-/* Extracts sublen array from the cache. */
-void ZopfliCacheToSublen(const ZopfliLongestMatchCache* lmc,
-                         size_t pos, size_t length,
-                         unsigned short* sublen);
-/* Returns the length up to which could be stored in the cache. */
-unsigned ZopfliMaxCachedSublen(const ZopfliLongestMatchCache* lmc,
-                               size_t pos, size_t length);
-
 #endif  /* ZOPFLI_LONGEST_MATCH_CACHE */
 
 #endif  /* ZOPFLI_CACHE_H_ */
