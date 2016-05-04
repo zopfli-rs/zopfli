@@ -344,3 +344,30 @@ pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t
         }
     }
 }
+
+/// Finds how long the match of scan and match is. Can be used to find how many
+/// bytes starting from scan, and from match, are equal. Returns the last byte
+/// after scan, which is still equal to the corresponding byte after match.
+/// scan is the position to compare match is the earlier position to compare.
+/// end is the last possible byte, beyond which to stop looking.
+/// safe_end is a few (8) bytes before end, for comparing multiple bytes at once.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn GetMatch(mut scan: *mut c_uchar, mut match_char: *mut c_uchar, end: *mut c_uchar, safe_end: *mut c_uchar) -> *mut c_uchar {
+    unsafe {
+        /* 8 checks at once per array bounds check (size_t is 64-bit). */
+        // C code has other options if size_t is not 64-bit, but this is all I'm supporting
+        while scan < safe_end && *(scan as *const u64) == *(match_char as *const u64) {
+            scan = scan.offset(8);
+            match_char = match_char.offset(8);
+        }
+
+        /* The remaining few bytes. */
+        while scan != end && *scan == *match_char {
+            scan = scan.offset(1);
+            match_char = match_char.offset(1);
+        }
+
+        scan
+    }
+}
