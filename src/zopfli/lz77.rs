@@ -2,7 +2,7 @@ use std::{slice, ptr};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache, ZopfliCacheToSublen};
+use cache::{ZopfliLongestMatchCache};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
 use zopfli::ZopfliOptions;
 
@@ -277,8 +277,8 @@ pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: siz
             }
             let distance;
             if !sublen.is_null() {
-                ZopfliCacheToSublen(s.lmc, lmcpos, length as usize, sublen);
                 unsafe {
+                    (*s.lmc).fetch_sublen(lmcpos, length as usize, sublen);
                     distance = *sublen.offset(length as isize);
                 }
 

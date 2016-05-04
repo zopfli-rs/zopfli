@@ -79,6 +79,35 @@ impl ZopfliLongestMatchCache {
         }
         assert!(bestlength == self.max_sublen(pos, length));
     }
+
+    /// Extracts sublen array from the cache.
+    pub fn fetch_sublen(&self, pos: size_t, length: size_t, sublen: *mut c_ushort) {
+        let maxlength = self.max_sublen(pos, length);
+        let mut prevlength = 0;
+
+        if length < 3 {
+            return;
+        }
+
+        let start = ZOPFLI_CACHE_LENGTH * pos * 3;
+
+        for j in 0..ZOPFLI_CACHE_LENGTH {
+            let length = self.sublen[start + (j * 3)] as c_uint + 3;
+            let dist = self.sublen[start + (j * 3 + 1)] as c_ushort + 256 * self.sublen[start + (j * 3 + 2)] as c_ushort;
+
+            let mut i = prevlength;
+            while i <= length {
+                unsafe {
+                    *sublen.offset(i as isize) = dist;
+                }
+                i += 1;
+            }
+            if length == maxlength {
+                break;
+            }
+            prevlength = length + 1;
+        }
+    }
 }
 
 #[no_mangle]
@@ -92,39 +121,4 @@ pub extern fn ZopfliInitCache(blocksize: size_t) -> *mut ZopfliLongestMatchCache
 pub extern fn ZopfliCleanCache(ptr: *mut ZopfliLongestMatchCache) {
     if ptr.is_null() { return }
     unsafe { Box::from_raw(ptr); }
-}
-
-/// Extracts sublen array from the cache.
-#[allow(non_snake_case)]
-pub fn ZopfliCacheToSublen(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t, length: size_t, sublen: *mut c_ushort) {
-    let lmc = unsafe {
-        assert!(!lmc_ptr.is_null());
-        &mut *lmc_ptr
-    };
-
-    let maxlength = lmc.max_sublen(pos, length);
-    let mut prevlength = 0;
-
-    if length < 3 {
-        return;
-    }
-
-    let start = ZOPFLI_CACHE_LENGTH * pos * 3;
-
-    for j in 0..ZOPFLI_CACHE_LENGTH {
-        let length = lmc.sublen[start + (j * 3)] as c_uint + 3;
-        let dist = lmc.sublen[start + (j * 3 + 1)] as c_ushort + 256 * lmc.sublen[start + (j * 3 + 2)] as c_ushort;
-
-        let mut i = prevlength;
-        while i <= length {
-            unsafe {
-                *sublen.offset(i as isize) = dist;
-            }
-            i += 1;
-        }
-        if length == maxlength {
-            break;
-        }
-        prevlength = length + 1;
-    }
 }
