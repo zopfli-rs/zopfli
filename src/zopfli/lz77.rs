@@ -2,7 +2,7 @@ use std::{slice, ptr};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache, ZopfliMaxCachedSublen, ZopfliCacheToSublen, ZopfliSublenToCache, ZopfliCacheLengthAt, ZopfliCacheDistAt};
+use cache::{ZopfliLongestMatchCache, ZopfliMaxCachedSublen, ZopfliCacheToSublen, ZopfliSublenToCache};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
 use zopfli::ZopfliOptions;
 
@@ -261,8 +261,8 @@ pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: siz
 
     /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
       that this cache value is not filled in yet. */
-    let length_lmcpos = ZopfliCacheLengthAt(s.lmc, lmcpos);
-    let dist_lmcpos = ZopfliCacheDistAt(s.lmc, lmcpos);
+    let length_lmcpos = unsafe { (*s.lmc).length_at(lmcpos) };
+    let dist_lmcpos = unsafe { (*s.lmc).dist_at(lmcpos) };
     let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
     let limit_ok_for_cache = cache_available &&
        (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as c_ushort ||
@@ -323,8 +323,8 @@ pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t
 
     /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
     that this cache value is not filled in yet. */
-    let mut length_lmcpos = ZopfliCacheLengthAt(s.lmc, lmcpos);
-    let mut dist_lmcpos = ZopfliCacheDistAt(s.lmc, lmcpos);
+    let mut length_lmcpos = unsafe { (*s.lmc).length_at(lmcpos) };
+    let mut dist_lmcpos = unsafe { (*s.lmc).dist_at(lmcpos) };
 
     let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
 

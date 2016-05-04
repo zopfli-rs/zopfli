@@ -25,6 +25,14 @@ impl ZopfliLongestMatchCache {
             sublen: vec![0; ZOPFLI_CACHE_LENGTH * blocksize * 3],
         }
     }
+
+    pub fn length_at(&self, pos: size_t) -> c_ushort {
+        self.length[pos]
+    }
+
+    pub fn dist_at(&self, pos: size_t) -> c_ushort {
+        self.dist[pos]
+    }
 }
 
 #[no_mangle]
@@ -133,22 +141,4 @@ pub extern fn ZopfliSublenToCache(sublen: *mut c_ushort, pos: size_t, length: si
         assert!(bestlength <= length as c_uint);
     }
     assert!(bestlength == ZopfliMaxCachedSublen(lmc, pos, length));
-}
-
-#[allow(non_snake_case)]
-pub fn ZopfliCacheLengthAt(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t) -> c_ushort {
-    let lmc = unsafe {
-        assert!(!lmc_ptr.is_null());
-        &mut *lmc_ptr
-    };
-    lmc.length[pos]
-}
-
-#[allow(non_snake_case)]
-pub fn ZopfliCacheDistAt(lmc_ptr: *mut ZopfliLongestMatchCache, pos: size_t) -> c_ushort {
-    let lmc = unsafe {
-        assert!(!lmc_ptr.is_null());
-        &mut *lmc_ptr
-    };
-    lmc.dist[pos]
 }
