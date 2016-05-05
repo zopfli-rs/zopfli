@@ -273,7 +273,7 @@ void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
   }
 }
 
-extern unsigned char* GetMatch(const unsigned char* scan, const unsigned char* match, const unsigned char* end, const unsigned char* safe_end);
+extern size_t GetMatch(const unsigned char* array, size_t scan_offset, size_t match_offset, size_t end, size_t safe_end);
 
 extern LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s, size_t pos, size_t limit, unsigned short* sublen);
 
@@ -298,10 +298,10 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   unsigned short hpos = pos & ZOPFLI_WINDOW_MASK, p, pp;
   unsigned short bestdist = 0;
   unsigned short bestlength = 1;
-  const unsigned char* scan;
-  const unsigned char* match;
-  const unsigned char* arrayend;
-  const unsigned char* arrayend_safe;
+  size_t scan_offset;
+  size_t match_offset;
+  size_t arrayend;
+  size_t arrayend_safe;
   int* hhead2;
   unsigned short* hprev2;
   int* hhashval2;
@@ -346,7 +346,7 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   if (pos + limit > size) {
     limit = size - pos;
   }
-  arrayend = &array[pos] + limit;
+  arrayend = pos + limit;
   arrayend_safe = arrayend - 8;
 
   assert(hval < 65536);
@@ -369,25 +369,25 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
     if (dist > 0) {
       assert(pos < size);
       assert(dist <= pos);
-      scan = &array[pos];
-      match = &array[pos - dist];
+      scan_offset = pos;
+      match_offset = pos - dist;
 
       /* Testing the byte at position bestlength first, goes slightly faster. */
       if (pos + bestlength >= size
-          || *(scan + bestlength) == *(match + bestlength)) {
+          || array[scan_offset + bestlength] == array[match_offset + bestlength]) {
 
         hsame = ZopfliHashSame(h);
 
         same0 = hsame[pos & ZOPFLI_WINDOW_MASK];
-        if (same0 > 2 && *scan == *match) {
+        if (same0 > 2 && array[scan_offset] == array[match_offset]) {
           unsigned short same1 = hsame[(pos - dist) & ZOPFLI_WINDOW_MASK];
           unsigned short same = same0 < same1 ? same0 : same1;
           if (same > limit) same = limit;
-          scan += same;
-          match += same;
+          scan_offset += same;
+          match_offset += same;
         }
-        scan = GetMatch(scan, match, arrayend, arrayend_safe);
-        currentlength = scan - &array[pos];  /* The found length. */
+        scan_offset = GetMatch(array, scan_offset, match_offset, arrayend, arrayend_safe);
+        currentlength = scan_offset - pos;  /* The found length. */
       }
 
       if (currentlength > bestlength) {

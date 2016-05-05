@@ -353,21 +353,23 @@ pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t
 /// safe_end is a few (8) bytes before end, for comparing multiple bytes at once.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn GetMatch(mut scan: *mut c_uchar, mut match_char: *mut c_uchar, end: *mut c_uchar, safe_end: *mut c_uchar) -> *mut c_uchar {
+pub extern fn GetMatch(array: *mut c_uchar, scan_offset: isize, match_offset: isize, end: isize, _safe_end: isize) -> isize {
+    let mut scan_offset = scan_offset;
+    let mut match_offset = match_offset;
     unsafe {
-        /* 8 checks at once per array bounds check (size_t is 64-bit). */
-        // C code has other options if size_t is not 64-bit, but this is all I'm supporting
-        while scan < safe_end && *(scan as *const u64) == *(match_char as *const u64) {
-            scan = scan.offset(8);
-            match_char = match_char.offset(8);
-        }
+        // /* 8 checks at once per array bounds check (size_t is 64-bit). */
+        // // C code has other options if size_t is not 64-bit, but this is all I'm supporting
+        // while scan_offset < safe_end && *array.offset(scan_offset) as *const u64 == *array.offset(match_offset) as *const u64 {
+        //     scan_offset += 8;
+        //     match_offset += 8;
+        // }
 
         /* The remaining few bytes. */
-        while scan != end && *scan == *match_char {
-            scan = scan.offset(1);
-            match_char = match_char.offset(1);
+        while scan_offset != end && *array.offset(scan_offset) == *array.offset(match_offset) {
+            scan_offset += 1;
+            match_offset += 1;
         }
 
-        scan
+        scan_offset
     }
 }
