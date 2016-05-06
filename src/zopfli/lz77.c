@@ -279,15 +279,11 @@ extern LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s, size_t pos,
 
 extern void StoreInLongestMatchCache(ZopfliBlockState* s, size_t pos, size_t limit, const unsigned short* sublen, unsigned short distance, unsigned short length);
 
-extern int* ZopfliHashHead(const ZopfliHash* h);
-extern unsigned short* ZopfliHashPrev(const ZopfliHash* h);
-extern int* ZopfliHashHashval(const ZopfliHash* h);
-extern int ZopfliHashVal(const ZopfliHash* h);
-extern int* ZopfliHashHead2(const ZopfliHash* h);
-extern unsigned short* ZopfliHashPrev2(const ZopfliHash* h);
-extern int* ZopfliHashHashval2(const ZopfliHash* h);
-extern int ZopfliHashVal2(const ZopfliHash* h);
-extern unsigned short* ZopfliHashSame(const ZopfliHash* h);
+extern int ZopfliHashHeadAt(const ZopfliHash* h, size_t index, size_t which_hash);
+extern unsigned short ZopfliHashPrevAt(const ZopfliHash* h, size_t index, size_t which_hash);
+extern int ZopfliHashHashvalAt(const ZopfliHash* h, size_t index, size_t which_hash);
+extern int ZopfliHashVal(const ZopfliHash* h, size_t which_hash);
+extern unsigned short ZopfliHashSameAt(const ZopfliHash* h, size_t index);
 
 LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
     const unsigned char* array,
@@ -302,11 +298,7 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   size_t match_offset;
   size_t arrayend;
   size_t arrayend_safe;
-  int* hhead2;
-  unsigned short* hprev2;
-  int* hhashval2;
-  int hval2;
-  unsigned short* hsame;
+  size_t which_hash = 1;
   unsigned short same0;
 
 #if ZOPFLI_MAX_CHAIN_HITS < ZOPFLI_WINDOW_SIZE
@@ -314,11 +306,6 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
 #endif
 
   unsigned dist = 0;  /* Not unsigned short on purpose. */
-
-  int* hhead = ZopfliHashHead(h);
-  unsigned short* hprev = ZopfliHashPrev(h);
-  int* hhashval = ZopfliHashHashval(h);
-  int hval = ZopfliHashVal(h);
 
   longest_match = TryGetFromLongestMatchCache(s, pos, limit, sublen);
 
@@ -349,10 +336,10 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
   arrayend = pos + limit;
   arrayend_safe = arrayend - 8;
 
-  assert(hval < 65536);
+  assert(ZopfliHashVal(h, which_hash) < 65536);
 
-  pp = hhead[hval];  /* During the whole loop, p == hprev[pp]. */
-  p = hprev[pp];
+  pp = ZopfliHashHeadAt(h, ZopfliHashVal(h, which_hash), which_hash);  /* During the whole loop, p == hprev[pp]. */
+  p = ZopfliHashPrevAt(h, pp, which_hash);
 
   assert(pp == hpos);
 
@@ -363,8 +350,8 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
     unsigned short currentlength = 0;
 
     assert(p < ZOPFLI_WINDOW_SIZE);
-    assert(p == hprev[pp]);
-    assert(hhashval[p] == hval);
+    assert(p == ZopfliHashPrevAt(h, pp, which_hash));
+    assert(ZopfliHashHashvalAt(h, p, which_hash) == ZopfliHashVal(h, which_hash));
 
     if (dist > 0) {
       assert(pos < size);
@@ -376,11 +363,9 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       if (pos + bestlength >= size
           || array[scan_offset + bestlength] == array[match_offset + bestlength]) {
 
-        hsame = ZopfliHashSame(h);
-
-        same0 = hsame[pos & ZOPFLI_WINDOW_MASK];
+        same0 = ZopfliHashSameAt(h, pos & ZOPFLI_WINDOW_MASK);
         if (same0 > 2 && array[scan_offset] == array[match_offset]) {
-          unsigned short same1 = hsame[(pos - dist) & ZOPFLI_WINDOW_MASK];
+          unsigned short same1 = ZopfliHashSameAt(h, (pos - dist) & ZOPFLI_WINDOW_MASK);
           unsigned short same = same0 < same1 ? same0 : same1;
           if (same > limit) same = limit;
           scan_offset += same;
@@ -403,24 +388,15 @@ LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       }
     }
 
-    hhead2 = ZopfliHashHead2(h);
-    hprev2 = ZopfliHashPrev2(h);
-    hhashval2 = ZopfliHashHashval2(h);
-    hval2 = ZopfliHashVal2(h);
-    hsame = ZopfliHashSame(h);
-
     /* Switch to the other hash once this will be more efficient. */
-    if (hhead != hhead2 && bestlength >= hsame[hpos] &&
-        hval2 == hhashval2[p]) {
+    if (which_hash == 1 && bestlength >= ZopfliHashSameAt(h, hpos) &&
+        ZopfliHashVal(h, 2) == ZopfliHashHashvalAt(h, p, 2)) {
       /* Now use the hash that encodes the length and first byte. */
-      hhead = hhead2;
-      hprev = hprev2;
-      hhashval = hhashval2;
-      hval = hval2;
+      which_hash = 2;
     }
 
     pp = p;
-    p = hprev[p];
+    p = ZopfliHashPrevAt(h, p, which_hash);
     if (p == pp) break;  /* Uninited prev value. */
 
     dist += p < pp ? pp - p : ((ZOPFLI_WINDOW_SIZE - p) + pp);

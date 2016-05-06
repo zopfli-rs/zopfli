@@ -130,92 +130,68 @@ pub extern fn ZopfliUpdateHash(array: *const c_uchar, pos: size_t, end: size_t, 
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashHead(h_ptr: *mut ZopfliHash) -> *mut c_int {
+pub extern fn ZopfliHashHeadAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.head.as_mut_ptr()
+    if which_hash == 1 {
+        h.head[index]
+    } else {
+        h.head2[index]
+    }
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashPrev(h_ptr: *mut ZopfliHash) -> *mut c_ushort {
+pub extern fn ZopfliHashPrevAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_ushort {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.prev.as_mut_ptr()
+    if which_hash == 1 {
+        h.prev[index]
+    } else {
+        h.prev2[index]
+    }
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashHashval(h_ptr: *mut ZopfliHash) -> *mut c_int {
+pub extern fn ZopfliHashHashvalAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.hashval.as_mut_ptr()
+    if which_hash == 1 {
+        h.hashval[index]
+    } else {
+        h.hashval2[index]
+    }
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashVal(h_ptr: *mut ZopfliHash) -> c_int {
+pub extern fn ZopfliHashVal(h_ptr: *mut ZopfliHash, which_hash: size_t) -> c_int {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.val
+    if which_hash == 1 {
+        h.val
+    } else {
+        h.val2
+    }
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashHead2(h_ptr: *mut ZopfliHash) -> *mut c_int {
+pub extern fn ZopfliHashSameAt(h_ptr: *mut ZopfliHash, index: size_t) -> c_ushort {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
-    h.head2.as_mut_ptr()
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliHashPrev2(h_ptr: *mut ZopfliHash) -> *mut c_ushort {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    h.prev2.as_mut_ptr()
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliHashHashval2(h_ptr: *mut ZopfliHash) -> *mut c_int {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    h.hashval2.as_mut_ptr()
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliHashVal2(h_ptr: *mut ZopfliHash) -> c_int {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    h.val2
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliHashSame(h_ptr: *mut ZopfliHash) -> *mut c_ushort {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    h.same.as_mut_ptr()
+    h.same[index]
 }
 
 #[no_mangle]
