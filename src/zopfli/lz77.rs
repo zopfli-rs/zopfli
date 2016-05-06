@@ -282,7 +282,7 @@ pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: siz
                     distance = *sublen.offset(length as isize);
                 }
 
-                if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH {
+                if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as c_ushort {
                     unsafe {
                         assert!(*sublen.offset(length as isize) == dist_lmcpos);
                     }
@@ -331,7 +331,7 @@ pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t
 
     if limit == ZOPFLI_MAX_MATCH && !sublen.is_null() && !cache_available {
         assert!(length_lmcpos == 1 && dist_lmcpos == 0);
-        if length < ZOPFLI_MIN_MATCH {
+        if length < ZOPFLI_MIN_MATCH as c_ushort {
             dist_lmcpos = 0;
             length_lmcpos = 0;
         } else {

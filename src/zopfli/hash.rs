@@ -93,7 +93,7 @@ impl ZopfliHash {
         }
         self.same[hpos] = amount as c_ushort;
 
-        self.val2 = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH) & 255) ^ self.val as c_ushort) as c_int;
+        self.val2 = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH as c_ushort) & 255) ^ self.val as c_ushort) as c_int;
         self.hashval2[hpos] = self.val2;
 
         let index2 = self.val2 as usize;
