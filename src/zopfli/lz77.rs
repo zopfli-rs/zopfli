@@ -329,25 +329,23 @@ pub struct LongestMatch {
 /// scan is the position to compare match is the earlier position to compare.
 /// end is the last possible byte, beyond which to stop looking.
 /// safe_end is a few (8) bytes before end, for comparing multiple bytes at once.
-pub fn get_match(array: *mut c_uchar, scan_offset: isize, match_offset: isize, end: isize, _safe_end: isize) -> isize {
+pub fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end: usize, _safe_end: usize) -> usize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
-    unsafe {
-        // /* 8 checks at once per array bounds check (size_t is 64-bit). */
-        // // C code has other options if size_t is not 64-bit, but this is all I'm supporting
-        // while scan_offset < safe_end && *array.offset(scan_offset) as *const u64 == *array.offset(match_offset) as *const u64 {
-        //     scan_offset += 8;
-        //     match_offset += 8;
-        // }
+    // /* 8 checks at once per array bounds check (size_t is 64-bit). */
+    // // C code has other options if size_t is not 64-bit, but this is all I'm supporting
+    // while scan_offset < safe_end && array[scan_offset] as *const u64 == array[match_offset] as *const u64 {
+    //     scan_offset += 8;
+    //     match_offset += 8;
+    // }
 
-        /* The remaining few bytes. */
-        while scan_offset != end && *array.offset(scan_offset) == *array.offset(match_offset) {
-            scan_offset += 1;
-            match_offset += 1;
-        }
-
-        scan_offset
+    /* The remaining few bytes. */
+    while scan_offset != end && array[scan_offset] == array[match_offset] {
+        scan_offset += 1;
+        match_offset += 1;
     }
+
+    scan_offset
 }
 
 #[no_mangle]
@@ -362,6 +360,12 @@ pub extern fn ZopfliFindLongestMatch(s_ptr: *mut ZopfliBlockState, h_ptr: *mut Z
         &mut *h_ptr
     };
 
+    let data = unsafe { slice::from_raw_parts(array, size) };
+
+    find_longest_match(s, h, data, pos, size, limit, sublen)
+}
+
+pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
     let mut limit = limit;
 
     let hpos = pos & ZOPFLI_WINDOW_MASK;
@@ -431,10 +435,10 @@ pub extern fn ZopfliFindLongestMatch(s_ptr: *mut ZopfliBlockState, h_ptr: *mut Z
             match_offset = pos - (dist as size_t);
 
             /* Testing the byte at position bestlength first, goes slightly faster. */
-            if pos + bestlength >= size || unsafe { *array.offset((scan_offset + bestlength) as isize) == *array.offset((match_offset + bestlength) as isize) } {
+            if pos + bestlength >= size || array[scan_offset + bestlength] == array[match_offset + bestlength] {
 
                 let same0 = ZopfliHashSameAt(h, pos & ZOPFLI_WINDOW_MASK);
-                if same0 > 2 && unsafe { *array.offset(scan_offset as isize) == *array.offset(match_offset as isize) } {
+                if same0 > 2 && array[scan_offset] == array[match_offset] {
                     let same1 = ZopfliHashSameAt(h, (pos - (dist as size_t)) & ZOPFLI_WINDOW_MASK);
                     let mut same = if same0 < same1 {
                         same0
@@ -447,7 +451,7 @@ pub extern fn ZopfliFindLongestMatch(s_ptr: *mut ZopfliBlockState, h_ptr: *mut Z
                     scan_offset += same as size_t;
                     match_offset += same as size_t;
                 }
-                scan_offset = get_match(array, scan_offset as isize, match_offset as isize, arrayend as isize, arrayend_safe as isize) as usize;
+                scan_offset = get_match(array, scan_offset, match_offset, arrayend, arrayend_safe);
                 currentlength = scan_offset - pos;  /* The found length. */
             }
 
