@@ -116,17 +116,6 @@ impl Lz77Store {
 }
 
 #[no_mangle]
-pub extern fn lz77_store_new() -> *mut Lz77Store {
-    Box::into_raw(Box::new(Lz77Store::new()))
-}
-
-#[no_mangle]
-pub extern fn lz77_store_free(ptr: *mut Lz77Store) {
-    if ptr.is_null() { return }
-    unsafe { Box::from_raw(ptr); }
-}
-
-#[no_mangle]
 pub extern fn lz77_store_lit_len_dist(ptr: *mut Lz77Store, length: c_ushort, dist: c_ushort, pos: size_t) {
     let store = unsafe {
         assert!(!ptr.is_null());
@@ -237,9 +226,8 @@ pub struct LongestMatch {
 /// Returns 1 if it got the values from the cache, 0 if not.
 /// Updates the limit value to a smaller one if possible with more limited
 /// information from the cache.
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t, mut limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
+pub fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t, mut limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
     let s = unsafe {
         assert!(!s_ptr.is_null());
         &mut *s_ptr
@@ -307,9 +295,8 @@ pub extern fn TryGetFromLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: siz
 
 /// Stores the found sublen, distance and length in the longest match cache, if
 /// possible.
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
+pub fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
     let s = unsafe {
         assert!(!s_ptr.is_null());
         &mut *s_ptr
@@ -352,9 +339,8 @@ pub extern fn StoreInLongestMatchCache(s_ptr: *mut ZopfliBlockState, pos: size_t
 /// scan is the position to compare match is the earlier position to compare.
 /// end is the last possible byte, beyond which to stop looking.
 /// safe_end is a few (8) bytes before end, for comparing multiple bytes at once.
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn GetMatch(array: *mut c_uchar, scan_offset: isize, match_offset: isize, end: isize, _safe_end: isize) -> isize {
+pub fn GetMatch(array: *mut c_uchar, scan_offset: isize, match_offset: isize, end: isize, _safe_end: isize) -> isize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
     unsafe {

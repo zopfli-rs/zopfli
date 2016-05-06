@@ -128,9 +128,8 @@ pub extern fn ZopfliUpdateHash(array: *const c_uchar, pos: size_t, end: size_t, 
     h.update(arr, pos);
 }
 
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashHeadAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
+pub fn ZopfliHashHeadAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
@@ -142,9 +141,8 @@ pub extern fn ZopfliHashHeadAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash
     }
 }
 
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashPrevAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_ushort {
+pub fn ZopfliHashPrevAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_ushort {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
@@ -156,9 +154,8 @@ pub extern fn ZopfliHashPrevAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash
     }
 }
 
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashHashvalAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
+pub fn ZopfliHashHashvalAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
@@ -170,9 +167,8 @@ pub extern fn ZopfliHashHashvalAt(h_ptr: *mut ZopfliHash, index: size_t, which_h
     }
 }
 
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliHashVal(h_ptr: *mut ZopfliHash, which_hash: size_t) -> c_int {
+pub fn ZopfliHashVal(h_ptr: *mut ZopfliHash, which_hash: size_t) -> c_int {
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr

@@ -273,16 +273,6 @@ void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
   }
 }
 
-extern size_t GetMatch(const unsigned char* array, size_t scan_offset, size_t match_offset, size_t end, size_t safe_end);
-
-extern LongestMatch TryGetFromLongestMatchCache(ZopfliBlockState* s, size_t pos, size_t limit, unsigned short* sublen);
-
-extern void StoreInLongestMatchCache(ZopfliBlockState* s, size_t pos, size_t limit, const unsigned short* sublen, unsigned short distance, unsigned short length);
-
-extern int ZopfliHashHeadAt(const ZopfliHash* h, size_t index, size_t which_hash);
-extern unsigned short ZopfliHashPrevAt(const ZopfliHash* h, size_t index, size_t which_hash);
-extern int ZopfliHashHashvalAt(const ZopfliHash* h, size_t index, size_t which_hash);
-extern int ZopfliHashVal(const ZopfliHash* h, size_t which_hash);
 extern unsigned short ZopfliHashSameAt(const ZopfliHash* h, size_t index);
 
 extern LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h, const unsigned char* array, size_t pos, size_t size, size_t limit, unsigned short* sublen);
