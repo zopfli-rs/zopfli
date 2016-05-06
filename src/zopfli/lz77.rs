@@ -544,9 +544,14 @@ pub extern fn ZopfliVerifyLenDist(data: *const c_uchar, datasize: size_t, pos: s
     // TODO(lode): make this only run in a debug compile, it's for assert only.
 
     assert!(pos + (length as usize) <= datasize);
+    let data = unsafe { slice::from_raw_parts(data, datasize) };
+    verify_len_dist(data, pos, dist, length)
+}
+
+pub fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_ushort) {
     for i in 0..length {
-        let d1 = unsafe { *data.offset((pos - (dist as usize) + (i as usize)) as isize) };
-        let d2 = unsafe { *data.offset((pos + (i as usize)) as isize) };
+        let d1 = data[pos - (dist as usize) + (i as usize)];
+        let d2 = data[pos + (i as usize)];
         if d1 != d2 {
             assert!(d1 == d2);
             break;
