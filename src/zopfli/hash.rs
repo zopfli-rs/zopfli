@@ -104,6 +104,38 @@ impl ZopfliHash {
         }
         self.head2[index2] = hpos as c_int;
     }
+
+    pub fn head_at(&self, index: size_t, which_hash: size_t) -> c_int {
+        if which_hash == 1 {
+            self.head[index]
+        } else {
+            self.head2[index]
+        }
+    }
+
+    pub fn prev_at(&self, index: size_t, which_hash: size_t) -> c_ushort {
+        if which_hash == 1 {
+            self.prev[index]
+        } else {
+            self.prev2[index]
+        }
+    }
+
+    pub fn hash_val_at(&self, index: size_t, which_hash: size_t) -> c_int {
+        if which_hash == 1 {
+            self.hashval[index]
+        } else {
+            self.hashval2[index]
+        }
+    }
+
+    pub fn val(&self, which_hash: size_t) -> c_int {
+        if which_hash == 1 {
+            self.val
+        } else {
+            self.val2
+        }
+    }
 }
 
 #[no_mangle]
@@ -126,58 +158,6 @@ pub extern fn ZopfliUpdateHash(array: *const c_uchar, pos: size_t, end: size_t, 
     };
     let arr = unsafe { slice::from_raw_parts(array, end) };
     h.update(arr, pos);
-}
-
-#[allow(non_snake_case)]
-pub fn ZopfliHashHeadAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    if which_hash == 1 {
-        h.head[index]
-    } else {
-        h.head2[index]
-    }
-}
-
-#[allow(non_snake_case)]
-pub fn ZopfliHashPrevAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_ushort {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    if which_hash == 1 {
-        h.prev[index]
-    } else {
-        h.prev2[index]
-    }
-}
-
-#[allow(non_snake_case)]
-pub fn ZopfliHashHashvalAt(h_ptr: *mut ZopfliHash, index: size_t, which_hash: size_t) -> c_int {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    if which_hash == 1 {
-        h.hashval[index]
-    } else {
-        h.hashval2[index]
-    }
-}
-
-#[allow(non_snake_case)]
-pub fn ZopfliHashVal(h_ptr: *mut ZopfliHash, which_hash: size_t) -> c_int {
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    if which_hash == 1 {
-        h.val
-    } else {
-        h.val2
-    }
 }
 
 #[no_mangle]
