@@ -3,7 +3,8 @@ use std::{slice, ptr};
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
 use cache::{ZopfliLongestMatchCache};
-use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
+use hash::{ZopfliHash, ZopfliHashVal, ZopfliHashHeadAt, ZopfliHashPrevAt, ZopfliHashHashvalAt, ZopfliHashSameAt};
+use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
 // Comment from C:
@@ -372,4 +373,157 @@ pub extern fn GetMatch(array: *mut c_uchar, scan_offset: isize, match_offset: is
 
         scan_offset
     }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliFindLongestMatch(s_ptr: *mut ZopfliBlockState, h_ptr: *mut ZopfliHash, array: *mut c_uchar, pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &mut *h_ptr
+    };
+
+    let mut limit = limit;
+
+    let hpos = pos & ZOPFLI_WINDOW_MASK;
+    let mut bestdist = 0;
+    let mut bestlength = 1;
+    let mut which_hash = 1;
+    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
+    let mut dist;  /* Not unsigned short on purpose. */
+
+    let mut longest_match = TryGetFromLongestMatchCache(s, pos, limit, sublen);
+
+    if longest_match.from_cache == 1 {
+        assert!(pos + (longest_match.length as size_t) <= size);
+        return longest_match;
+    }
+
+    limit = longest_match.limit;
+
+    assert!(limit <= ZOPFLI_MAX_MATCH);
+    assert!(limit >= ZOPFLI_MIN_MATCH);
+    assert!(pos < size);
+
+    if size - pos < ZOPFLI_MIN_MATCH {
+        /* The rest of the code assumes there are at least ZOPFLI_MIN_MATCH bytes to
+        try. */
+        longest_match.distance = 0;
+        longest_match.length = 0;
+        longest_match.from_cache = 0;
+        longest_match.limit = 0;
+        return longest_match;
+    }
+
+    if pos + limit > size {
+        limit = size - pos;
+    }
+    let arrayend = pos + limit;
+    let arrayend_safe = arrayend - 8;
+
+    assert!(ZopfliHashVal(h, which_hash) < 65536);
+
+    let mut pp = ZopfliHashHeadAt(h, ZopfliHashVal(h, which_hash) as usize, which_hash);  /* During the whole loop, p == hprev[pp]. */
+    let mut p = ZopfliHashPrevAt(h, pp as usize, which_hash);
+
+    assert!(pp as size_t == hpos);
+
+    dist = if (p as c_int) < pp {
+        pp - (p as c_int)
+    } else {
+        (ZOPFLI_WINDOW_SIZE - (p as size_t)) as c_int + pp
+    };
+
+    let mut scan_offset;
+    let mut match_offset;
+
+    /* Go through all distances. */
+    while (dist as size_t) < ZOPFLI_WINDOW_SIZE {
+        let mut currentlength = 0;
+
+        assert!((p as size_t) < ZOPFLI_WINDOW_SIZE);
+        assert!(p == ZopfliHashPrevAt(h, pp as usize, which_hash));
+        assert!(ZopfliHashHashvalAt(h, p as usize, which_hash) == ZopfliHashVal(h, which_hash));
+
+        if dist > 0 {
+            assert!(pos < size);
+            assert!((dist as size_t) <= pos);
+            scan_offset = pos;
+            match_offset = pos - (dist as size_t);
+
+            /* Testing the byte at position bestlength first, goes slightly faster. */
+            if pos + bestlength >= size || unsafe { *array.offset((scan_offset + bestlength) as isize) == *array.offset((match_offset + bestlength) as isize) } {
+
+                let same0 = ZopfliHashSameAt(h, pos & ZOPFLI_WINDOW_MASK);
+                if same0 > 2 && unsafe { *array.offset(scan_offset as isize) == *array.offset(match_offset as isize) } {
+                    let same1 = ZopfliHashSameAt(h, (pos - (dist as size_t)) & ZOPFLI_WINDOW_MASK);
+                    let mut same = if same0 < same1 {
+                        same0
+                    } else {
+                        same1
+                    };
+                    if (same as size_t) > limit {
+                        same = limit as c_ushort;
+                    }
+                    scan_offset += same as size_t;
+                    match_offset += same as size_t;
+                }
+                scan_offset = GetMatch(array, scan_offset as isize, match_offset as isize, arrayend as isize, arrayend_safe as isize) as usize;
+                currentlength = scan_offset - pos;  /* The found length. */
+            }
+
+            if currentlength > bestlength {
+                if !sublen.is_null() {
+                    for j in (bestlength + 1)..(currentlength + 1) {
+                        unsafe {
+                            *sublen.offset(j as isize) = dist as c_ushort;
+                        }
+                    }
+                }
+                bestdist = dist;
+                bestlength = currentlength;
+                if currentlength >= limit {
+                    break;
+                }
+            }
+        }
+
+        /* Switch to the other hash once this will be more efficient. */
+        if which_hash == 1 && bestlength >= ZopfliHashSameAt(h, hpos) as size_t && ZopfliHashVal(h, 2) == ZopfliHashHashvalAt(h, p as usize, 2) {
+            /* Now use the hash that encodes the length and first byte. */
+            which_hash = 2;
+        }
+
+        pp = p as c_int;
+        p = ZopfliHashPrevAt(h, p as usize, which_hash);
+        if (p as c_int) == pp {
+            break;  /* Uninited prev value. */
+        }
+
+        dist += if (p as c_int) < pp {
+            pp - (p as c_int)
+        } else {
+            (ZOPFLI_WINDOW_SIZE - (p as usize)) as c_int + pp
+        };
+
+        chain_counter -= 1;
+        if chain_counter <= 0 {
+            break;
+        }
+    }
+
+    StoreInLongestMatchCache(s, pos, limit, sublen, bestdist as c_ushort, bestlength as c_ushort);
+
+    assert!(bestlength <= limit);
+
+    assert!(pos + bestlength <= size);
+    longest_match.distance = bestdist as c_ushort;
+    longest_match.length = bestlength as c_ushort;
+    longest_match.from_cache = 0;
+    longest_match.limit = limit;
+    longest_match
 }

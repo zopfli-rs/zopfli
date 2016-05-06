@@ -8,6 +8,7 @@ pub const ZOPFLI_WINDOW_MASK: size_t = 32767; // ZOPFLI_WINDOW_SIZE - 1
 pub const ZOPFLI_MAX_MATCH: size_t = 258;
 pub const ZOPFLI_MIN_MATCH: size_t = 3;
 pub const ZOPFLI_CACHE_LENGTH: size_t = 8;
+pub const ZOPFLI_MAX_CHAIN_HITS: size_t = 8192;
 
 const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
     0, 0, 0,
