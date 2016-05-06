@@ -230,21 +230,7 @@ void ZopfliCleanBlockState(ZopfliBlockState* s) {
 }
 
 extern int GetLengthScore(int length, int distance);
-
-void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
-                         unsigned short dist, unsigned short length) {
-
-  /* TODO(lode): make this only run in a debug compile, it's for assert only. */
-  size_t i;
-
-  assert(pos + length <= datasize);
-  for (i = 0; i < length; i++) {
-    if (data[pos - dist + i] != data[pos + i]) {
-      assert(data[pos - dist + i] == data[pos + i]);
-      break;
-    }
-  }
-}
+extern void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos, unsigned short dist, unsigned short length);
 
 extern unsigned short ZopfliHashSameAt(const ZopfliHash* h, size_t index);
 
