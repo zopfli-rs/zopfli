@@ -7,14 +7,14 @@ use hash::{ZopfliHash, ZopfliHashSameAt};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
-// Comment from C:
-// Stores lit/length and dist pairs for LZ77.
-// Parameter litlens: Contains the literal symbols or length values.
-// Parameter dists: Contains the distances. A value is 0 to indicate that there is
-// no dist and the corresponding litlens value is a literal instead of a length.
-// Parameter size: The size of both the litlens and dists arrays.
-// The memory can best be managed by using ZopfliInitLZ77Store to initialize it,
-// ZopfliCleanLZ77Store to destroy it, and ZopfliStoreLitLenDist to append values.
+/// Comment from C:
+/// Stores lit/length and dist pairs for LZ77.
+/// Parameter litlens: Contains the literal symbols or length values.
+/// Parameter dists: Contains the distances. A value is 0 to indicate that there is
+/// no dist and the corresponding litlens value is a literal instead of a length.
+/// Parameter size: The size of both the litlens and dists arrays.
+/// The memory can best be managed by using ZopfliInitLZ77Store to initialize it,
+/// ZopfliCleanLZ77Store to destroy it, and ZopfliStoreLitLenDist to append values.
 
 #[repr(C)]
 pub struct ZopfliLZ77Store {
@@ -501,4 +501,35 @@ pub extern fn ZopfliFindLongestMatch(s_ptr: *mut ZopfliBlockState, h_ptr: *mut Z
     longest_match.from_cache = 0;
     longest_match.limit = limit;
     longest_match
+}
+
+/// Gets a score of the length given the distance. Typically, the score of the
+/// length is the length itself, but if the distance is very long, decrease the
+/// score of the length a bit to make up for the fact that long distances use large
+/// amounts of extra bits.
+///
+/// This is not an accurate score, it is a heuristic only for the greedy LZ77
+/// implementation. More accurate cost models are employed later. Making this
+/// heuristic more accurate may hurt rather than improve compression.
+///
+/// The two direct uses of this heuristic are:
+/// -avoid using a length of 3 in combination with a long distance. This only has
+///  an effect if length == 3.
+/// -make a slightly better choice between the two options of the lazy matching.
+///
+/// Indirectly, this affects:
+/// -the block split points if the default of block splitting first is used, in a
+///  rather unpredictable way
+/// -the first zopfli run, so it affects the chance of the first run being closer
+///  to the optimal output
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn GetLengthScore(length: c_int, distance: c_int) -> c_int {
+    // At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
+    // on tested files.
+    if distance > 1024 {
+        length - 1
+    } else {
+        length
+    }
 }

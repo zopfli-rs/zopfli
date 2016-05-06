@@ -229,34 +229,7 @@ void ZopfliCleanBlockState(ZopfliBlockState* s) {
 #endif
 }
 
-/*
-Gets a score of the length given the distance. Typically, the score of the
-length is the length itself, but if the distance is very long, decrease the
-score of the length a bit to make up for the fact that long distances use large
-amounts of extra bits.
-
-This is not an accurate score, it is a heuristic only for the greedy LZ77
-implementation. More accurate cost models are employed later. Making this
-heuristic more accurate may hurt rather than improve compression.
-
-The two direct uses of this heuristic are:
--avoid using a length of 3 in combination with a long distance. This only has
- an effect if length == 3.
--make a slightly better choice between the two options of the lazy matching.
-
-Indirectly, this affects:
--the block split points if the default of block splitting first is used, in a
- rather unpredictable way
--the first zopfli run, so it affects the chance of the first run being closer
- to the optimal output
-*/
-static int GetLengthScore(int length, int distance) {
-  /*
-  At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
-  on tested files.
-  */
-  return distance > 1024 ? length - 1 : length;
-}
+extern int GetLengthScore(int length, int distance);
 
 void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
                          unsigned short dist, unsigned short length) {
