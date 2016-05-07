@@ -145,13 +145,7 @@ void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store,
   }
 }
 
-size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77,
-                              size_t lstart, size_t lend) {
-  size_t l = lend - 1;
-  if (lstart == lend) return 0;
-  return lz77->pos[l] + ((lz77->dists[l] == 0) ?
-      1 : lz77->litlens[l]) - lz77->pos[lstart];
-}
+extern size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
 static void ZopfliLZ77GetHistogramAt(const ZopfliLZ77Store* lz77, size_t lpos,
                                      size_t* ll_counts, size_t* d_counts) {

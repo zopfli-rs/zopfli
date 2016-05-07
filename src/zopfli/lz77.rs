@@ -564,3 +564,21 @@ pub fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_
 pub extern fn CeilDiv(a: size_t, b: size_t) -> size_t {
     (a + b - 1) / b
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+    let lz77 = unsafe {
+        assert!(!lz77_ptr.is_null());
+        &mut *lz77_ptr
+    };
+
+    let l = (lend - 1) as isize;
+    if lstart == lend {
+        return 0;
+    }
+
+    unsafe {
+        *lz77.pos.offset(l) + (if *lz77.dists.offset(l) == 0 { 1 } else { *lz77.litlens.offset(l) }) as size_t - *lz77.pos.offset(lstart as isize)
+    }
+}
