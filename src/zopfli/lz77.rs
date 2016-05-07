@@ -1,4 +1,4 @@
-use std::{slice, ptr};
+use std::{slice, ptr, cmp};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
@@ -580,5 +580,44 @@ pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
 
     unsafe {
         *lz77.pos.offset(l) + (if *lz77.dists.offset(l) == 0 { 1 } else { *lz77.litlens.offset(l) }) as size_t - *lz77.pos.offset(lstart as isize)
+    }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLZ77GetHistogramAt(lz77_ptr: *mut ZopfliLZ77Store, lpos: size_t, ll_counts: *mut size_t, d_counts: *mut size_t) {
+    let lz77 = unsafe {
+        assert!(!lz77_ptr.is_null());
+        &mut *lz77_ptr
+    };
+
+    /* The real histogram is created by using the histogram for this chunk, but
+    all superfluous values of this chunk subtracted. */
+    let llpos = (ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL)) as isize;
+    let dpos = (ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D)) as isize;
+
+    for i in 0..ZOPFLI_NUM_LL as isize {
+        unsafe {
+            *ll_counts.offset(i) = *lz77.ll_counts.offset(llpos + i);
+        }
+    }
+    let end = cmp::min(llpos + ZOPFLI_NUM_LL as isize, lz77.size as isize);
+    for i in (lpos + 1) as isize..end {
+        unsafe {
+            *ll_counts.offset(*lz77.ll_symbol.offset(i) as isize) -= 1;
+        }
+    }
+    for i in 0..ZOPFLI_NUM_D as isize {
+        unsafe {
+            *d_counts.offset(i) = *lz77.d_counts.offset(dpos + i);
+        }
+    }
+    let end = cmp::min(dpos + ZOPFLI_NUM_D as isize, lz77.size as isize);
+    for i in (lpos + 1) as isize..end {
+        unsafe {
+            if *lz77.dists.offset(i) != 0 {
+                *d_counts.offset(*lz77.d_symbol.offset(i) as isize) -= 1;
+            }
+        }
     }
 }
