@@ -583,16 +583,14 @@ pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLZ77GetHistogramAt(lz77_ptr: *mut ZopfliLZ77Store, lpos: size_t, ll_counts: *mut size_t, d_counts: *mut size_t) {
+pub fn get_histogram_at(lz77_ptr: *mut ZopfliLZ77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
     let lz77 = unsafe {
         assert!(!lz77_ptr.is_null());
         &mut *lz77_ptr
     };
 
-    let mut ll = ptr_to_vec(ll_counts, ZOPFLI_NUM_LL);
-    let mut d = ptr_to_vec(d_counts, ZOPFLI_NUM_D);
+    let mut ll = vec![0; ZOPFLI_NUM_LL];
+    let mut d = vec![0; ZOPFLI_NUM_D];
 
     /* The real histogram is created by using the histogram for this chunk, but
     all superfluous values of this chunk subtracted. */
@@ -624,15 +622,53 @@ pub extern fn ZopfliLZ77GetHistogramAt(lz77_ptr: *mut ZopfliLZ77Store, lpos: siz
         }
     }
 
-    for i in 0..ZOPFLI_NUM_LL {
-        unsafe {
-            *ll_counts.offset(i as isize) = ll[i];
-        }
-    }
+    (ll, d)
+}
 
-    for i in 0..ZOPFLI_NUM_D {
-        unsafe {
-            *d_counts.offset(i as isize) = d[i];
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_counts: *mut size_t, d_counts: *mut size_t) {
+    let lz77 = unsafe {
+        assert!(!lz77_ptr.is_null());
+        &mut *lz77_ptr
+    };
+
+    if lstart + ZOPFLI_NUM_LL * 3 > lend {
+        for i in 0..ZOPFLI_NUM_LL as isize {
+            unsafe { *ll_counts.offset(i) = 0; }
+        }
+        for i in 0..ZOPFLI_NUM_D as isize {
+            unsafe { *d_counts.offset(i) = 0; }
+        }
+        for i in lstart..lend  {
+            unsafe {
+                *ll_counts.offset(*lz77.ll_symbol.offset(i as isize) as isize) += 1;
+                if *lz77.dists.offset(i as isize) != 0 {
+                    *d_counts.offset(*lz77.d_symbol.offset(i as isize) as isize) += 1;
+                }
+            }
+        }
+    } else {
+        /* Subtract the cumulative histograms at the end and the start to get the
+        histogram for this range. */
+        let (ll, d) = get_histogram_at(lz77, lend - 1);
+        for i in 0..ZOPFLI_NUM_LL {
+            unsafe { *ll_counts.offset(i as isize) = ll[i]; }
+        }
+
+        for i in 0..ZOPFLI_NUM_D {
+            unsafe { *d_counts.offset(i as isize) = d[i]; }
+        }
+
+        if lstart > 0 {
+            let (ll2, d2) = get_histogram_at(lz77, lstart - 1);
+
+            for i in 0..ZOPFLI_NUM_LL {
+                unsafe { *ll_counts.offset(i as isize) -= ll2[i]; }
+            }
+            for i in 0..ZOPFLI_NUM_D {
+                unsafe { *d_counts.offset(i as isize) -= d2[i]; }
+            }
         }
     }
 }
