@@ -558,3 +558,9 @@ pub fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_
         }
     }
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CeilDiv(a: size_t, b: size_t) -> size_t {
+    (a + b - 1) / b
+}

@@ -37,9 +37,7 @@ void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
   free(store->d_counts);
 }
 
-static size_t CeilDiv(size_t a, size_t b) {
-  return (a + b - 1) / b;
-}
+extern size_t CeilDiv(size_t a, size_t b);
 
 void ZopfliCopyLZ77Store(
     const ZopfliLZ77Store* source, ZopfliLZ77Store* dest) {
