@@ -591,6 +591,9 @@ pub extern fn ZopfliLZ77GetHistogramAt(lz77_ptr: *mut ZopfliLZ77Store, lpos: siz
         &mut *lz77_ptr
     };
 
+    let mut ll = ptr_to_vec(ll_counts, ZOPFLI_NUM_LL);
+    let mut d = ptr_to_vec(d_counts, ZOPFLI_NUM_D);
+
     /* The real histogram is created by using the histogram for this chunk, but
     all superfluous values of this chunk subtracted. */
     let llpos = (ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL)) as isize;
@@ -598,26 +601,38 @@ pub extern fn ZopfliLZ77GetHistogramAt(lz77_ptr: *mut ZopfliLZ77Store, lpos: siz
 
     for i in 0..ZOPFLI_NUM_LL as isize {
         unsafe {
-            *ll_counts.offset(i) = *lz77.ll_counts.offset(llpos + i);
+            ll[i as usize] = *lz77.ll_counts.offset(llpos + i);
         }
     }
     let end = cmp::min(llpos + ZOPFLI_NUM_LL as isize, lz77.size as isize);
     for i in (lpos + 1) as isize..end {
         unsafe {
-            *ll_counts.offset(*lz77.ll_symbol.offset(i) as isize) -= 1;
+            ll[*lz77.ll_symbol.offset(i) as usize] -= 1;
         }
     }
     for i in 0..ZOPFLI_NUM_D as isize {
         unsafe {
-            *d_counts.offset(i) = *lz77.d_counts.offset(dpos + i);
+            d[i as usize] = *lz77.d_counts.offset(dpos + i);
         }
     }
     let end = cmp::min(dpos + ZOPFLI_NUM_D as isize, lz77.size as isize);
     for i in (lpos + 1) as isize..end {
         unsafe {
             if *lz77.dists.offset(i) != 0 {
-                *d_counts.offset(*lz77.d_symbol.offset(i) as isize) -= 1;
+                d[*lz77.d_symbol.offset(i) as usize] -= 1;
             }
+        }
+    }
+
+    for i in 0..ZOPFLI_NUM_LL {
+        unsafe {
+            *ll_counts.offset(i as isize) = ll[i];
+        }
+    }
+
+    for i in 0..ZOPFLI_NUM_D {
+        unsafe {
+            *d_counts.offset(i as isize) = d[i];
         }
     }
 }
