@@ -3,7 +3,7 @@ use std::{slice, ptr, cmp};
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
 use cache::{ZopfliLongestMatchCache};
-use hash::{ZopfliHash, ZopfliHashSameAt};
+use hash::{ZopfliHash, ZopfliHashSameAt, ZopfliResetHash};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
@@ -670,5 +670,21 @@ pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
                 unsafe { *d_counts.offset(i as isize) -= d2[i]; }
             }
         }
+    }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliInitHashAndStuff(h_ptr: *mut ZopfliHash, windowstart: size_t, in_data: *const c_uchar, instart: size_t, inend: size_t) {
+    ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h_ptr);
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &mut *h_ptr
+    };
+    let arr = unsafe { slice::from_raw_parts(in_data, inend) };
+    h.warmup(arr, windowstart, inend);
+
+    for i in windowstart..instart {
+        h.update(arr, i);
     }
 }
