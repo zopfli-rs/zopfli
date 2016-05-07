@@ -196,7 +196,6 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
   int lengthscore;
   size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
       ? instart - ZOPFLI_WINDOW_SIZE : 0;
-  unsigned short dummysublen[259];
 
   LongestMatch longest_match;
 
@@ -219,7 +218,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
   for (i = instart; i < inend; i++) {
     ZopfliUpdateHash(in, i, inend, h);
 
-    longest_match = ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, dummysublen);
+    longest_match = ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, 0);
     dist = longest_match.distance;
     leng = longest_match.length;
     lengthscore = GetLengthScore(leng, dist);
