@@ -675,22 +675,6 @@ pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliInitHashAndStuff(h_ptr: *mut ZopfliHash, windowstart: size_t, in_data: *const c_uchar, instart: size_t, inend: size_t) {
-    ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h_ptr);
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-    let arr = unsafe { slice::from_raw_parts(in_data, inend) };
-    h.warmup(arr, windowstart, inend);
-
-    for i in windowstart..instart {
-        h.update(arr, i);
-    }
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
 pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store, h_ptr: *mut ZopfliHash) {
     let s = unsafe {
         assert!(!s_ptr.is_null());
@@ -724,11 +708,17 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
         return;
     }
 
-    ZopfliInitHashAndStuff(h_ptr, windowstart, in_data, instart, inend);
+    ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h_ptr);
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
+    let arr = unsafe { slice::from_raw_parts(in_data, inend) };
+    h.warmup(arr, windowstart, inend);
+
+    for i in windowstart..instart {
+        h.update(arr, i);
+    }
 
     let mut i = instart;
     while i < inend {
