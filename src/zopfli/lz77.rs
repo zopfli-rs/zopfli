@@ -3,7 +3,7 @@ use std::{slice, ptr, cmp};
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
 use cache::{ZopfliLongestMatchCache};
-use hash::{ZopfliHash, ZopfliHashSameAt, ZopfliResetHash};
+use hash::{ZopfliHash, ZopfliHashSameAt, ZopfliResetHash, ZopfliUpdateHash};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
@@ -687,4 +687,110 @@ pub extern fn ZopfliInitHashAndStuff(h_ptr: *mut ZopfliHash, windowstart: size_t
     for i in windowstart..instart {
         h.update(arr, i);
     }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store, h_ptr: *mut ZopfliHash) {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+
+    let rust_store = lz77_store_from_c(store_ptr);
+
+    let mut leng: c_ushort;
+    let mut dist: c_ushort;
+    let mut lengthscore: c_int;
+    let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
+        instart - ZOPFLI_WINDOW_SIZE
+    } else {
+        0
+    };
+
+    let mut longest_match;
+
+    /* Lazy matching. */
+    let mut prev_length: c_uint = 0;
+    let mut prev_match: c_uint = 0;
+    let mut prevlengthscore: c_int;
+    let mut match_available = 0;
+
+    if instart == inend {
+        return;
+    }
+
+    ZopfliInitHashAndStuff(h_ptr, windowstart, in_data, instart, inend);
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &mut *h_ptr
+    };
+
+    let mut i = instart;
+    while i < inend {
+        ZopfliUpdateHash(in_data, i, inend, h);
+
+        longest_match = ZopfliFindLongestMatch(s, h, in_data, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
+        dist = longest_match.distance;
+        leng = longest_match.length;
+        lengthscore = GetLengthScore(leng as c_int, dist as c_int);
+
+        /* Lazy matching. */
+        prevlengthscore = GetLengthScore(prev_length as c_int, prev_match as c_int);
+        if match_available == 1 {
+            match_available = 0;
+            if lengthscore > prevlengthscore + 1 {
+                lz77_store_lit_len_dist(rust_store, unsafe { *in_data.offset((i - 1) as isize) as c_ushort }, 0, i - 1);
+                if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH && (leng as size_t) < ZOPFLI_MAX_MATCH {
+                    match_available = 1;
+                    prev_length = leng as c_uint;
+                    prev_match = dist as c_uint;
+                    i += 1;
+                    continue;
+                }
+            } else {
+                /* Add previous to output. */
+                leng = prev_length as c_ushort;
+                dist = prev_match as c_ushort;
+                /* Add to output. */
+                ZopfliVerifyLenDist(in_data, inend, i - 1, dist, leng);
+                lz77_store_lit_len_dist(rust_store, leng, dist, i - 1);
+                for _ in 2..leng {
+                    assert!(i < inend);
+                    i += 1;
+                    ZopfliUpdateHash(in_data, i, inend, h);
+                 }
+                 i += 1;
+                 continue;
+            }
+        } else if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH && (leng as size_t) < ZOPFLI_MAX_MATCH {
+            match_available = 1;
+            prev_length = leng as c_uint;
+            prev_match = dist as c_uint;
+            i += 1;
+            continue;
+        }
+        /* End of lazy matching. */
+
+        /* Add to output. */
+        if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH {
+            ZopfliVerifyLenDist(in_data, inend, i, dist, leng);
+            lz77_store_lit_len_dist(rust_store, leng, dist, i);
+        } else {
+            leng = 1;
+            lz77_store_lit_len_dist(rust_store, unsafe { *in_data.offset(i as isize) as c_ushort }, 0, i);
+        }
+        for _ in 1..leng {
+            assert!(i < inend);
+            i += 1;
+            ZopfliUpdateHash(in_data, i, inend, h);
+        }
+        i += 1;
+    }
+
+    lz77_store_result(rust_store, store);
 }
