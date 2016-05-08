@@ -211,7 +211,8 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
 
   ZopfliInitHashAndStuff(h, windowstart, in, instart, inend);
 
-  for (i = instart; i < inend; i++) {
+  i = instart;
+  while (i < inend) {
     ZopfliUpdateHash(in, i, inend, h);
 
     longest_match = ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, 0);
@@ -229,6 +230,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
           match_available = 1;
           prev_length = leng;
           prev_match = dist;
+          i++;
           continue;
         }
       } else {
@@ -244,6 +246,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
           i++;
           ZopfliUpdateHash(in, i, inend, h);
         }
+        i++;
         continue;
       }
     }
@@ -251,6 +254,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
       match_available = 1;
       prev_length = leng;
       prev_match = dist;
+      i++;
       continue;
     }
     /* End of lazy matching. */
@@ -268,6 +272,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
       i++;
       ZopfliUpdateHash(in, i, inend, h);
     }
+    i++;
   }
 
   lz77_store_result(rust_store, store);
