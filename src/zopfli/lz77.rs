@@ -526,9 +526,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
 ///  rather unpredictable way
 /// -the first zopfli run, so it affects the chance of the first run being closer
 ///  to the optimal output
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn GetLengthScore(length: c_int, distance: c_int) -> c_int {
+pub extern fn get_length_score(length: c_int, distance: c_int) -> c_int {
     // At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
     // on tested files.
     if distance > 1024 {
@@ -727,10 +725,10 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
         longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
         dist = longest_match.distance;
         leng = longest_match.length;
-        lengthscore = GetLengthScore(leng as c_int, dist as c_int);
+        lengthscore = get_length_score(leng as c_int, dist as c_int);
 
         /* Lazy matching. */
-        prevlengthscore = GetLengthScore(prev_length as c_int, prev_match as c_int);
+        prevlengthscore = get_length_score(prev_length as c_int, prev_match as c_int);
         if match_available {
             match_available = false;
             if lengthscore > prevlengthscore + 1 {

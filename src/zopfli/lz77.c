@@ -172,7 +172,6 @@ void ZopfliCleanBlockState(ZopfliBlockState* s) {
 #endif
 }
 
-extern int GetLengthScore(int length, int distance);
 extern void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos, unsigned short dist, unsigned short length);
 
 extern unsigned short ZopfliHashSameAt(const ZopfliHash* h, size_t index);
