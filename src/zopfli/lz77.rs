@@ -747,7 +747,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
                 leng = prev_length as c_ushort;
                 dist = prev_match as c_ushort;
                 /* Add to output. */
-                ZopfliVerifyLenDist(in_data, inend, i - 1, dist, leng);
+                verify_len_dist(arr, i - 1, dist, leng);
                 lz77_store_lit_len_dist(rust_store, leng, dist, i - 1);
                 for _ in 2..leng {
                     assert!(i < inend);
@@ -768,7 +768,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
 
         /* Add to output. */
         if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH {
-            ZopfliVerifyLenDist(in_data, inend, i, dist, leng);
+            verify_len_dist(arr, i, dist, leng);
             lz77_store_lit_len_dist(rust_store, leng, dist, i);
         } else {
             leng = 1;
