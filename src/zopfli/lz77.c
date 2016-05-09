@@ -180,7 +180,6 @@ extern LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash
 
 typedef struct lz77_store_S lz77_store_t;
 extern lz77_store_t * lz77_store_from_c(ZopfliLZ77Store *);
-extern void lz77_store_lit_len_dist(lz77_store_t *, unsigned short length, unsigned short dist, size_t pos);
 extern void lz77_store_result(lz77_store_t *, ZopfliLZ77Store *);
 
 extern ZopfliHash* ZopfliInitHashAndStuff(ZopfliHash* h, size_t windowstart, const unsigned char* in, size_t instart, size_t inend);

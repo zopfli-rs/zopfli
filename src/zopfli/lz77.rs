@@ -116,15 +116,6 @@ impl Lz77Store {
 }
 
 #[no_mangle]
-pub extern fn lz77_store_lit_len_dist(ptr: *mut Lz77Store, length: c_ushort, dist: c_ushort, pos: size_t) {
-    let store = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
-    store.lit_len_dist(length, dist, pos);
-}
-
-#[no_mangle]
 pub extern fn lz77_store_from_c(store: *const ZopfliLZ77Store) -> *mut Lz77Store {
     Box::into_raw(Box::new(store.into()))
 }
@@ -732,7 +723,9 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
         if match_available {
             match_available = false;
             if lengthscore > prevlengthscore + 1 {
-                lz77_store_lit_len_dist(rust_store, arr[i - 1] as c_ushort, 0, i - 1);
+                unsafe {
+                    (&mut *rust_store).lit_len_dist(arr[i - 1] as c_ushort, 0, i - 1);
+                }
                 if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH && (leng as size_t) < ZOPFLI_MAX_MATCH {
                     match_available = true;
                     prev_length = leng as c_uint;
@@ -746,7 +739,9 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
                 dist = prev_match as c_ushort;
                 /* Add to output. */
                 verify_len_dist(arr, i - 1, dist, leng);
-                lz77_store_lit_len_dist(rust_store, leng, dist, i - 1);
+                unsafe {
+                    (&mut *rust_store).lit_len_dist(leng, dist, i - 1);
+                }
                 for _ in 2..leng {
                     assert!(i < inend);
                     i += 1;
@@ -767,10 +762,14 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
         /* Add to output. */
         if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH {
             verify_len_dist(arr, i, dist, leng);
-            lz77_store_lit_len_dist(rust_store, leng, dist, i);
+            unsafe {
+                (&mut *rust_store).lit_len_dist(leng, dist, i);
+            }
         } else {
             leng = 1;
-            lz77_store_lit_len_dist(rust_store, arr[i] as c_ushort, 0, i);
+            unsafe {
+                (&mut *rust_store).lit_len_dist(arr[i] as c_ushort, 0, i);
+            }
         }
         for _ in 1..leng {
             assert!(i < inend);
