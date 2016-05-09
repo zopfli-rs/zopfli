@@ -724,7 +724,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
     while i < inend {
         h.update(arr, i);
 
-        longest_match = ZopfliFindLongestMatch(s, h, in_data, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
+        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
         dist = longest_match.distance;
         leng = longest_match.length;
         lengthscore = GetLengthScore(leng as c_int, dist as c_int);
@@ -734,7 +734,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
         if match_available {
             match_available = false;
             if lengthscore > prevlengthscore + 1 {
-                lz77_store_lit_len_dist(rust_store, unsafe { *in_data.offset((i - 1) as isize) as c_ushort }, 0, i - 1);
+                lz77_store_lit_len_dist(rust_store, arr[i - 1] as c_ushort, 0, i - 1);
                 if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH && (leng as size_t) < ZOPFLI_MAX_MATCH {
                     match_available = true;
                     prev_length = leng as c_uint;
@@ -772,7 +772,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
             lz77_store_lit_len_dist(rust_store, leng, dist, i);
         } else {
             leng = 1;
-            lz77_store_lit_len_dist(rust_store, unsafe { *in_data.offset(i as isize) as c_ushort }, 0, i);
+            lz77_store_lit_len_dist(rust_store, arr[i] as c_ushort, 0, i);
         }
         for _ in 1..leng {
             assert!(i < inend);
