@@ -702,7 +702,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
     let mut prev_length: c_uint = 0;
     let mut prev_match: c_uint = 0;
     let mut prevlengthscore: c_int;
-    let mut match_available = 0;
+    let mut match_available = false;
 
     if instart == inend {
         return;
@@ -731,12 +731,12 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
 
         /* Lazy matching. */
         prevlengthscore = GetLengthScore(prev_length as c_int, prev_match as c_int);
-        if match_available == 1 {
-            match_available = 0;
+        if match_available {
+            match_available = false;
             if lengthscore > prevlengthscore + 1 {
                 lz77_store_lit_len_dist(rust_store, unsafe { *in_data.offset((i - 1) as isize) as c_ushort }, 0, i - 1);
                 if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH && (leng as size_t) < ZOPFLI_MAX_MATCH {
-                    match_available = 1;
+                    match_available = true;
                     prev_length = leng as c_uint;
                     prev_match = dist as c_uint;
                     i += 1;
@@ -758,7 +758,7 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
                  continue;
             }
         } else if (lengthscore as size_t) >= ZOPFLI_MIN_MATCH && (leng as size_t) < ZOPFLI_MAX_MATCH {
-            match_available = 1;
+            match_available = true;
             prev_length = leng as c_uint;
             prev_match = dist as c_uint;
             i += 1;
