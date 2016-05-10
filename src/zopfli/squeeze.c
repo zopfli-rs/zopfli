@@ -105,7 +105,7 @@ store: place to output the LZ77 data
 returns the cost that was, according to the costmodel, needed to get to the end.
     This is not the actual cost.
 */
-static double LZ77OptimalRun(ZopfliBlockState* s,
+static void LZ77OptimalRun(ZopfliBlockState* s,
     const unsigned char* in, size_t instart, size_t inend,
     unsigned short** path, size_t* pathsize,
     unsigned short* length_array, CostModelFun* costmodel,
@@ -119,7 +119,6 @@ static double LZ77OptimalRun(ZopfliBlockState* s,
   TraceBackwards(inend - instart, length_array, path, pathsize);
   FollowPath(s, in, instart, inend, *path, *pathsize, store, h);
   assert(cost < ZOPFLI_LARGE_FLOAT);
-  return cost;
 }
 
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
