@@ -170,7 +170,21 @@ impl SymbolStats {
 
         calculate_and_store_entropy(&self.litlens, &mut self.ll_symbols);
         calculate_and_store_entropy(&self.dists, &mut self.d_symbols);
+    }
 
+    /// Appends the symbol statistics from the store.
+    pub fn get_statistics(&mut self, store: Lz77Store) {
+        for i in 0..store.dists.len() {
+            if store.dists[i] == 0 {
+                self.litlens[store.litlens[i] as usize] += 1;
+            } else {
+                self.litlens[ZopfliGetLengthSymbol(store.litlens[i] as c_int) as usize] +=1 ;
+                self.dists[ZopfliGetDistSymbol(store.dists[i] as c_int) as usize] += 1;
+            }
+        }
+        self.litlens[256] = 1;  /* End symbol. */
+
+        self.calculate_entropy();
     }
 }
 
