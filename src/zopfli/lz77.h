@@ -47,7 +47,6 @@ typedef struct ZopfliLZ77Store {
       if > 0: length in corresponding litlens, this is the distance. */
   size_t size;
 
-  const unsigned char* data;  /* original data */
   size_t* pos;  /* position in data where this LZ77 command begins */
 
   unsigned short* ll_symbol;
@@ -61,7 +60,7 @@ typedef struct ZopfliLZ77Store {
   size_t* d_counts;
 } ZopfliLZ77Store;
 
-void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store);
+void ZopfliInitLZ77Store(ZopfliLZ77Store* store);
 void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
 void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
 void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,

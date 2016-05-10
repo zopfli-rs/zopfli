@@ -23,7 +23,6 @@ pub struct ZopfliLZ77Store {
       if > 0: length in corresponding litlens, this is the distance. */
   size: size_t,
 
-  data: *mut c_uchar,  /* original data */
   pos: *mut size_t,  /* position in data where this LZ77 command begins */
 
   ll_symbol: *mut c_ushort,
@@ -175,7 +174,7 @@ pub extern fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliInitLZ77Store(data: *mut c_uchar, store_ptr: *mut ZopfliLZ77Store) {
+pub extern fn ZopfliInitLZ77Store(store_ptr: *mut ZopfliLZ77Store) {
     let store = unsafe {
         assert!(!store_ptr.is_null());
         &mut *store_ptr
@@ -185,7 +184,6 @@ pub extern fn ZopfliInitLZ77Store(data: *mut c_uchar, store_ptr: *mut ZopfliLZ77
     store.litlens = ptr::null_mut();
     store.dists = ptr::null_mut();
     store.pos = ptr::null_mut();
-    store.data = data;
     store.ll_symbol = ptr::null_mut();
     store.d_symbol = ptr::null_mut();
     store.ll_counts = ptr::null_mut();

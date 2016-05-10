@@ -151,7 +151,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   stats = symbol_stats_new();
   beststats = symbol_stats_new();
   laststats = symbol_stats_new();
-  ZopfliInitLZ77Store(in, &currentstore);
+  ZopfliInitLZ77Store(&currentstore);
 
   /* Do regular deflate, then loop multiple shortest path runs, each time using
   the statistics of the previous run. */
@@ -164,7 +164,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   run. */
   for (i = 0; i < numiterations; i++) {
     ZopfliCleanLZ77Store(&currentstore);
-    ZopfliInitLZ77Store(in, &currentstore);
+    ZopfliInitLZ77Store(&currentstore);
     LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
                    length_array, GetCostStat, (void*)stats,
                    &currentstore, h, costs);

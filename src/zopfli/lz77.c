@@ -25,7 +25,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-extern void ZopfliInitLZ77Store(const unsigned char* data, ZopfliLZ77Store* store);
+extern void ZopfliInitLZ77Store(ZopfliLZ77Store* store);
 
 void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
   free(store->litlens);
@@ -45,7 +45,7 @@ void ZopfliCopyLZ77Store(
   size_t llsize = ZOPFLI_NUM_LL * CeilDiv(source->size, ZOPFLI_NUM_LL);
   size_t dsize = ZOPFLI_NUM_D * CeilDiv(source->size, ZOPFLI_NUM_D);
   ZopfliCleanLZ77Store(dest);
-  ZopfliInitLZ77Store(source->data, dest);
+  ZopfliInitLZ77Store(dest);
   dest->litlens =
       (unsigned short*)malloc(sizeof(*dest->litlens) * source->size);
   dest->dists = (unsigned short*)malloc(sizeof(*dest->dists) * source->size);
