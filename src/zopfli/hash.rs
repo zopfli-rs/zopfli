@@ -21,7 +21,7 @@ pub struct ZopfliHash {
     hashval2: Vec<c_int>,  /* Index to hash value at this index. */
     val2: c_int,  /* Current hash value. */
 
-    same: Vec<c_ushort>,  /* Amount of repetitions of same byte after this .*/
+    pub same: Vec<c_ushort>,  /* Amount of repetitions of same byte after this .*/
 }
 
 impl ZopfliHash {

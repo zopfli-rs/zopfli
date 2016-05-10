@@ -308,8 +308,8 @@ impl ZopfliBlockState {
 
 #[repr(C)]
 pub struct LongestMatch {
-    distance: c_ushort,
-    length: c_ushort,
+    pub distance: c_ushort,
+    pub length: c_ushort,
     from_cache: c_int,
     limit: size_t,
 }

@@ -1,7 +1,10 @@
-use libc::{c_void, c_uint, c_double, c_int, size_t};
+use std::{mem, slice};
 
-use lz77::{ZopfliLZ77Store, Lz77Store};
-use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT};
+use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
+
+use hash::{ZopfliHash, ZopfliResetHash};
+use lz77::{ZopfliLZ77Store, Lz77Store, ZopfliBlockState, find_longest_match};
+use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
@@ -312,4 +315,131 @@ pub extern fn GetCostModelMinCost(costmodel: fn(c_uint, c_uint, *const c_void) -
         }
     }
     costmodel(bestlength as c_uint, bestdist as c_uint, costcontext)
+}
+
+/// Performs the forward pass for "squeeze". Gets the most optimal length to reach
+/// every byte from a previous byte, using cost calculations.
+/// s: the ZopfliBlockState
+/// in: the input data array
+/// instart: where to start
+/// inend: where to stop (not inclusive)
+/// costmodel: function to calculate the cost of some lit/len/dist pair.
+/// costcontext: abstract context for the costmodel function
+/// length_array: output array of size (inend - instart) which will receive the best
+///     length to reach this byte from a previous byte.
+/// returns the cost that was, according to the costmodel, needed to get to the end.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn GetBestLengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, length_array: *mut c_ushort, h_ptr: *mut ZopfliHash, costs: *mut c_float) -> c_double {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+
+    // Best cost to get here so far.
+    let blocksize = inend - instart;
+    let mut leng;
+    let mut longest_match;
+    let sublen = unsafe { malloc(mem::size_of::<c_ushort>() as size_t * 259) as *mut c_ushort };
+    let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
+        instart - ZOPFLI_WINDOW_SIZE
+    } else {
+        0
+    };
+
+    let mincost = GetCostModelMinCost(costmodel, costcontext);
+
+    if instart == inend {
+        return 0.0;
+    }
+
+    ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h_ptr);
+    let h = unsafe {
+        assert!(!h_ptr.is_null());
+        &mut *h_ptr
+    };
+    let arr = unsafe { slice::from_raw_parts(in_data, inend) };
+    h.warmup(arr, windowstart, inend);
+    for i in windowstart..instart {
+        h.update(arr, i);
+    }
+
+    unsafe {
+        for i in 1..(blocksize + 1) {
+            *costs.offset(i as isize) = ZOPFLI_LARGE_FLOAT as c_float;
+        }
+        *costs.offset(0) = 0.0; /* Because it's the start. */
+        *length_array.offset(0) = 0;
+    }
+
+    let mut i = instart;
+    while i < inend {
+        let mut j = i - instart;  // Index in the costs array and length_array.
+        h.update(arr, i);
+
+        // If we're in a long repetition of the same character and have more than
+        // ZOPFLI_MAX_MATCH characters before and after our position.
+        if h.same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as c_ushort * 2
+            && i > instart + ZOPFLI_MAX_MATCH + 1
+            && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
+            && h.same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as c_ushort {
+
+            let symbolcost = costmodel(ZOPFLI_MAX_MATCH as c_uint, 1, costcontext);
+            // Set the length to reach each one to ZOPFLI_MAX_MATCH, and the cost to
+            // the cost corresponding to that length. Doing this, we skip
+            // ZOPFLI_MAX_MATCH values to avoid calling ZopfliFindLongestMatch.
+
+            for _ in 0..ZOPFLI_MAX_MATCH {
+                unsafe {
+                    *costs.offset((j + ZOPFLI_MAX_MATCH) as isize) = *costs.offset(j as isize) + symbolcost as c_float;
+                    *length_array.offset((j + ZOPFLI_MAX_MATCH) as isize) = ZOPFLI_MAX_MATCH as c_ushort;
+                }
+                i += 1;
+                j += 1;
+                h.update(arr, i);
+            }
+        }
+
+        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, sublen);
+        leng = longest_match.length;
+
+        // Literal.
+        if i + 1 <= inend {
+            let newCost = costmodel(arr[i] as c_uint, 0, costcontext) + unsafe { *costs.offset(j as isize) } as c_double;
+            assert!(newCost >= 0.0);
+            if newCost < unsafe { *costs.offset(j as isize + 1) } as c_double {
+                unsafe {
+                    *costs.offset(j as isize + 1) = newCost as c_float;
+                    *length_array.offset((j + 1) as isize) = 1;
+                }
+
+            }
+        }
+        // Lengths.
+        let kend = if leng < (inend - i) as c_ushort { leng } else { (inend - i) as c_ushort };
+        let mincostaddcostj = mincost + unsafe { *costs.offset(j as isize) } as c_double;
+
+        for k in 3..(kend as usize + 1) {
+            // Calling the cost model is expensive, avoid this if we are already at
+            // the minimum possible cost that it can return.
+            if unsafe { *costs.offset((j + k) as isize) } as c_double <= mincostaddcostj {
+                continue;
+            }
+
+            let newCost = costmodel(k as c_uint, unsafe { *sublen.offset(k as isize) } as c_uint, costcontext) + unsafe { *costs.offset(j as isize) } as c_double;
+            assert!(newCost >= 0.0);
+            if newCost < unsafe { *costs.offset((j + k) as isize) } as c_double {
+                assert!(k as usize <= ZOPFLI_MAX_MATCH);
+                unsafe {
+                    *costs.offset((j + k) as isize) = newCost as c_float;
+                    *length_array.offset((j + k) as isize) = k as c_ushort;
+                }
+
+            }
+        }
+        i += 1;
+    }
+
+    assert!(unsafe { *costs.offset(blocksize as isize) } >= 0.0);
+    unsafe { *costs.offset(blocksize as isize) as c_double }
 }
