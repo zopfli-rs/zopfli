@@ -85,61 +85,7 @@ static void TraceBackwards(size_t size, const unsigned short* length_array,
   }
 }
 
-static void FollowPath(ZopfliBlockState* s,
-                       const unsigned char* in, size_t instart, size_t inend,
-                       unsigned short* path, size_t pathsize,
-                       ZopfliLZ77Store* store, ZopfliHash *h) {
-  size_t i, j, pos = 0;
-  size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
-      ? instart - ZOPFLI_WINDOW_SIZE : 0;
-
-  size_t total_length_test = 0;
-
-  if (instart == inend) return;
-
-  ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h);
-  ZopfliWarmupHash(in, windowstart, inend, h);
-  for (i = windowstart; i < instart; i++) {
-    ZopfliUpdateHash(in, i, inend, h);
-  }
-
-  pos = instart;
-  for (i = 0; i < pathsize; i++) {
-    unsigned short length = path[i];
-    unsigned short dummy_length;
-    unsigned short dist;
-    LongestMatch longest_match;
-    assert(pos < inend);
-
-    ZopfliUpdateHash(in, pos, inend, h);
-
-    /* Add to output. */
-    if (length >= ZOPFLI_MIN_MATCH) {
-      /* Get the distance by recalculating longest match. The found length
-      should match the length from the path. */
-      longest_match = ZopfliFindLongestMatch(s, h, in, pos, inend, length, 0);
-      dist = longest_match.distance;
-      dummy_length = longest_match.length;
-      assert(!(dummy_length != length && length > 2 && dummy_length > 2));
-      ZopfliVerifyLenDist(in, inend, pos, dist, length);
-      ZopfliStoreLitLenDist(length, dist, pos, store);
-      total_length_test += length;
-    } else {
-      length = 1;
-      ZopfliStoreLitLenDist(in[pos], 0, pos, store);
-      total_length_test++;
-    }
-
-
-    assert(pos + length <= inend);
-    for (j = 1; j < length; j++) {
-      ZopfliUpdateHash(in, pos + j, inend, h);
-    }
-
-    pos += length;
-  }
-}
-
+extern void FollowPath(ZopfliBlockState* s, const unsigned char* in, size_t instart, size_t inend, unsigned short* path, size_t pathsize, ZopfliLZ77Store* store, ZopfliHash *h);
 extern void CalculateStatistics(SymbolStats* stats);
 extern void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats);
 
