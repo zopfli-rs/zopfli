@@ -71,32 +71,7 @@ static void AddHuffmanBits(unsigned symbol, unsigned length,
   }
 }
 
-/*
-Ensures there are at least 2 distance codes to support buggy decoders.
-Zlib 1.2.1 and below have a bug where it fails if there isn't at least 1
-distance code (with length > 0), even though it's valid according to the
-deflate spec to have 0 distance codes. On top of that, some mobile phones
-require at least two distance codes. To support these decoders too (but
-potentially at the cost of a few bytes), add dummy code lengths of 1.
-References to this bug can be found in the changelog of
-Zlib 1.2.2 and here: http://www.jonof.id.au/forum/index.php?topic=515.0.
-
-d_lengths: the 32 lengths of the distance codes.
-*/
-static void PatchDistanceCodesForBuggyDecoders(unsigned* d_lengths) {
-  int num_dist_codes = 0; /* Amount of non-zero distance codes */
-  int i;
-  for (i = 0; i < 30 /* Ignore the two unused codes from the spec */; i++) {
-    if (d_lengths[i]) num_dist_codes++;
-    if (num_dist_codes >= 2) return; /* Two or more codes is fine. */
-  }
-
-  if (num_dist_codes == 0) {
-    d_lengths[0] = d_lengths[1] = 1;
-  } else if (num_dist_codes == 1) {
-    d_lengths[d_lengths[0] ? 1 : 0] = 1;
-  }
-}
+extern void PatchDistanceCodesForBuggyDecoders(unsigned* d_lengths);
 
 /*
 Encodes the Huffman tree and returns how many bits its encoding takes. If out

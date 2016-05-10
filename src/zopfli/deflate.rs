@@ -113,3 +113,45 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
         }
     }
 }
+
+// Ensures there are at least 2 distance codes to support buggy decoders.
+// Zlib 1.2.1 and below have a bug where it fails if there isn't at least 1
+// distance code (with length > 0), even though it's valid according to the
+// deflate spec to have 0 distance codes. On top of that, some mobile phones
+// require at least two distance codes. To support these decoders too (but
+// potentially at the cost of a few bytes), add dummy code lengths of 1.
+// References to this bug can be found in the changelog of
+// Zlib 1.2.2 and here: http://www.jonof.id.au/forum/index.php?topic=515.0.
+//
+// d_lengths: the 32 lengths of the distance codes.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn PatchDistanceCodesForBuggyDecoders(d_lengths: *mut c_uint) {
+    let mut num_dist_codes = 0; // Amount of non-zero distance codes
+    // Ignore the two unused codes from the spec
+    for i in 0..30 {
+        if unsafe { *d_lengths.offset(i as isize) } != 0 {
+            num_dist_codes += 1;
+        }
+        // Two or more codes is fine.
+        if num_dist_codes >= 2 {
+            return;
+        }
+    }
+
+    if num_dist_codes == 0 {
+        unsafe {
+            *d_lengths.offset(0) = 1;
+            *d_lengths.offset(1) = 1;
+        }
+    } else if num_dist_codes == 1 {
+        unsafe {
+            let index = if *d_lengths.offset(0) == 0 {
+                0
+            } else {
+                1
+            };
+            *d_lengths.offset(index) = 1;
+        }
+    }
+}
