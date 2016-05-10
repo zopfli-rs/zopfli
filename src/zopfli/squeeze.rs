@@ -280,17 +280,7 @@ pub extern fn GetStatistics(store_ptr: *const ZopfliLZ77Store, stats_ptr: *mut S
         assert!(!stats_ptr.is_null());
         &mut *stats_ptr
     };
-    for i in 0..store.dists.len() {
-        if store.dists[i] == 0 {
-            stats.litlens[store.litlens[i] as usize] += 1;
-        } else {
-            stats.litlens[ZopfliGetLengthSymbol(store.litlens[i] as c_int) as usize] +=1 ;
-            stats.dists[ZopfliGetDistSymbol(store.dists[i] as c_int) as usize] += 1;
-        }
-    }
-    stats.litlens[256] = 1;  /* End symbol. */
-
-    CalculateStatistics(stats);
+    stats.get_statistics(store);
 }
 
 /// Finds the minimum possible cost this cost model can return for valid length and
