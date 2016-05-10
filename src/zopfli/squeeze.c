@@ -53,51 +53,11 @@ extern double GetCostFixed(unsigned litlen, unsigned dist, void* unused);
 
 extern double GetCostStat(unsigned litlen, unsigned dist, void* context);
 
-/*
-Finds the minimum possible cost this cost model can return for valid length and
-distance symbols.
-*/
-static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
-  double mincost;
-  int bestlength = 0; /* length that has lowest cost in the cost model */
-  int bestdist = 0; /* distance that has lowest cost in the cost model */
-  int i;
-  /*
-  Table of distances that have a different distance symbol in the deflate
-  specification. Each value is the first distance that has a new symbol. Only
-  different symbols affect the cost model so only these need to be checked.
-  See RFC 1951 section 3.2.5. Compressed blocks (length and distance codes).
-  */
-  static const int dsymbols[30] = {
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
-    769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
-  };
-
-  mincost = ZOPFLI_LARGE_FLOAT;
-  for (i = 3; i < 259; i++) {
-    double c = costmodel(i, 1, costcontext);
-    if (c < mincost) {
-      bestlength = i;
-      mincost = c;
-    }
-  }
-
-  mincost = ZOPFLI_LARGE_FLOAT;
-  for (i = 0; i < 30; i++) {
-    double c = costmodel(3, dsymbols[i], costcontext);
-    if (c < mincost) {
-      bestdist = dsymbols[i];
-      mincost = c;
-    }
-  }
-
-  return costmodel(bestlength, bestdist, costcontext);
-}
-
 static size_t zopfli_min(size_t a, size_t b) {
   return a < b ? a : b;
 }
 
+extern double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext);
 extern unsigned short ZopfliHashSameAt(const ZopfliHash* h, size_t index);
 
 

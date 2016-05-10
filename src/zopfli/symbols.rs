@@ -1,4 +1,4 @@
-use libc::{c_int, size_t};
+use libc::{c_int, size_t, c_double};
 
 pub const ZOPFLI_NUM_LL: size_t = 288;
 pub const ZOPFLI_NUM_D: size_t = 32;
@@ -9,6 +9,7 @@ pub const ZOPFLI_MAX_MATCH: size_t = 258;
 pub const ZOPFLI_MIN_MATCH: size_t = 3;
 pub const ZOPFLI_CACHE_LENGTH: size_t = 8;
 pub const ZOPFLI_MAX_CHAIN_HITS: size_t = 8192;
+pub const ZOPFLI_LARGE_FLOAT: c_double = 1E30;
 
 const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
     0, 0, 0,

@@ -1,7 +1,7 @@
 use libc::{c_void, c_uint, c_double, c_int, size_t};
 
 use lz77::{ZopfliLZ77Store, Lz77Store};
-use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
@@ -274,4 +274,42 @@ pub extern fn GetStatistics(store_ptr: *const ZopfliLZ77Store, stats_ptr: *mut S
     stats.litlens[256] = 1;  /* End symbol. */
 
     CalculateStatistics(stats);
+}
+
+/// Finds the minimum possible cost this cost model can return for valid length and
+/// distance symbols.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn GetCostModelMinCost(costmodel: fn(c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void) -> c_double {
+    let mut bestlength: c_int = 0; // length that has lowest cost in the cost model
+    let mut bestdist: c_int = 0; // distance that has lowest cost in the cost model
+
+    // Table of distances that have a different distance symbol in the deflate
+    // specification. Each value is the first distance that has a new symbol. Only
+    // different symbols affect the cost model so only these need to be checked.
+    // See RFC 1951 section 3.2.5. Compressed blocks (length and distance codes).
+
+    let dsymbols: [c_int; 30] = [
+        1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
+        769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
+    ];
+
+    let mut mincost: c_double = ZOPFLI_LARGE_FLOAT;
+    for i in 3..259 {
+        let c = costmodel(i, 1, costcontext);
+        if c < mincost {
+            bestlength = i as c_int;
+            mincost = c;
+        }
+    }
+
+    mincost = ZOPFLI_LARGE_FLOAT;
+    for i in 0..30 {
+        let c = costmodel(3, dsymbols[i] as c_uint, costcontext);
+        if c < mincost {
+            bestdist = dsymbols[i];
+            mincost = c;
+        }
+    }
+    costmodel(bestlength as c_uint, bestdist as c_uint, costcontext)
 }
