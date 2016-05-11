@@ -108,12 +108,6 @@ typedef struct LongestMatch {
 } LongestMatch;
 
 /*
-Verifies if length and dist are indeed valid, only used for assertion.
-*/
-void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
-                         unsigned short dist, unsigned short length);
-
-/*
 Does LZ77 using an algorithm similar to gzip, with lazy matching, rather than
 with the slow but better "squeeze" implementation.
 The result is placed in the ZopfliLZ77Store.

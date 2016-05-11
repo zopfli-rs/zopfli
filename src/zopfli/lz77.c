@@ -172,8 +172,6 @@ void ZopfliCleanBlockState(ZopfliBlockState* s) {
 #endif
 }
 
-extern void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos, unsigned short dist, unsigned short length);
-
 typedef struct lz77_store_S lz77_store_t;
 extern lz77_store_t * lz77_store_from_c(ZopfliLZ77Store *);
 extern void lz77_store_result(lz77_store_t *, ZopfliLZ77Store *);

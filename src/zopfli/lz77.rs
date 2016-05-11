@@ -606,16 +606,6 @@ pub extern fn get_length_score(length: c_int, distance: c_int) -> c_int {
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliVerifyLenDist(data: *const c_uchar, datasize: size_t, pos: size_t, dist: c_ushort, length: c_ushort) {
-    // TODO(lode): make this only run in a debug compile, it's for assert only.
-
-    assert!(pos + (length as usize) <= datasize);
-    let data = unsafe { slice::from_raw_parts(data, datasize) };
-    verify_len_dist(data, pos, dist, length)
-}
-
 pub fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_ushort) {
     for i in 0..length {
         let d1 = data[pos - (dist as usize) + (i as usize)];
