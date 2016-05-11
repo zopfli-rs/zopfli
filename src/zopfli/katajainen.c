@@ -128,32 +128,7 @@ static void InitLists(
   }
 }
 
-/*
-Converts result of boundary package-merge to the bitlengths. The result in the
-last chain of the last list contains the amount of active leaves in each list.
-chain: Chain to extract the bit length from (last chain from last list).
-*/
-static void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths) {
-  int counts[16] = {0};
-  unsigned end = 16;
-  unsigned ptr = 15;
-  unsigned value = 1;
-  Node* node;
-  int val;
-
-  for (node = chain; node; node = node->tail) {
-    counts[--end] = node->count;
-  }
-
-  val = counts[15];
-  while (ptr >= end) {
-    for (; val > counts[ptr - 1]; val--) {
-      bitlengths[leaves[val - 1].count] = value;
-    }
-    ptr--;
-    value++;
-  }
-}
+extern void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths);
 
 /*
 Comparator for sorting the leaves. Has the function signature for qsort.
