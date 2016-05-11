@@ -285,8 +285,7 @@ pub extern fn GetStatistics(store_ptr: *const ZopfliLZ77Store, stats_ptr: *mut S
 
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
-#[allow(non_snake_case)]
-pub fn GetCostModelMinCost(costmodel: fn(c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void) -> c_double {
+pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void) -> c_double {
     let mut bestlength: c_int = 0; // length that has lowest cost in the cost model
     let mut bestdist: c_int = 0; // distance that has lowest cost in the cost model
 
@@ -350,7 +349,7 @@ pub extern fn GetBestLengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
         0
     };
 
-    let mincost = GetCostModelMinCost(costmodel, costcontext);
+    let mincost = get_cost_model_min_cost(costmodel, costcontext);
 
     if instart == inend {
         return 0.0;
