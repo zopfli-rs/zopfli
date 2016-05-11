@@ -27,7 +27,6 @@ The hash for ZopfliFindLongestMatch of lz77.c.
 #include "util.h"
 
 typedef struct ZopfliHash ZopfliHash;
-ZopfliHash* ZopfliInitHash(size_t window_size);
 void ZopfliCleanHash(ZopfliHash* h);
 extern ZopfliHash* ZopfliInitHash(size_t window_size);
 #endif  /* ZOPFLI_HASH_H_ */
