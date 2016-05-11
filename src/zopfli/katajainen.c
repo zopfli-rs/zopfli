@@ -46,14 +46,7 @@ typedef struct NodePool {
   Node* next;  /* Pointer to a free node in the pool. */
 } NodePool;
 
-/*
-Initializes a chain node with the given values and marks it as in use.
-*/
-static void InitNode(size_t weight, int count, Node* tail, Node* node) {
-  node->weight = weight;
-  node->count = count;
-  node->tail = tail;
-}
+extern void InitNode(size_t weight, int count, Node* tail, Node* node);
 
 /*
 Performs a Boundary Package-Merge step. Puts a new chain in the given list. The
