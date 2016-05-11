@@ -174,8 +174,6 @@ void ZopfliCleanBlockState(ZopfliBlockState* s) {
 
 extern void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos, unsigned short dist, unsigned short length);
 
-extern unsigned short ZopfliHashSameAt(const ZopfliHash* h, size_t index);
-
 extern LongestMatch ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h, const unsigned char* array, size_t pos, size_t size, size_t limit, unsigned short* sublen);
 
 typedef struct lz77_store_S lz77_store_t;

@@ -3,7 +3,7 @@ use std::{slice, ptr, cmp};
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
 use cache::{ZopfliLongestMatchCache};
-use hash::{ZopfliHash, ZopfliHashSameAt};
+use hash::ZopfliHash;
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
@@ -524,9 +524,9 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
             /* Testing the byte at position bestlength first, goes slightly faster. */
             if pos + bestlength >= size || array[scan_offset + bestlength] == array[match_offset + bestlength] {
 
-                let same0 = ZopfliHashSameAt(h, pos & ZOPFLI_WINDOW_MASK);
+                let same0 = h.same[pos & ZOPFLI_WINDOW_MASK];
                 if same0 > 2 && array[scan_offset] == array[match_offset] {
-                    let same1 = ZopfliHashSameAt(h, (pos - (dist as size_t)) & ZOPFLI_WINDOW_MASK);
+                    let same1 = h.same[(pos - (dist as size_t)) & ZOPFLI_WINDOW_MASK];
                     let mut same = if same0 < same1 {
                         same0
                     } else {
@@ -559,7 +559,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
         }
 
         /* Switch to the other hash once this will be more efficient. */
-        if which_hash == 1 && bestlength >= ZopfliHashSameAt(h, hpos) as size_t && h.val(2) == h.hash_val_at(p as usize, 2) {
+        if which_hash == 1 && bestlength >= h.same[hpos] as size_t && h.val(2) == h.hash_val_at(p as usize, 2) {
             /* Now use the hash that encodes the length and first byte. */
             which_hash = 2;
         }

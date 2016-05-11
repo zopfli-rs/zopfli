@@ -2,7 +2,7 @@ use std::{mem, slice, ptr};
 
 use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
 
-use hash::{ZopfliHash, ZopfliResetHash};
+use hash::ZopfliHash;
 use lz77::{ZopfliLZ77Store, Lz77Store, ZopfliBlockState, find_longest_match, lz77_store_from_c,     lz77_store_result, verify_len_dist};
 use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
 
@@ -357,11 +357,11 @@ pub extern fn GetBestLengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
         return 0.0;
     }
 
-    ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h_ptr);
     let h = unsafe {
         assert!(!h_ptr.is_null());
         &mut *h_ptr
     };
+    h.reset(ZOPFLI_WINDOW_SIZE);
     let arr = unsafe { slice::from_raw_parts(in_data, inend) };
     h.warmup(arr, windowstart, inend);
     for i in windowstart..instart {

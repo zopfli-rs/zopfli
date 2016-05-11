@@ -27,28 +27,7 @@ The hash for ZopfliFindLongestMatch of lz77.c.
 #include "util.h"
 
 typedef struct ZopfliHash ZopfliHash;
-
 ZopfliHash* ZopfliInitHash(size_t window_size);
-
-/* Resets all fields of ZopfliHash. */
-void ZopfliResetHash(size_t window_size, ZopfliHash* h);
-
-/* Frees ZopfliHash memory. */
 void ZopfliCleanHash(ZopfliHash* h);
-
-/*
-Updates the hash values based on the current position in the array. All calls
-to this must be made for consecutive bytes.
-*/
-void ZopfliUpdateHash(const unsigned char* array, size_t pos, size_t end,
-                      ZopfliHash* h);
-
-/*
-Prepopulates hash:
-Fills in the initial values in the hash, before ZopfliUpdateHash can be used
-correctly.
-*/
-void ZopfliWarmupHash(const unsigned char* array, size_t pos, size_t end,
-                      ZopfliHash* h);
-
+extern ZopfliHash* ZopfliInitHash(size_t window_size);
 #endif  /* ZOPFLI_HASH_H_ */

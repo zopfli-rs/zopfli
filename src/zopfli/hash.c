@@ -22,12 +22,3 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#define HASH_SHIFT 5
-#define HASH_MASK 32767
-
-extern ZopfliHash* ZopfliInitHash(size_t window_size);
-extern void ZopfliResetHash(size_t window_size, ZopfliHash* h);
-extern void ZopfliCleanHash(ZopfliHash* h);
-extern void ZopfliUpdateHash(const unsigned char* array, size_t pos, size_t end, ZopfliHash* h);
-extern void ZopfliWarmupHash(const unsigned char* array, size_t pos, size_t end, ZopfliHash* h);
