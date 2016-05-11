@@ -435,23 +435,6 @@ pub fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end
     scan_offset
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliFindLongestMatch(s_ptr: *mut ZopfliBlockState, h_ptr: *mut ZopfliHash, array: *mut c_uchar, pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
-    let s = unsafe {
-        assert!(!s_ptr.is_null());
-        &mut *s_ptr
-    };
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
-
-    let data = unsafe { slice::from_raw_parts(array, size) };
-
-    find_longest_match(s, h, data, pos, size, limit, sublen)
-}
-
 pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
     let mut limit = limit;
 
