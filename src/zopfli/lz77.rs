@@ -747,3 +747,29 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
 
     lz77_store_result(rust_store, store);
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliAppendLZ77Store(store_ptr: *mut ZopfliLZ77Store, target_ptr: *mut ZopfliLZ77Store) {
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+    let target = unsafe {
+        assert!(!target_ptr.is_null());
+        &mut *target_ptr
+    };
+
+    let rust_target = lz77_store_from_c(target_ptr);
+
+    for i in 0..store.size {
+        unsafe {
+            (&mut *rust_target).lit_len_dist(
+                *store.litlens.offset(i as isize),
+                *store.dists.offset(i as isize),
+                *store.pos.offset(i as isize),
+            );
+        }
+    }
+    lz77_store_result(rust_target, target);
+}
