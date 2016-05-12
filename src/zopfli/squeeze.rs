@@ -1,4 +1,4 @@
-use std::{mem, slice, ptr};
+use std::{mem, slice, ptr, cmp};
 
 use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
 
@@ -80,7 +80,6 @@ impl RanState {
 pub extern fn ran_state_new() -> *mut RanState {
     Box::into_raw(Box::new(RanState::new()))
 }
-
 
 #[derive(Copy)]
 pub struct SymbolStats {
@@ -418,10 +417,10 @@ pub extern fn GetBestLengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
             }
         }
         // Lengths.
-        let kend = if leng < (inend - i) as c_ushort { leng } else { (inend - i) as c_ushort };
+        let kend = cmp::min(leng as size_t, inend - i) as usize;
         let mincostaddcostj = mincost + unsafe { *costs.offset(j as isize) } as c_double;
 
-        for k in 3..(kend as usize + 1) {
+        for k in 3..(kend + 1) {
             // Calling the cost model is expensive, avoid this if we are already at
             // the minimum possible cost that it can return.
             if unsafe { *costs.offset((j + k) as isize) } as c_double <= mincostaddcostj {
@@ -448,6 +447,7 @@ pub extern fn GetBestLengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
 
 #[no_mangle]
 #[allow(non_snake_case)]
+// TODO: upstream is now reusing an already allocated hash; we're ignoring it
 pub extern fn FollowPath(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, path: *const c_ushort, pathsize: size_t, store_ptr: *mut ZopfliLZ77Store) {
     let s = unsafe {
         assert!(!s_ptr.is_null());
