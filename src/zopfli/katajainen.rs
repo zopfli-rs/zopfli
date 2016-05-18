@@ -4,11 +4,17 @@ use libc::{size_t, c_int, c_uint};
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
-/// Nodes forming chains. Also used to represent leaves.
+/// Nodes forming chains.
 #[repr(C)]
 pub struct Node {
   weight: size_t,     // Total weight (symbol count) of this chain.
   tail: *const Node,  // Previous node(s) of this chain, or 0 if none.
+  count: c_int,       // Leaf symbol index, or number of leaves before this chain.
+}
+
+#[repr(C)]
+pub struct Leaf {
+  weight: size_t,     // Total weight (symbol count) of this chain.
   count: c_int,       // Leaf symbol index, or number of leaves before this chain.
 }
 
@@ -38,7 +44,7 @@ pub extern fn InitNode(weight: size_t, count: c_int, tail: *const Node, node_ptr
 /// chain: Chain to extract the bit length from (last chain from last list).
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ExtractBitLengths(chain: *const Node, leaves: *const Node, bitlengths: *mut c_uint) {
+pub extern fn ExtractBitLengths(chain: *const Node, leaves: *const Leaf, bitlengths: *mut c_uint) {
     let mut counts = [0; 16];
     let mut end = 16;
     let mut ptr = 15;

@@ -29,14 +29,20 @@ Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 #include <limits.h>
 
 typedef struct Node Node;
+typedef struct Leaf Leaf;
 
 /*
-Nodes forming chains. Also used to represent leaves.
+Nodes forming chains.
 */
 struct Node {
   size_t weight;  /* Total weight (symbol count) of this chain. */
   Node* tail;  /* Previous node(s) of this chain, or 0 if none. */
   int count;  /* Leaf symbol index, or number of leaves before this chain. */
+};
+
+struct Leaf {
+  size_t weight;
+  int count;
 };
 
 /*
@@ -59,7 +65,7 @@ numsymbols: Number of leaves.
 pool: the node memory pool.
 index: The index of the list in which a new chain or leaf is required.
 */
-static void BoundaryPM(Node* (*lists)[2], Node* leaves, int numsymbols,
+static void BoundaryPM(Node* (*lists)[2], Leaf* leaves, int numsymbols,
                        NodePool* pool, int index) {
   Node* newchain;
   Node* oldchain;
@@ -94,7 +100,7 @@ static void BoundaryPM(Node* (*lists)[2], Node* leaves, int numsymbols,
 }
 
 static void BoundaryPMFinal(Node* (*lists)[2],
-    Node* leaves, int numsymbols, NodePool* pool, int index) {
+    Leaf* leaves, int numsymbols, NodePool* pool, int index) {
   int lastcount = lists[index][1]->count;  /* Count of last chain of list. */
 
   size_t sum = lists[index - 1][0]->weight + lists[index - 1][1]->weight;
@@ -116,7 +122,7 @@ Initializes each list with as lookahead chains the two leaves with lowest
 weights.
 */
 static void InitLists(
-    NodePool* pool, const Node* leaves, int maxbits, Node* (*lists)[2]) {
+    NodePool* pool, const Leaf* leaves, int maxbits, Node* (*lists)[2]) {
   int i;
   Node* node0 = pool->next++;
   Node* node1 = pool->next++;
@@ -128,13 +134,13 @@ static void InitLists(
   }
 }
 
-extern void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths);
+extern void ExtractBitLengths(Node* chain, Leaf* leaves, unsigned* bitlengths);
 
 /*
 Comparator for sorting the leaves. Has the function signature for qsort.
 */
 static int LeafComparator(const void* a, const void* b) {
-  return ((const Node*)a)->weight - ((const Node*)b)->weight;
+  return ((const Leaf*)a)->weight - ((const Leaf*)b)->weight;
 }
 
 int ZopfliLengthLimitedCodeLengths(
@@ -150,7 +156,7 @@ int ZopfliLengthLimitedCodeLengths(
   Node* (*lists)[2];
 
   /* One leaf per symbol. Only numsymbols leaves will be used. */
-  Node* leaves = (Node*)malloc(n * sizeof(*leaves));
+  Leaf* leaves = (Leaf*)malloc(n * sizeof(*leaves));
 
   /* Initialize all bitlengths at 0. */
   for (i = 0; i < n; i++) {
@@ -197,7 +203,7 @@ int ZopfliLengthLimitedCodeLengths(
     }
     leaves[i].weight = (leaves[i].weight << 9) | leaves[i].count;
   }
-  qsort(leaves, numsymbols, sizeof(Node), LeafComparator);
+  qsort(leaves, numsymbols, sizeof(Leaf), LeafComparator);
   for (i = 0; i < numsymbols; i++) {
     leaves[i].weight >>= 9;
   }
