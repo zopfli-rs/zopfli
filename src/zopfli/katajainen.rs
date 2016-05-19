@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use libc::{size_t, c_int, c_uint};
 
 // Bounded package merge algorithm, based on the paper
@@ -74,6 +76,79 @@ pub extern fn ExtractBitLengths(chain: *const Node, leaves: *const Leaf, bitleng
         ptr -= 1;
         value += 1;
     }
+}
+
+struct N {
+    weight: size_t,
+    leaf_count: c_int,
+}
+
+struct L {
+    pub weight: size_t,
+    pub index: size_t,
+}
+impl PartialEq for L {
+    fn eq(&self, other: &Self) -> bool {
+        self.weight == other.weight
+    }
+}
+impl Eq for L { }
+impl Ord for L {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.weight.cmp(&other.weight)
+    }
+}
+impl PartialOrd for L {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+
+struct List {
+    lookahead1: N,
+    lookahead2: N,
+    last_active: N,
+    next_leaf_index: size_t,
+}
+
+pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<size_t> {
+    let mut leaves = vec![];
+
+    // Count used symbols and place them in the leaves.
+    for (i, &freq) in frequencies.iter().enumerate() {
+        if freq != 0 {
+            leaves.push(L { weight: freq, index: i });
+        }
+    }
+
+    // Sort the leaves from least frequent to most frequent.
+    // Add index into the same variable for stable sorting.
+    for leaf in leaves.iter_mut() {
+        leaf.weight = (leaf.weight << 9) | leaf.index;
+    }
+    leaves.sort();
+    for leaf in leaves.iter_mut() {
+        leaf.weight >>= 9;
+    }
+
+    let mut lists = Vec::with_capacity(maxbits as usize);
+    for _ in 0..maxbits {
+        lists.push(List {
+            lookahead1: N { weight: leaves[0].weight, leaf_count: 1 },
+            lookahead2: N { weight: leaves[1].weight, leaf_count: 2 },
+            last_active: N { weight: leaves[1].weight, leaf_count: 2 },
+            next_leaf_index: 2,
+        });
+    }
+
+
+
+
+    let n = frequencies.len();
+
+    let mut result = vec![0; n];
+    result
 }
 
 #[cfg(test)]
