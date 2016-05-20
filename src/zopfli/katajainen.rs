@@ -157,14 +157,9 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
 
     let mut bitlength_value = 1;
     while let Some(leaf_count) = a.next() {
-        println!("leaf_count = {:?}", leaf_count);
         let next_count = *a.peek().unwrap_or(&0);
-        println!("next_count = {:?}", next_count);
         for i in next_count..leaf_count {
-            println!("i = {:?}", i);
-            println!("leaves[i as usize] = {:?}", leaves[i as usize]);
             result[leaves[i as usize].index as usize] = bitlength_value;
-            println!("result = {:?}", result);
         }
         bitlength_value += 1;
     }
@@ -250,39 +245,19 @@ mod test {
         assert_eq!(output, answer);
     }
 
-    // #[test]
-    // fn one_test() {
-    //     let input = [252, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    //     let output = length_limited_code_lengths(&input, 7);
-    //     let answer = vec![1, 0, 6, 4, 3, 3, 3, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    //     assert_eq!(output, answer);
-    // }
-}
+    #[test]
+    fn maxbits_7() {
+        let input = [252, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let output = length_limited_code_lengths(&input, 7);
+        let answer = vec![1, 0, 6, 4, 3, 3, 3, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(output, answer);
+    }
 
-// maxbits: 7
-// frequencies: [252, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]
-// bitlengths: [1, 0, 6, 4, 3, 3, 3, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]
-// maxbits: 7
-// frequencies: [10, 0, 1, 6, 9, 4, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, ]
-// bitlengths: [3, 0, 6, 4, 3, 4, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, ]
-// maxbits: 7
-// frequencies: [4, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, ]
-// bitlengths: [4, 0, 6, 4, 3, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, ]
-// maxbits: 7
-// frequencies: [4, 0, 1, 6, 9, 4, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 1, 26, 0, ]
-// bitlengths: [4, 0, 6, 4, 3, 4, 4, 4, 5, 0, 0, 0, 0, 0, 0, 0, 6, 1, 0, ]
-// maxbits: 7
-// frequencies: [19, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, ]
-// bitlengths: [2, 0, 6, 3, 3, 2, 3, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, ]
-// maxbits: 7
-// frequencies: [8, 0, 1, 6, 9, 4, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, ]
-// bitlengths: [3, 0, 5, 3, 2, 3, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 4, ]
-// maxbits: 7
-// frequencies: [4, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, ]
-// bitlengths: [4, 0, 6, 3, 2, 2, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 5, 4, ]
-// maxbits: 7
-// frequencies: [4, 0, 1, 6, 9, 4, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, ]
-// bitlengths: [3, 0, 6, 3, 2, 3, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 6, 4, 4, ]
-// maxbits: 15
-// frequencies: [0, 0, 0, 0, 0, 0, 18, 0, 6, 0, 12, 2, 14, 9, 27, 15, 23, 15, 17, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]
-// bitlengths: [0, 0, 0, 0, 0, 0, 3, 0, 5, 0, 4, 6, 4, 4, 3, 4, 3, 3, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]
+    #[test]
+    fn maxbits_15() {
+        let input = [0, 0, 0, 0, 0, 0, 18, 0, 6, 0, 12, 2, 14, 9, 27, 15, 23, 15, 17, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let output = length_limited_code_lengths(&input, 15);
+        let answer = vec! [0, 0, 0, 0, 0, 0, 3, 0, 5, 0, 4, 6, 4, 4, 3, 4, 3, 3, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(output, answer);
+    }
+}
