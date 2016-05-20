@@ -123,6 +123,23 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
         }
     }
 
+    // Short circuit some special cases
+    if leaves.is_empty() {
+        // There are no non-zero frequencies.
+        return vec![0; frequencies.len()];
+    }
+    if leaves.len() == 1 {
+        let mut result = vec![0; frequencies.len()];
+        result[leaves[0].index] = 1;
+        return result;
+    }
+    if leaves.len() == 2 {
+        let mut result = vec![0; frequencies.len()];
+        result[leaves[0].index] = 1;
+        result[leaves[1].index] = 1;
+        return result;
+    }
+
     // Sort the leaves from least frequent to most frequent.
     // Add index into the same variable for stable sorting.
     for leaf in leaves.iter_mut() {
@@ -257,6 +274,30 @@ mod test {
         let input = [0, 0, 0, 0, 0, 0, 18, 0, 6, 0, 12, 2, 14, 9, 27, 15, 23, 15, 17, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let output = length_limited_code_lengths(&input, 15);
         let answer = vec! [0, 0, 0, 0, 0, 0, 3, 0, 5, 0, 4, 6, 4, 4, 3, 4, 3, 3, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(output, answer);
+    }
+
+    #[test]
+    fn no_frequencies() {
+        let input = [0, 0, 0, 0, 0];
+        let output = length_limited_code_lengths(&input, 7);
+        let answer = vec![0, 0, 0, 0, 0];
+        assert_eq!(output, answer);
+    }
+
+    #[test]
+    fn only_one_frequency() {
+        let input = [0, 10, 0];
+        let output = length_limited_code_lengths(&input, 7);
+        let answer = vec![0, 1, 0];
+        assert_eq!(output, answer);
+    }
+
+    #[test]
+    fn only_two_frequencies() {
+        let input = [0, 0, 0, 0, 252, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let output = length_limited_code_lengths(&input, 7);
+        let answer = [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         assert_eq!(output, answer);
     }
 }
