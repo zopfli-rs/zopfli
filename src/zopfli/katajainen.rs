@@ -78,11 +78,14 @@ pub extern fn ExtractBitLengths(chain: *const Node, leaves: *const Leaf, bitleng
     }
 }
 
+// #[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct N {
     weight: size_t,
-    leaf_count: c_int,
+    leaf_counts: Vec<c_int>,
 }
 
+#[derive(Debug)]
 struct L {
     pub weight: size_t,
     pub index: size_t,
@@ -104,11 +107,10 @@ impl PartialOrd for L {
     }
 }
 
-
+#[derive(Debug)]
 struct List {
     lookahead1: N,
     lookahead2: N,
-    last_active: N,
     next_leaf_index: size_t,
 }
 
@@ -135,20 +137,97 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     let mut lists = Vec::with_capacity(maxbits as usize);
     for _ in 0..maxbits {
         lists.push(List {
-            lookahead1: N { weight: leaves[0].weight, leaf_count: 1 },
-            lookahead2: N { weight: leaves[1].weight, leaf_count: 2 },
-            last_active: N { weight: leaves[1].weight, leaf_count: 2 },
+            lookahead1: N { weight: leaves[0].weight, leaf_counts: vec![1] },
+            lookahead2: N { weight: leaves[1].weight, leaf_counts: vec![2] },
             next_leaf_index: 2,
         });
     }
 
-
-
+    // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
+    // are already created in the initialization. Each boundary_pm run creates one.
+    let num_boundary_pm_runs = 2 * leaves.len() - 4;
+    for _ in 0..num_boundary_pm_runs {
+        lists = boundary_pm(lists, &leaves);
+    }
 
     let n = frequencies.len();
-
     let mut result = vec![0; n];
+
+    let mut a = lists.pop().unwrap().lookahead2.leaf_counts.into_iter().rev().peekable();
+
+    let mut bitlength_value = 1;
+    while let Some(leaf_count) = a.next() {
+        println!("leaf_count = {:?}", leaf_count);
+        let next_count = *a.peek().unwrap_or(&0);
+        println!("next_count = {:?}", next_count);
+        for i in next_count..leaf_count {
+            println!("i = {:?}", i);
+            println!("leaves[i as usize] = {:?}", leaves[i as usize]);
+            result[leaves[i as usize].index as usize] = bitlength_value;
+            println!("result = {:?}", result);
+        }
+        bitlength_value += 1;
+    }
+
     result
+}
+
+fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<L>) -> Vec<List> {
+    let mut current_list = lists.pop().unwrap();
+    if lists.is_empty() && current_list.next_leaf_index == leaves.len() {
+        // We've added all the leaves to the lowest list, so we're done here
+        lists.push(current_list);
+        return lists;
+    }
+
+    current_list.lookahead1 = current_list.lookahead2;
+
+    if lists.is_empty() {
+        // We're in the lowest list, just add another leaf to the lookaheads
+        // There will always be more leaves to be added on level 0 so this is safe.
+        let ref next_leaf = leaves[current_list.next_leaf_index];
+        current_list.lookahead2 = N {
+            weight: next_leaf.weight,
+            leaf_counts: vec![current_list.lookahead1.leaf_counts.last().unwrap() + 1],
+        };
+        current_list.next_leaf_index += 1;
+        lists.push(current_list);
+    } else {
+        // We're at a list other than the lowest list.
+        let previous_list = lists.pop().unwrap();
+        let weight_sum = previous_list.lookahead1.weight + previous_list.lookahead2.weight;
+
+        if current_list.next_leaf_index < leaves.len() && weight_sum > leaves[current_list.next_leaf_index].weight {
+            // The next leaf goes next; counting itself makes the leaf_count increase by one.
+            let mut last_leaf_counts = current_list.lookahead1.leaf_counts.clone();
+            let mut last_count = last_leaf_counts.pop().unwrap();
+            last_count += 1;
+            last_leaf_counts.push(last_count);
+            current_list.lookahead2 = N {
+                weight: leaves[current_list.next_leaf_index].weight,
+                leaf_counts: last_leaf_counts,
+            };
+            current_list.next_leaf_index += 1;
+            lists.push(previous_list);
+            lists.push(current_list);
+        } else {
+            // Make a tree from the lookaheads from the previous list; that goes next.
+            // This is not a leaf node, so the leaf count stays the same.
+            let mut last_leaf_counts = previous_list.lookahead2.leaf_counts.clone();
+            last_leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
+            current_list.lookahead2 = N {
+                weight: weight_sum,
+                leaf_counts: last_leaf_counts,
+            };
+            // The previous list needs two new lookahead nodes.
+            lists.push(previous_list);
+            lists = boundary_pm(lists, leaves);
+            lists = boundary_pm(lists, leaves);
+            lists.push(current_list);
+        }
+    }
+
+    lists
 }
 
 #[cfg(test)]
