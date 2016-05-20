@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::slice;
 
 use libc::{size_t, c_int, c_uint};
 
@@ -112,6 +113,22 @@ struct List {
     lookahead2: N,
     next_leaf_index: size_t,
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLengthLimitedCodeLengths(frequencies: *const size_t, n: c_int, maxbits: c_int, bitlengths: *mut c_uint) -> c_int {
+    let freqs = unsafe { slice::from_raw_parts(frequencies, n as usize) };
+    let result = length_limited_code_lengths(freqs, maxbits);
+
+    for (i, res) in result.into_iter().enumerate() {
+        unsafe {
+            *bitlengths.offset(i as isize) = res as c_uint;
+        }
+    }
+
+    return 0;
+}
+
 
 pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<size_t> {
     let mut leaves = vec![];
