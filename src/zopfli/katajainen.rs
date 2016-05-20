@@ -78,8 +78,7 @@ pub extern fn ExtractBitLengths(chain: *const Node, leaves: *const Leaf, bitleng
     }
 }
 
-// #[derive(Clone, Copy, Debug)]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct N {
     weight: size_t,
     leaf_counts: Vec<c_int>,
