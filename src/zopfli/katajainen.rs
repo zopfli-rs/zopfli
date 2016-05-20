@@ -7,101 +7,29 @@ use libc::{size_t, c_int, c_uint};
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
-/// Nodes forming chains.
-#[repr(C)]
-pub struct Node {
-  weight: size_t,     // Total weight (symbol count) of this chain.
-  tail: *const Node,  // Previous node(s) of this chain, or 0 if none.
-  count: c_int,       // Leaf symbol index, or number of leaves before this chain.
-}
-
-#[repr(C)]
-pub struct Leaf {
-  weight: size_t,     // Total weight (symbol count) of this chain.
-  count: c_int,       // Leaf symbol index, or number of leaves before this chain.
-}
-
-/// Memory pool for nodes.
-#[repr(C)]
-pub struct NodePool {
-  next: *const Node,   // Pointer to a possibly free node in the pool.
-}
-
-
-/// Initializes a chain node with the given values and marks it as in use.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn InitNode(weight: size_t, count: c_int, tail: *const Node, node_ptr: *mut Node) {
-    let node = unsafe {
-        assert!(!node_ptr.is_null());
-        &mut *node_ptr
-    };
-
-    node.weight = weight;
-    node.count = count;
-    node.tail = tail;
-}
-
-/// Converts result of boundary package-merge to the bitlengths. The result in the
-/// last chain of the last list contains the amount of active leaves in each list.
-/// chain: Chain to extract the bit length from (last chain from last list).
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ExtractBitLengths(chain: *const Node, leaves: *const Leaf, bitlengths: *mut c_uint) {
-    let mut counts = [0; 16];
-    let mut end = 16;
-    let mut ptr = 15;
-    let mut value = 1;
-
-    let mut node_ptr = chain;
-    while !node_ptr.is_null() {
-        let node = unsafe {
-           &*node_ptr
-        };
-
-        end -= 1;
-        counts[end] = node.count;
-
-        node_ptr = node.tail;
-    }
-
-    let mut val = counts[15];
-    while ptr >= end {
-        while val > counts[ptr - 1] {
-            unsafe {
-                let leaf = &*leaves.offset((val - 1) as isize);
-                *bitlengths.offset(leaf.count as isize) = value;
-            }
-            val -= 1;
-        }
-        ptr -= 1;
-        value += 1;
-    }
-}
-
 #[derive(Debug)]
-struct N {
+struct Node {
     weight: size_t,
     leaf_counts: Vec<c_int>,
 }
 
 #[derive(Debug)]
-struct L {
+struct Leaf {
     pub weight: size_t,
     pub index: size_t,
 }
-impl PartialEq for L {
+impl PartialEq for Leaf {
     fn eq(&self, other: &Self) -> bool {
         self.weight == other.weight
     }
 }
-impl Eq for L { }
-impl Ord for L {
+impl Eq for Leaf { }
+impl Ord for Leaf {
     fn cmp(&self, other: &Self) -> Ordering {
         self.weight.cmp(&other.weight)
     }
 }
-impl PartialOrd for L {
+impl PartialOrd for Leaf {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -109,8 +37,8 @@ impl PartialOrd for L {
 
 #[derive(Debug)]
 struct List {
-    lookahead1: N,
-    lookahead2: N,
+    lookahead1: Node,
+    lookahead2: Node,
     next_leaf_index: size_t,
 }
 
@@ -136,7 +64,7 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     // Count used symbols and place them in the leaves.
     for (i, &freq) in frequencies.iter().enumerate() {
         if freq != 0 {
-            leaves.push(L { weight: freq, index: i });
+            leaves.push(Leaf { weight: freq, index: i });
         }
     }
 
@@ -170,8 +98,8 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     let mut lists = Vec::with_capacity(maxbits as usize);
     for _ in 0..maxbits {
         lists.push(List {
-            lookahead1: N { weight: leaves[0].weight, leaf_counts: vec![1] },
-            lookahead2: N { weight: leaves[1].weight, leaf_counts: vec![2] },
+            lookahead1: Node { weight: leaves[0].weight, leaf_counts: vec![1] },
+            lookahead2: Node { weight: leaves[1].weight, leaf_counts: vec![2] },
             next_leaf_index: 2,
         });
     }
@@ -200,7 +128,7 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     result
 }
 
-fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<L>) -> Vec<List> {
+fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
     let mut current_list = lists.pop().unwrap();
     if lists.is_empty() && current_list.next_leaf_index == leaves.len() {
         // We've added all the leaves to the lowest list, so we're done here
@@ -214,7 +142,7 @@ fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<L>) -> Vec<List> {
         // We're in the lowest list, just add another leaf to the lookaheads
         // There will always be more leaves to be added on level 0 so this is safe.
         let ref next_leaf = leaves[current_list.next_leaf_index];
-        current_list.lookahead2 = N {
+        current_list.lookahead2 = Node {
             weight: next_leaf.weight,
             leaf_counts: vec![current_list.lookahead1.leaf_counts.last().unwrap() + 1],
         };
@@ -231,7 +159,7 @@ fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<L>) -> Vec<List> {
             let mut last_count = last_leaf_counts.pop().unwrap();
             last_count += 1;
             last_leaf_counts.push(last_count);
-            current_list.lookahead2 = N {
+            current_list.lookahead2 = Node {
                 weight: leaves[current_list.next_leaf_index].weight,
                 leaf_counts: last_leaf_counts,
             };
@@ -243,7 +171,7 @@ fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<L>) -> Vec<List> {
             // This is not a leaf node, so the leaf count stays the same.
             let mut last_leaf_counts = previous_list.lookahead2.leaf_counts.clone();
             last_leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
-            current_list.lookahead2 = N {
+            current_list.lookahead2 = Node {
                 weight: weight_sum,
                 leaf_counts: last_leaf_counts,
             };
