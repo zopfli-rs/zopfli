@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::slice;
+use std::{slice, mem};
 
 use libc::{size_t, c_int, c_uint};
 
@@ -136,7 +136,7 @@ fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
         return lists;
     }
 
-    current_list.lookahead1 = current_list.lookahead2;
+    mem::swap(&mut current_list.lookahead1, &mut current_list.lookahead2);
 
     if lists.is_empty() {
         // We're in the lowest list, just add another leaf to the lookaheads
