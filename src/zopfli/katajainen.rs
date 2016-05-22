@@ -57,7 +57,6 @@ pub extern fn ZopfliLengthLimitedCodeLengths(frequencies: *const size_t, n: c_in
     return 0;
 }
 
-
 pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<size_t> {
     let mut leaves = vec![];
 
