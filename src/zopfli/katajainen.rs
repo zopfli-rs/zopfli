@@ -141,6 +141,40 @@ fn lowest_list(mut current_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>)
     lists
 }
 
+fn next_leaf(mut current_list: List, previous_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
+    // The next leaf goes next; counting itself makes the leaf_count increase by one.
+    let mut last_leaf_counts = current_list.lookahead1.leaf_counts.clone();
+    let mut last_count = last_leaf_counts.pop().unwrap();
+    last_count += 1;
+    last_leaf_counts.push(last_count);
+    current_list.lookahead2 = Node {
+        weight: leaves[current_list.next_leaf_index].weight,
+        leaf_counts: last_leaf_counts,
+    };
+    current_list.next_leaf_index += 1;
+    lists.push(previous_list);
+    lists.push(current_list);
+    lists
+}
+
+fn next_tree(mut current_list: List, previous_list: List, weight_sum: size_t, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
+    // Make a tree from the lookaheads from the previous list; that goes next.
+    // This is not a leaf node, so the leaf count stays the same.
+    let mut last_leaf_counts = previous_list.lookahead2.leaf_counts.clone();
+    last_leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
+    current_list.lookahead2 = Node {
+        weight: weight_sum,
+        leaf_counts: last_leaf_counts,
+    };
+    // The previous list needs two new lookahead nodes.
+    lists.push(previous_list);
+    lists = boundary_pm(lists, leaves);
+    lists = boundary_pm(lists, leaves);
+    lists.push(current_list);
+
+    lists
+}
+
 fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
     let mut current_list = lists.pop().unwrap();
     if lists.is_empty() && current_list.next_leaf_index == leaves.len() {
@@ -159,32 +193,9 @@ fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
         let weight_sum = previous_list.lookahead1.weight + previous_list.lookahead2.weight;
 
         if current_list.next_leaf_index < leaves.len() && weight_sum > leaves[current_list.next_leaf_index].weight {
-            // The next leaf goes next; counting itself makes the leaf_count increase by one.
-            let mut last_leaf_counts = current_list.lookahead1.leaf_counts.clone();
-            let mut last_count = last_leaf_counts.pop().unwrap();
-            last_count += 1;
-            last_leaf_counts.push(last_count);
-            current_list.lookahead2 = Node {
-                weight: leaves[current_list.next_leaf_index].weight,
-                leaf_counts: last_leaf_counts,
-            };
-            current_list.next_leaf_index += 1;
-            lists.push(previous_list);
-            lists.push(current_list);
+            lists = next_leaf(current_list, previous_list, lists, leaves);
         } else {
-            // Make a tree from the lookaheads from the previous list; that goes next.
-            // This is not a leaf node, so the leaf count stays the same.
-            let mut last_leaf_counts = previous_list.lookahead2.leaf_counts.clone();
-            last_leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
-            current_list.lookahead2 = Node {
-                weight: weight_sum,
-                leaf_counts: last_leaf_counts,
-            };
-            // The previous list needs two new lookahead nodes.
-            lists.push(previous_list);
-            lists = boundary_pm(lists, leaves);
-            lists = boundary_pm(lists, leaves);
-            lists.push(current_list);
+            lists = next_tree(current_list, previous_list, weight_sum, lists, leaves);
         }
     }
 
