@@ -131,10 +131,9 @@ fn lowest_list(mut current_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>)
     // We're in the lowest list, just add another leaf to the lookaheads
     // There will always be more leaves to be added on level 0 so this is safe.
     let ref next_leaf = leaves[current_list.next_leaf_index];
-    current_list.lookahead2 = Node {
-        weight: next_leaf.weight,
-        leaf_counts: vec![current_list.lookahead1.leaf_counts.last().unwrap() + 1],
-    };
+    current_list.lookahead2.weight = next_leaf.weight;
+
+    current_list.lookahead2.leaf_counts[0] = current_list.lookahead1.leaf_counts.last().unwrap() + 1;
     current_list.next_leaf_index += 1;
     lists.push(current_list);
     lists
@@ -159,12 +158,12 @@ fn next_leaf(mut current_list: List, previous_list: List, mut lists: Vec<List>, 
 fn next_tree(mut current_list: List, previous_list: List, weight_sum: size_t, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
     // Make a tree from the lookaheads from the previous list; that goes next.
     // This is not a leaf node, so the leaf count stays the same.
-    let mut last_leaf_counts = previous_list.lookahead2.leaf_counts.clone();
-    last_leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
-    current_list.lookahead2 = Node {
-        weight: weight_sum,
-        leaf_counts: last_leaf_counts,
-    };
+
+    current_list.lookahead2.weight = weight_sum;
+    current_list.lookahead2.leaf_counts.clear();
+    current_list.lookahead2.leaf_counts.extend(previous_list.lookahead2.leaf_counts.iter());
+    current_list.lookahead2.leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
+
     // The previous list needs two new lookahead nodes.
     lists.push(previous_list);
     lists = boundary_pm(lists, leaves);
