@@ -141,14 +141,11 @@ fn lowest_list(mut current_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>)
 
 fn next_leaf(mut current_list: List, previous_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
     // The next leaf goes next; counting itself makes the leaf_count increase by one.
-    let mut last_leaf_counts = current_list.lookahead1.leaf_counts.clone();
-    let mut last_count = last_leaf_counts.pop().unwrap();
-    last_count += 1;
-    last_leaf_counts.push(last_count);
-    current_list.lookahead2 = Node {
-        weight: leaves[current_list.next_leaf_index].weight,
-        leaf_counts: last_leaf_counts,
-    };
+    current_list.lookahead2.weight = leaves[current_list.next_leaf_index].weight;
+    current_list.lookahead2.leaf_counts.clear();
+    current_list.lookahead2.leaf_counts.extend(current_list.lookahead1.leaf_counts.iter());
+    let last_index = current_list.lookahead2.leaf_counts.len() - 1;
+    current_list.lookahead2.leaf_counts[last_index] += 1;
     current_list.next_leaf_index += 1;
     lists.push(previous_list);
     lists.push(current_list);
