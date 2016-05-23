@@ -107,7 +107,7 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     // are already created in the initialization. Each boundary_pm run creates one.
     let num_boundary_pm_runs = 2 * leaves.len() - 4;
     for _ in 0..num_boundary_pm_runs {
-        lists = boundary_pm(lists, &leaves);
+        boundary_pm(&mut lists, &leaves);
     }
 
     let n = frequencies.len();
@@ -127,7 +127,7 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     result
 }
 
-fn lowest_list(mut current_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
+fn lowest_list(mut current_list: List, lists: &mut Vec<List>, leaves: &Vec<Leaf>) {
     // We're in the lowest list, just add another leaf to the lookaheads
     // There will always be more leaves to be added on level 0 so this is safe.
     let ref next_leaf = leaves[current_list.next_leaf_index];
@@ -136,10 +136,9 @@ fn lowest_list(mut current_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>)
     current_list.lookahead2.leaf_counts[0] = current_list.lookahead1.leaf_counts.last().unwrap() + 1;
     current_list.next_leaf_index += 1;
     lists.push(current_list);
-    lists
 }
 
-fn next_leaf(mut current_list: List, previous_list: List, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
+fn next_leaf(mut current_list: List, previous_list: List, lists: &mut Vec<List>, leaves: &Vec<Leaf>) {
     // The next leaf goes next; counting itself makes the leaf_count increase by one.
     current_list.lookahead2.weight = leaves[current_list.next_leaf_index].weight;
     current_list.lookahead2.leaf_counts.clear();
@@ -149,10 +148,9 @@ fn next_leaf(mut current_list: List, previous_list: List, mut lists: Vec<List>, 
     current_list.next_leaf_index += 1;
     lists.push(previous_list);
     lists.push(current_list);
-    lists
 }
 
-fn next_tree(mut current_list: List, previous_list: List, weight_sum: size_t, mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
+fn next_tree(mut current_list: List, previous_list: List, weight_sum: size_t, lists: &mut Vec<List>, leaves: &Vec<Leaf>) {
     // Make a tree from the lookaheads from the previous list; that goes next.
     // This is not a leaf node, so the leaf count stays the same.
 
@@ -163,38 +161,34 @@ fn next_tree(mut current_list: List, previous_list: List, weight_sum: size_t, mu
 
     // The previous list needs two new lookahead nodes.
     lists.push(previous_list);
-    lists = boundary_pm(lists, leaves);
-    lists = boundary_pm(lists, leaves);
+    boundary_pm(lists, leaves);
+    boundary_pm(lists, leaves);
     lists.push(current_list);
-
-    lists
 }
 
-fn boundary_pm(mut lists: Vec<List>, leaves: &Vec<Leaf>) -> Vec<List> {
+fn boundary_pm(lists: &mut Vec<List>, leaves: &Vec<Leaf>) {
     let mut current_list = lists.pop().unwrap();
     if lists.is_empty() && current_list.next_leaf_index == leaves.len() {
         // We've added all the leaves to the lowest list, so we're done here
         lists.push(current_list);
-        return lists;
+        return;
     }
 
     mem::swap(&mut current_list.lookahead1, &mut current_list.lookahead2);
 
     if lists.is_empty() {
-        lists = lowest_list(current_list, lists, leaves);
+        lowest_list(current_list, lists, leaves);
     } else {
         // We're at a list other than the lowest list.
         let previous_list = lists.pop().unwrap();
         let weight_sum = previous_list.lookahead1.weight + previous_list.lookahead2.weight;
 
         if current_list.next_leaf_index < leaves.len() && weight_sum > leaves[current_list.next_leaf_index].weight {
-            lists = next_leaf(current_list, previous_list, lists, leaves);
+            next_leaf(current_list, previous_list, lists, leaves);
         } else {
-            lists = next_tree(current_list, previous_list, weight_sum, lists, leaves);
+            next_tree(current_list, previous_list, weight_sum, lists, leaves);
         }
     }
-
-    lists
 }
 
 #[cfg(test)]
