@@ -199,3 +199,15 @@ const LENGTH_SYMBOL_EXTRA_BITS_TABLE: [c_int; 29] = [
 pub extern fn ZopfliGetLengthSymbolExtraBits(s: c_int) -> c_int {
     LENGTH_SYMBOL_EXTRA_BITS_TABLE[s as usize - 257]
 }
+
+const DIST_SYMBOL_EXTRA_BITS_TABLE: [c_int; 30] = [
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+    9, 9, 10, 10, 11, 11, 12, 12, 13, 13
+];
+
+/// Gets the amount of extra bits for the given distance symbol.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliGetDistSymbolExtraBits(s: c_int) -> c_int {
+    DIST_SYMBOL_EXTRA_BITS_TABLE[s as usize]
+}
