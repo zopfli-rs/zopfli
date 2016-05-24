@@ -55,8 +55,8 @@ struct List {
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliLengthLimitedCodeLengths(frequencies: *const size_t, n: c_int, maxbits: c_int, bitlengths: *mut c_uint) -> c_int {
-    let freqs = unsafe { slice::from_raw_parts(frequencies, n as usize) };
+pub extern fn ZopfliLengthLimitedCodeLengths(frequencies: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) -> c_int {
+    let freqs = unsafe { slice::from_raw_parts(frequencies, n) };
     let result = length_limited_code_lengths(freqs, maxbits);
 
     for (i, res) in result.into_iter().enumerate() {

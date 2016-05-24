@@ -1,6 +1,8 @@
 use std::{slice};
 
-use libc::{c_uint, size_t};
+use libc::{c_uint, size_t, c_int};
+
+use katajainen::ZopfliLengthLimitedCodeLengths;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -39,4 +41,10 @@ pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxb
             next_code[len] += 1;
         }
     }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCalculateBitLengths(count: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) {
+    ZopfliLengthLimitedCodeLengths(count, n, maxbits, bitlengths);
 }

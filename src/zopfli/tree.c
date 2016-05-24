@@ -29,9 +29,4 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 extern void ZopfliLengthsToSymbols(const unsigned* lengths, size_t n, unsigned maxbits, unsigned* symbols);
 
-void ZopfliCalculateBitLengths(const size_t* count, size_t n, int maxbits,
-                               unsigned* bitlengths) {
-  int error = ZopfliLengthLimitedCodeLengths(count, n, maxbits, bitlengths);
-  (void) error;
-  assert(!error);
-}
+extern void ZopfliCalculateBitLengths(const size_t* count, size_t n, int maxbits, unsigned* bitlengths);
