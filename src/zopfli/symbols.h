@@ -36,9 +36,7 @@ Utilities for using the lz77 symbols of the deflate spec.
 
 extern int ZopfliGetDistExtraBits(int dist);
 extern int ZopfliGetDistExtraBitsValue(int dist);
-
 extern int ZopfliGetDistSymbol(int dist);
-
 extern int ZopfliGetLengthExtraBits(int l);
 
 /* Gets value of the extra bits for the given length, cfr. the DEFLATE spec. */
