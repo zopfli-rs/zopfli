@@ -13,6 +13,17 @@ struct Node {
     leaf_counts: Vec<c_int>,
 }
 
+impl Node {
+    pub fn new(weight: size_t, initial_count: c_int, capacity: usize) -> Node {
+        let mut n = Node {
+            weight: weight,
+            leaf_counts: Vec::with_capacity(capacity),
+        };
+        n.leaf_counts.push(initial_count);
+        n
+    }
+}
+
 #[derive(Debug)]
 struct Leaf {
     pub weight: size_t,
@@ -94,18 +105,20 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
         leaf.weight >>= 9;
     }
 
+    let max_num_leaves = 2 * leaves.len() - 2;
+
     let mut lists = Vec::with_capacity(maxbits as usize);
     for _ in 0..maxbits {
         lists.push(List {
-            lookahead1: Node { weight: leaves[0].weight, leaf_counts: vec![1] },
-            lookahead2: Node { weight: leaves[1].weight, leaf_counts: vec![2] },
+            lookahead1: Node::new(leaves[0].weight, 1, max_num_leaves),
+            lookahead2: Node::new(leaves[1].weight, 2, max_num_leaves),
             next_leaf_index: 2,
         });
     }
 
     // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
     // are already created in the initialization. Each boundary_pm run creates one.
-    let num_boundary_pm_runs = 2 * leaves.len() - 4;
+    let num_boundary_pm_runs = max_num_leaves - 2;
     for _ in 0..num_boundary_pm_runs {
         boundary_pm_toplevel(&mut lists[..], &leaves);
     }
