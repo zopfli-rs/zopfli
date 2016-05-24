@@ -2,6 +2,9 @@ use std::slice;
 
 use libc::{c_uint, c_int, size_t};
 
+use lz77::{ZopfliLZ77Store, lz77_store_from_c};
+use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits};
+
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn GetFixedTree(ll_lengths: *mut c_uint, d_lengths: *mut c_uint) {
@@ -154,4 +157,33 @@ pub extern fn PatchDistanceCodesForBuggyDecoders(d_lengths: *mut c_uint) {
             *d_lengths.offset(index) = 1;
         }
     }
+}
+
+/// Same as CalculateBlockSymbolSize, but for block size smaller than histogram
+/// size.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CalculateBlockSymbolSizeSmall(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+    let rust_store = lz77_store_from_c(lz77_ptr);
+    let rs = unsafe { &*rust_store };
+    let mut result = 0;
+
+    for i in lstart..lend {
+        assert!(i < rs.size());
+        let litlens_i = rs.litlens[i];
+        let dists_i = rs.dists[i];
+        assert!(litlens_i < 259);
+        if dists_i == 0 {
+            result += unsafe { *ll_lengths.offset(litlens_i as isize) };
+        } else {
+            let ll_symbol = ZopfliGetLengthSymbol(litlens_i as c_int);
+            let d_symbol = ZopfliGetDistSymbol(dists_i as c_int);
+            result += unsafe { *ll_lengths.offset(ll_symbol as isize) };
+            result += unsafe { *d_lengths.offset(d_symbol as isize) };
+            result += ZopfliGetLengthSymbolExtraBits(ll_symbol) as c_uint;
+            result += ZopfliGetDistSymbolExtraBits(d_symbol) as c_uint;
+        }
+    }
+    result += unsafe { *ll_lengths.offset(256) }; // end symbol
+    result as size_t
 }

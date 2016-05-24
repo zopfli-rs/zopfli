@@ -66,6 +66,10 @@ impl Lz77Store {
        }
     }
 
+    pub fn size(&self) -> usize {
+        self.litlens.len()
+    }
+
     pub fn lit_len_dist(&mut self, length: c_ushort, dist: c_ushort, pos: size_t) {
         let origsize = self.litlens.len();
         let llstart = ZOPFLI_NUM_LL * (origsize / ZOPFLI_NUM_LL);

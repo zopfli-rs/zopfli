@@ -309,33 +309,7 @@ static void AddLZ77Data(const ZopfliLZ77Store* lz77,
 
 extern void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths);
 
-/*
-Same as CalculateBlockSymbolSize, but for block size smaller than histogram
-size.
-*/
-static size_t CalculateBlockSymbolSizeSmall(const unsigned* ll_lengths,
-                                            const unsigned* d_lengths,
-                                            const ZopfliLZ77Store* lz77,
-                                            size_t lstart, size_t lend) {
-  size_t result = 0;
-  size_t i;
-  for (i = lstart; i < lend; i++) {
-    assert(i < lz77->size);
-    assert(lz77->litlens[i] < 259);
-    if (lz77->dists[i] == 0) {
-      result += ll_lengths[lz77->litlens[i]];
-    } else {
-      int ll_symbol = ZopfliGetLengthSymbol(lz77->litlens[i]);
-      int d_symbol = ZopfliGetDistSymbol(lz77->dists[i]);
-      result += ll_lengths[ll_symbol];
-      result += d_lengths[d_symbol];
-      result += ZopfliGetLengthSymbolExtraBits(ll_symbol);
-      result += ZopfliGetDistSymbolExtraBits(d_symbol);
-    }
-  }
-  result += ll_lengths[256]; /*end symbol*/
-  return result;
-}
+extern size_t CalculateBlockSymbolSizeSmall(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
 /*
 Same as CalculateBlockSymbolSize, but with the histogram provided by the caller.
