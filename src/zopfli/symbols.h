@@ -35,33 +35,7 @@ Utilities for using the lz77 symbols of the deflate spec.
 #endif
 
 extern int ZopfliGetDistExtraBits(int dist);
-
-/* Gets value of the extra bits for the given dist, cfr. the DEFLATE spec. */
-static int ZopfliGetDistExtraBitsValue(int dist) {
-#ifdef ZOPFLI_HAS_BUILTIN_CLZ
-  if (dist < 5) {
-    return 0;
-  } else {
-    int l = 31 ^ __builtin_clz(dist - 1); /* log2(dist - 1) */
-    return (dist - (1 + (1 << l))) & ((1 << (l - 1)) - 1);
-  }
-#else
-  if (dist < 5) return 0;
-  else if (dist < 9) return (dist - 5) & 1;
-  else if (dist < 17) return (dist - 9) & 3;
-  else if (dist < 33) return (dist - 17) & 7;
-  else if (dist < 65) return (dist - 33) & 15;
-  else if (dist < 129) return (dist - 65) & 31;
-  else if (dist < 257) return (dist - 129) & 63;
-  else if (dist < 513) return (dist - 257) & 127;
-  else if (dist < 1025) return (dist - 513) & 255;
-  else if (dist < 2049) return (dist - 1025) & 511;
-  else if (dist < 4097) return (dist - 2049) & 1023;
-  else if (dist < 8193) return (dist - 4097) & 2047;
-  else if (dist < 16385) return (dist - 8193) & 4095;
-  else return (dist - 16385) & 8191;
-#endif
-}
+extern int ZopfliGetDistExtraBitsValue(int dist);
 
 extern int ZopfliGetDistSymbol(int dist);
 
