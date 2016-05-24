@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
-use std::{slice, mem};
+use std::{mem};
 
-use libc::{size_t, c_int, c_uint};
+use libc::{size_t, c_int};
 
 // Bounded package merge algorithm, based on the paper
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
@@ -51,21 +51,6 @@ struct List {
     lookahead1: Node,
     lookahead2: Node,
     next_leaf_index: size_t,
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLengthLimitedCodeLengths(frequencies: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) -> c_int {
-    let freqs = unsafe { slice::from_raw_parts(frequencies, n) };
-    let result = length_limited_code_lengths(freqs, maxbits);
-
-    for (i, res) in result.into_iter().enumerate() {
-        unsafe {
-            *bitlengths.offset(i as isize) = res as c_uint;
-        }
-    }
-
-    return 0;
 }
 
 pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<size_t> {

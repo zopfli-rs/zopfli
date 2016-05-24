@@ -2,7 +2,7 @@ use std::{slice};
 
 use libc::{c_uint, size_t, c_int};
 
-use katajainen::ZopfliLengthLimitedCodeLengths;
+use katajainen::length_limited_code_lengths;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -45,6 +45,13 @@ pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxb
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliCalculateBitLengths(count: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) {
-    ZopfliLengthLimitedCodeLengths(count, n, maxbits, bitlengths);
+pub extern fn ZopfliCalculateBitLengths(frequencies: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) {
+    let freqs = unsafe { slice::from_raw_parts(frequencies, n) };
+    let result = length_limited_code_lengths(freqs, maxbits);
+
+    for (i, res) in result.into_iter().enumerate() {
+        unsafe {
+            *bitlengths.offset(i as isize) = res as c_uint;
+        }
+    }
 }
