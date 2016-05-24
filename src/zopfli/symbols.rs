@@ -187,3 +187,15 @@ const LENGTH_EXTRA_BITS_VALUE: [c_int; 259] = [
 pub extern fn ZopfliGetLengthExtraBitsValue(l: c_int) -> c_int {
     LENGTH_EXTRA_BITS_VALUE[l as usize]
 }
+
+const LENGTH_SYMBOL_EXTRA_BITS_TABLE: [c_int; 29] = [
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
+];
+
+/// Gets the amount of extra bits for the given length symbol.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliGetLengthSymbolExtraBits(s: c_int) -> c_int {
+    LENGTH_SYMBOL_EXTRA_BITS_TABLE[s as usize - 257]
+}

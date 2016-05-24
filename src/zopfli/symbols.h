@@ -40,15 +40,7 @@ extern int ZopfliGetDistSymbol(int dist);
 extern int ZopfliGetLengthExtraBits(int l);
 extern int ZopfliGetLengthExtraBitsValue(int l);
 extern int ZopfliGetLengthSymbol(int l);
-
-/* Gets the amount of extra bits for the given length symbol. */
-static int ZopfliGetLengthSymbolExtraBits(int s) {
-  static const int table[29] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
-  };
-  return table[s - 257];
-}
+extern int ZopfliGetLengthSymbolExtraBits(int s);
 
 /* Gets the amount of extra bits for the given distance symbol. */
 static int ZopfliGetDistSymbolExtraBits(int s) {
