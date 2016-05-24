@@ -151,7 +151,8 @@ fn next_leaf(lists: &mut [List], leaves: &Vec<Leaf>, current_list_index: usize) 
 }
 
 fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &Vec<Leaf>, current_list_index: usize) {
-    let previous_list_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.clone();
+    let num_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.len();
+    let previous_list_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.as_ptr();
     {
         let ref mut current_list = lists[current_list_index];
 
@@ -159,7 +160,11 @@ fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &Vec<Leaf>, current
         // This is not a leaf node, so the leaf count stays the same.
         current_list.lookahead2.weight = weight_sum;
         current_list.lookahead2.leaf_counts.clear();
-        current_list.lookahead2.leaf_counts.extend(previous_list_leaf_counts);
+        for i in 0..num_leaf_counts {
+            current_list.lookahead2.leaf_counts.push(unsafe {
+                *previous_list_leaf_counts.offset(i as isize)
+            });
+        }
         current_list.lookahead2.leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
     }
 
