@@ -79,8 +79,6 @@ void ZopfliCopyLZ77Store(
   }
 }
 
-extern void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist, size_t pos, ZopfliLZ77Store* store);
-
 extern void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store, ZopfliLZ77Store* target);
 
 extern size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
