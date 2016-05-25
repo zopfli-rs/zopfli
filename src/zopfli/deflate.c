@@ -308,7 +308,6 @@ static void AddLZ77Data(const ZopfliLZ77Store* lz77,
 }
 
 extern void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths);
-extern size_t CalculateBlockSymbolSizeSmall(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 extern size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts, const size_t* d_counts, const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 extern size_t CalculateBlockSymbolSize(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 extern void OptimizeHuffmanForRle(int length, size_t* counts);

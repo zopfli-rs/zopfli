@@ -161,9 +161,7 @@ pub extern fn PatchDistanceCodesForBuggyDecoders(d_lengths: *mut c_uint) {
 
 /// Same as CalculateBlockSymbolSize, but for block size smaller than histogram
 /// size.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn CalculateBlockSymbolSizeSmall(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+pub fn calculate_block_symbol_size_small(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
     let rust_store = lz77_store_from_c(lz77_ptr);
     let rs = unsafe { &*rust_store };
     let mut result = 0;
@@ -195,7 +193,7 @@ pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_co
     let mut result = 0;
 
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
-        return CalculateBlockSymbolSizeSmall(ll_lengths, d_lengths, lz77, lstart, lend);
+        return calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend);
     } else {
         for i in 0..256 {
             result += unsafe { *ll_lengths.offset(i as isize) * *ll_counts.offset(i as isize) as c_uint };
@@ -220,7 +218,7 @@ Calculates size of the part after the header and tree of an LZ77 block, in bits.
 #[allow(non_snake_case)]
 pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
-        CalculateBlockSymbolSizeSmall(ll_lengths, d_lengths, lz77, lstart, lend)
+        calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
         let (ll_counts, d_counts) = get_histogram(unsafe { &*lz77 }, lstart, lend);
         CalculateBlockSymbolSizeGivenCounts(ll_counts.as_ptr(), d_counts.as_ptr(), ll_lengths, d_lengths, lz77, lstart, lend)
