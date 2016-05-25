@@ -775,3 +775,15 @@ pub extern fn ZopfliAppendLZ77Store(store_ptr: *mut ZopfliLZ77Store, target_ptr:
     }
     lz77_store_result(rust_target, target);
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCopyLZ77Store(store_ptr: *mut ZopfliLZ77Store, target_ptr: *mut ZopfliLZ77Store) {
+    let target = unsafe {
+        assert!(!target_ptr.is_null());
+        &mut *target_ptr
+    };
+
+    let rust_target = lz77_store_from_c(store_ptr);
+    lz77_store_result(rust_target.clone(), target);
+}

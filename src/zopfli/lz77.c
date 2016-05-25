@@ -39,46 +39,7 @@ void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
 
 extern size_t CeilDiv(size_t a, size_t b);
 
-void ZopfliCopyLZ77Store(
-    const ZopfliLZ77Store* source, ZopfliLZ77Store* dest) {
-  size_t i;
-  size_t llsize = ZOPFLI_NUM_LL * CeilDiv(source->size, ZOPFLI_NUM_LL);
-  size_t dsize = ZOPFLI_NUM_D * CeilDiv(source->size, ZOPFLI_NUM_D);
-  ZopfliCleanLZ77Store(dest);
-  ZopfliInitLZ77Store(dest);
-  dest->litlens =
-      (unsigned short*)malloc(sizeof(*dest->litlens) * source->size);
-  dest->dists = (unsigned short*)malloc(sizeof(*dest->dists) * source->size);
-  dest->pos = (size_t*)malloc(sizeof(*dest->pos) * source->size);
-  dest->ll_symbol =
-      (unsigned short*)malloc(sizeof(*dest->ll_symbol) * source->size);
-  dest->d_symbol =
-      (unsigned short*)malloc(sizeof(*dest->d_symbol) * source->size);
-  dest->ll_counts = (size_t*)malloc(sizeof(*dest->ll_counts) * llsize);
-  dest->d_counts = (size_t*)malloc(sizeof(*dest->d_counts) * dsize);
-
-  /* Allocation failed. */
-  if (!dest->litlens || !dest->dists) exit(-1);
-  if (!dest->pos) exit(-1);
-  if (!dest->ll_symbol || !dest->d_symbol) exit(-1);
-  if (!dest->ll_counts || !dest->d_counts) exit(-1);
-
-  dest->size = source->size;
-  for (i = 0; i < source->size; i++) {
-    dest->litlens[i] = source->litlens[i];
-    dest->dists[i] = source->dists[i];
-    dest->pos[i] = source->pos[i];
-    dest->ll_symbol[i] = source->ll_symbol[i];
-    dest->d_symbol[i] = source->d_symbol[i];
-  }
-  for (i = 0; i < llsize; i++) {
-    dest->ll_counts[i] = source->ll_counts[i];
-  }
-  for (i = 0; i < dsize; i++) {
-    dest->d_counts[i] = source->d_counts[i];
-  }
-}
-
+extern void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
 extern void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store, ZopfliLZ77Store* target);
 
 extern size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
