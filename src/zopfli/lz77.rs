@@ -777,3 +777,62 @@ pub extern fn ZopfliAppendLZ77Store(store_ptr: *mut ZopfliLZ77Store, target_ptr:
     }
     lz77_store_result(rust_target, target);
 }
+
+/// Appends the length and distance to the LZ77 arrays of the ZopfliLZ77Store.
+/// context must be a ZopfliLZ77Store*.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliStoreLitLenDist(length: c_ushort, dist: c_ushort, pos: size_t, store_ptr: *mut ZopfliLZ77Store) {
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+
+    let rust_store_ptr = lz77_store_from_c(store_ptr);
+    let mut rust_store = unsafe { &mut * rust_store_ptr };
+    let origsize = rust_store.size();
+
+    let llstart = ZOPFLI_NUM_LL * (origsize / ZOPFLI_NUM_LL);
+    let dstart = ZOPFLI_NUM_D * (origsize / ZOPFLI_NUM_D);
+
+    /* Everytime the index wraps around, a new cumulative histogram is made: we're
+    keeping one histogram value per LZ77 symbol rather than a full histogram for
+    each to save memory. */
+    if origsize % ZOPFLI_NUM_LL == 0 {
+        for i in 0..ZOPFLI_NUM_LL {
+            let val = if origsize == 0 {
+                0
+            } else {
+                rust_store.ll_counts[origsize - ZOPFLI_NUM_LL + i]
+            };
+            rust_store.ll_counts.push(val);
+        }
+    }
+    if origsize % ZOPFLI_NUM_D == 0 {
+        for i in 0..ZOPFLI_NUM_D {
+            let val = if origsize == 0 {
+                0
+            } else {
+                rust_store.d_counts[origsize - ZOPFLI_NUM_D + i]
+            };
+            rust_store.d_counts.push(val);
+        }
+    }
+    rust_store.litlens.push(length);
+    rust_store.dists.push(dist);
+    rust_store.pos.push(pos);
+    assert!(length < 259); // why is this here and not at the beginning of the fn
+
+    if dist == 0 {
+        rust_store.ll_symbol.push(length);
+        rust_store.d_symbol.push(0);
+        rust_store.ll_counts[llstart + length as usize] += 1;
+    } else {
+        rust_store.ll_symbol.push(ZopfliGetLengthSymbol(length as c_int) as c_ushort);
+        rust_store.d_symbol.push(ZopfliGetDistSymbol(dist as c_int) as c_ushort);
+        rust_store.ll_counts[llstart + ZopfliGetLengthSymbol(length as c_int) as usize] += 1;
+        rust_store.d_counts[dstart + ZopfliGetDistSymbol(dist as c_int) as usize] += 1;
+    }
+
+    lz77_store_result(rust_store, store);
+}
