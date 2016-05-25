@@ -2,7 +2,7 @@ use std::slice;
 
 use libc::{c_uint, c_int, size_t};
 
-use lz77::{ZopfliLZ77Store, lz77_store_from_c};
+use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL};
 
 #[no_mangle]
@@ -210,5 +210,19 @@ pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_co
         }
         result += unsafe { *ll_lengths.offset(256) }; // end symbol
         result as size_t
+    }
+}
+
+/*
+Calculates size of the part after the header and tree of an LZ77 block, in bits.
+*/
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+    if lstart + ZOPFLI_NUM_LL * 3 > lend {
+        CalculateBlockSymbolSizeSmall(ll_lengths, d_lengths, lz77, lstart, lend)
+    } else {
+        let (ll_counts, d_counts) = get_histogram(unsafe { &*lz77 }, lstart, lend);
+        CalculateBlockSymbolSizeGivenCounts(ll_counts.as_ptr(), d_counts.as_ptr(), ll_lengths, d_lengths, lz77, lstart, lend)
     }
 }
