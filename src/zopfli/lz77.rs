@@ -645,12 +645,7 @@ pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
     }
 }
 
-pub fn get_histogram_at(lz77_ptr: *mut ZopfliLZ77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &mut *lz77_ptr
-    };
-
+pub fn get_histogram_at(lz77: &ZopfliLZ77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
     let mut ll = vec![0; ZOPFLI_NUM_LL];
     let mut d = vec![0; ZOPFLI_NUM_D];
 
@@ -695,42 +690,47 @@ pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
         &mut *lz77_ptr
     };
 
+    let (ll_counts_result, d_counts_result) = get_histogram(&*lz77, lstart, lend);
+
+    for i in 0..ZOPFLI_NUM_LL as isize {
+        unsafe { *ll_counts.offset(i) = ll_counts_result[i as usize]; }
+    }
+    for i in 0..ZOPFLI_NUM_D as isize {
+        unsafe { *d_counts.offset(i) = d_counts_result[i as usize]; }
+    }
+}
+
+pub fn get_histogram(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t) -> (Vec<size_t>, Vec<size_t>) {
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
-        for i in 0..ZOPFLI_NUM_LL as isize {
-            unsafe { *ll_counts.offset(i) = 0; }
-        }
-        for i in 0..ZOPFLI_NUM_D as isize {
-            unsafe { *d_counts.offset(i) = 0; }
-        }
+        let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
+        let mut d_counts = vec![0; ZOPFLI_NUM_D];
         for i in lstart..lend  {
             unsafe {
-                *ll_counts.offset(*lz77.ll_symbol.offset(i as isize) as isize) += 1;
+                ll_counts[*lz77.ll_symbol.offset(i as isize) as usize] += 1;
                 if *lz77.dists.offset(i as isize) != 0 {
-                    *d_counts.offset(*lz77.d_symbol.offset(i as isize) as isize) += 1;
+                    d_counts[*lz77.d_symbol.offset(i as isize) as usize] += 1;
                 }
             }
         }
+        (ll_counts, d_counts)
     } else {
         /* Subtract the cumulative histograms at the end and the start to get the
         histogram for this range. */
         let (ll, d) = get_histogram_at(lz77, lend - 1);
-        for i in 0..ZOPFLI_NUM_LL {
-            unsafe { *ll_counts.offset(i as isize) = ll[i]; }
-        }
-
-        for i in 0..ZOPFLI_NUM_D {
-            unsafe { *d_counts.offset(i as isize) = d[i]; }
-        }
 
         if lstart > 0 {
             let (ll2, d2) = get_histogram_at(lz77, lstart - 1);
 
-            for i in 0..ZOPFLI_NUM_LL {
-                unsafe { *ll_counts.offset(i as isize) -= ll2[i]; }
-            }
-            for i in 0..ZOPFLI_NUM_D {
-                unsafe { *d_counts.offset(i as isize) -= d2[i]; }
-            }
+            (
+                ll.iter().zip(ll2.iter()).map(|(&ll_item1, &ll_item2)|
+                    ll_item1 - ll_item2
+                ).collect(),
+                d.iter().zip(d2.iter()).map(|(&d_item1, &d_item2)|
+                    d_item1 - d_item2
+                ).collect(),
+            )
+        } else {
+            (ll, d)
         }
     }
 }
