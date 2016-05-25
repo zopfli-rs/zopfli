@@ -308,39 +308,8 @@ static void AddLZ77Data(const ZopfliLZ77Store* lz77,
 }
 
 extern void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths);
-
 extern size_t CalculateBlockSymbolSizeSmall(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
-
-/*
-Same as CalculateBlockSymbolSize, but with the histogram provided by the caller.
-*/
-static size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts,
-                                                  const size_t* d_counts,
-                                                  const unsigned* ll_lengths,
-                                                  const unsigned* d_lengths,
-                                                  const ZopfliLZ77Store* lz77,
-                                                  size_t lstart, size_t lend) {
-  size_t result = 0;
-  size_t i;
-  if (lstart + ZOPFLI_NUM_LL * 3 > lend) {
-    return CalculateBlockSymbolSizeSmall(
-        ll_lengths, d_lengths, lz77, lstart, lend);
-  } else {
-    for (i = 0; i < 256; i++) {
-      result += ll_lengths[i] * ll_counts[i];
-    }
-    for (i = 257; i < 286; i++) {
-      result += ll_lengths[i] * ll_counts[i];
-      result += ZopfliGetLengthSymbolExtraBits(i) * ll_counts[i];
-    }
-    for (i = 0; i < 30; i++) {
-      result += d_lengths[i] * d_counts[i];
-      result += ZopfliGetDistSymbolExtraBits(i) * d_counts[i];
-    }
-    result += ll_lengths[256]; /*end symbol*/
-    return result;
-  }
-}
+extern size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts, const size_t* d_counts, const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
 /*
 Calculates size of the part after the header and tree of an LZ77 block, in bits.

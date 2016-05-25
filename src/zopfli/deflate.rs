@@ -3,7 +3,7 @@ use std::slice;
 use libc::{c_uint, c_int, size_t};
 
 use lz77::{ZopfliLZ77Store, lz77_store_from_c};
-use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits};
+use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL};
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -186,4 +186,29 @@ pub extern fn CalculateBlockSymbolSizeSmall(ll_lengths: *const c_uint, d_lengths
     }
     result += unsafe { *ll_lengths.offset(256) }; // end symbol
     result as size_t
+}
+
+/// Same as CalculateBlockSymbolSize, but with the histogram provided by the caller.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_counts: *const size_t, ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+    let mut result = 0;
+
+    if lstart + ZOPFLI_NUM_LL * 3 > lend {
+        return CalculateBlockSymbolSizeSmall(ll_lengths, d_lengths, lz77, lstart, lend);
+    } else {
+        for i in 0..256 {
+            result += unsafe { *ll_lengths.offset(i as isize) * *ll_counts.offset(i as isize) as c_uint };
+        }
+        for i in 257..286 {
+            result += unsafe { *ll_lengths.offset(i as isize) * *ll_counts.offset(i as isize) as c_uint };
+            result += (ZopfliGetLengthSymbolExtraBits(i) * unsafe { *ll_counts.offset(i as isize) as c_int }) as c_uint;
+        }
+        for i in 0..30 {
+            result += unsafe { *d_lengths.offset(i as isize) * *d_counts.offset(i as isize) as c_uint };
+            result += (ZopfliGetDistSymbolExtraBits(i) * unsafe { *d_counts.offset(i as isize) as c_int }) as c_uint;
+        }
+        result += unsafe { *ll_lengths.offset(256) }; // end symbol
+        result as size_t
+    }
 }
