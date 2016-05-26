@@ -221,6 +221,19 @@ pub extern fn CopyStats(source_ptr: *mut SymbolStats, dest_ptr: *mut SymbolStats
     *dest = *source;
 }
 
+pub fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &SymbolStats, w2: c_double) -> SymbolStats {
+    let mut result = SymbolStats::new();
+
+    for i in 0..ZOPFLI_NUM_LL {
+        result.litlens[i] = (stats1.litlens[i] as c_double * w1 + stats2.litlens[i] as c_double * w2) as size_t;
+    }
+    for i in 0..ZOPFLI_NUM_D {
+        result.dists[i] = (stats1.dists[i] as c_double * w1 + stats2.dists[i] as c_double * w2) as size_t;
+    }
+    result.litlens[256] = 1; // End symbol.
+    result
+}
+
 /// Adds the bit lengths.
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -238,13 +251,16 @@ pub extern fn AddWeighedStatFreqs(stats1_ptr: *mut SymbolStats, w1: c_double, st
         &mut *result_ptr
     };
 
+    let rust_result = add_weighed_stat_freqs(stats1, w1, stats2, w2);
+
+
     for i in 0..ZOPFLI_NUM_LL {
-        result.litlens[i] = (stats1.litlens[i] as c_double * w1 + stats2.litlens[i] as c_double * w2) as size_t;
+        result.litlens[i] = rust_result.litlens[i];
     }
     for i in 0..ZOPFLI_NUM_D {
-        result.dists[i] = (stats1.dists[i] as c_double * w1 + stats2.dists[i] as c_double * w2) as size_t;
+        result.dists[i] = rust_result.dists[i];
     }
-    result.litlens[256] = 1; // End symbol.
+    result.litlens[256] = rust_result.litlens[256]; // End symbol.
 }
 
 #[no_mangle]
