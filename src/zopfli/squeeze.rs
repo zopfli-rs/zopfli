@@ -445,10 +445,8 @@ pub extern fn GetBestLengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
     unsafe { *costs.offset(blocksize as isize) as c_double }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
 // TODO: upstream is now reusing an already allocated hash; we're ignoring it
-pub extern fn FollowPath(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, path: *const c_ushort, pathsize: size_t, store_ptr: *mut ZopfliLZ77Store) {
+pub fn follow_path(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, path: Vec<c_ushort>, store_ptr: *mut ZopfliLZ77Store, _h_ptr: *mut ZopfliHash) {
     let s = unsafe {
         assert!(!s_ptr.is_null());
         &mut *s_ptr
@@ -479,8 +477,9 @@ pub extern fn FollowPath(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, 
     }
 
     let mut pos = instart;
+    let pathsize = path.len();
     for i in 0..pathsize {
-        let mut length = unsafe { *path.offset(i as isize) };
+        let mut length = path[i];
         assert!(pos < inend);
 
         h.update(arr, pos);
@@ -512,4 +511,59 @@ pub extern fn FollowPath(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, 
         pos += length as size_t;
     }
     lz77_store_result(rust_store, store);
+}
+
+/// Calculates the optimal path of lz77 lengths to use, from the calculated
+/// length_array. The length_array must contain the optimal length to reach that
+/// byte. The path will be filled with the lengths to use, so its data size will be
+/// the amount of lz77 symbols.
+pub fn trace_backwards(size: size_t, length_array: *const c_ushort) -> Vec<c_ushort> {
+    let mut index = size;
+    if size == 0 {
+        return vec![];
+    }
+    let mut path = vec![]; // TODO: with capacity
+    loop {
+        let lai = unsafe { *length_array.offset(index as isize) };
+        let laiu = lai as usize;
+        path.push(lai);
+        assert!(laiu <= index);
+        assert!(laiu <= ZOPFLI_MAX_MATCH);
+        assert!(lai != 0);
+        index -= laiu;
+        if index == 0 {
+            break;
+        }
+    }
+
+    /* Mirror result. */
+    let pathsize = path.len();
+    for index in 0..(pathsize / 2) {
+        let temp = path[index];
+        path[index] = path[pathsize - index - 1];
+        path[pathsize - index - 1] = temp;
+    }
+    path
+}
+
+/// Does a single run for ZopfliLZ77Optimal. For good compression, repeated runs
+/// with updated statistics should be performed.
+/// s: the block state
+/// in: the input data array
+/// instart: where to start
+/// inend: where to stop (not inclusive)
+/// length_array: array of size (inend - instart) used to store lengths
+/// costmodel: function to use as the cost model for this squeeze run
+/// costcontext: abstract context for the costmodel function
+/// store: place to output the LZ77 data
+/// returns the cost that was, according to the costmodel, needed to get to the end.
+///     This is not the actual cost.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, length_array: *mut c_ushort, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store_ptr: *mut ZopfliLZ77Store, h_ptr: *mut ZopfliHash, costs: *mut c_float) {
+
+    let cost = GetBestLengths(s_ptr, in_data, instart, inend, costmodel, costcontext, length_array, h_ptr, costs);
+    let path = trace_backwards(inend - instart, length_array);
+    follow_path(s_ptr, in_data, instart, inend, path, store_ptr, h_ptr);
+    assert!(cost < ZOPFLI_LARGE_FLOAT);
 }

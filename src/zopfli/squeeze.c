@@ -55,73 +55,10 @@ extern double GetCostStat(unsigned litlen, unsigned dist, void* context);
 
 extern double GetBestLengths(ZopfliBlockState *s, const unsigned char* in, size_t instart, size_t inend, CostModelFun* costmodel, void* costcontext, unsigned short* length_array, ZopfliHash* h, float* costs);
 
-/*
-Calculates the optimal path of lz77 lengths to use, from the calculated
-length_array. The length_array must contain the optimal length to reach that
-byte. The path will be filled with the lengths to use, so its data size will be
-the amount of lz77 symbols.
-*/
-static void TraceBackwards(size_t size, const unsigned short* length_array,
-                           unsigned short** path, size_t* pathsize) {
-  size_t index = size;
-  if (size == 0) return;
-  for (;;) {
-    ZOPFLI_APPEND_DATA(length_array[index], path, pathsize);
-    assert(length_array[index] <= index);
-    assert(length_array[index] <= ZOPFLI_MAX_MATCH);
-    assert(length_array[index] != 0);
-    index -= length_array[index];
-    if (index == 0) break;
-  }
-
-  /* Mirror result. */
-  for (index = 0; index < *pathsize / 2; index++) {
-    unsigned short temp = (*path)[index];
-    (*path)[index] = (*path)[*pathsize - index - 1];
-    (*path)[*pathsize - index - 1] = temp;
-  }
-}
-
-extern void FollowPath(ZopfliBlockState* s, const unsigned char* in, size_t instart, size_t inend, unsigned short* path, size_t pathsize, ZopfliLZ77Store* store, ZopfliHash *h);
 extern void CalculateStatistics(SymbolStats* stats);
 extern void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats);
 
-/*
-Does a single run for ZopfliLZ77Optimal. For good compression, repeated runs
-with updated statistics should be performed.
-s: the block state
-in: the input data array
-instart: where to start
-inend: where to stop (not inclusive)
-path: pointer to dynamically allocated memory to store the path
-pathsize: pointer to the size of the dynamic path array
-length_array: array of size (inend - instart) used to store lengths
-costmodel: function to use as the cost model for this squeeze run
-costcontext: abstract context for the costmodel function
-store: place to output the LZ77 data
-returns the cost that was, according to the costmodel, needed to get to the end.
-    This is not the actual cost.
-*/
-static void LZ77OptimalRun(ZopfliBlockState* s,
-    const unsigned char* in, size_t instart, size_t inend,
-    unsigned short* length_array, CostModelFun* costmodel,
-    void* costcontext, ZopfliLZ77Store* store,
-    ZopfliHash* h, float* costs) {
-  double cost = GetBestLengths(s, in, instart, inend, costmodel,
-                costcontext, length_array, h, costs);
-
-  unsigned short* path = 0;
-  size_t pathsize = 0;
-
-  path = 0;
-  pathsize = 0;
-
-  TraceBackwards(inend - instart, length_array, &path, &pathsize);
-  FollowPath(s, in, instart, inend, path, pathsize, store, h);
-  assert(cost < ZOPFLI_LARGE_FLOAT);
-  free(path);
-
-}
+extern void LZ77OptimalRun(ZopfliBlockState* s, const unsigned char* in, size_t instart, size_t inend, unsigned short* length_array, CostModelFun* costmodel, void* costcontext, ZopfliLZ77Store* store, ZopfliHash* h, float* costs);
 
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
