@@ -350,12 +350,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, *const c_void) -> c
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the costmodel, needed to get to the end.
 // TODO: upstream is now reusing an already allocated hash; we're ignoring it
-pub fn get_best_lengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h_ptr: *mut ZopfliHash, costs: *mut c_float) -> (c_double, Vec<c_ushort>) {
-    let s = unsafe {
-        assert!(!s_ptr.is_null());
-        &mut *s_ptr
-    };
-
+pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h_ptr: *mut ZopfliHash, costs: *mut c_float) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -530,8 +525,12 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store_ptr: *mut ZopfliLZ77Store, h_ptr: *mut ZopfliHash, costs: *mut c_float) {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
 
-    let (cost, length_array) = get_best_lengths(s_ptr, in_data, instart, inend, costmodel, costcontext, h_ptr, costs);
+    let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h_ptr, costs);
     let path = trace_backwards(inend - instart, length_array);
     follow_path(s_ptr, in_data, instart, inend, path, store_ptr, h_ptr);
     assert!(cost < ZOPFLI_LARGE_FLOAT);
