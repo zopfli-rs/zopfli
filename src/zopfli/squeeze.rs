@@ -185,6 +185,11 @@ impl SymbolStats {
 
         self.calculate_entropy();
     }
+
+    pub fn clear_freqs(&mut self) {
+        self.litlens = [0; ZOPFLI_NUM_LL];
+        self.dists = [0; ZOPFLI_NUM_D];
+    }
 }
 
 #[no_mangle]
@@ -199,8 +204,7 @@ pub extern fn ClearStatFreqs(stats_ptr: *mut SymbolStats) {
         assert!(!stats_ptr.is_null());
         &mut *stats_ptr
     };
-    stats.litlens = [0; ZOPFLI_NUM_LL];
-    stats.dists = [0; ZOPFLI_NUM_D];
+    stats.clear_freqs();
 }
 
 #[no_mangle]
