@@ -200,7 +200,6 @@ static size_t EncodeTree(const unsigned* ll_lengths,
   static const unsigned order[19] = {
     16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
   };
-  int size_only = !out;
   size_t result_size = 0;
 
   for(i = 0; i < 19; i++) clcounts[i] = 0;
@@ -229,10 +228,8 @@ static size_t EncodeTree(const unsigned* ll_lengths,
       if (use_18) {
         while (count >= 11) {
           unsigned count2 = count > 138 ? 138 : count;
-          if (!size_only) {
-            ZOPFLI_APPEND_DATA(18, &rle, &rle_size);
-            ZOPFLI_APPEND_DATA(count2 - 11, &rle_bits, &rle_bits_size);
-          }
+          ZOPFLI_APPEND_DATA(18, &rle, &rle_size);
+          ZOPFLI_APPEND_DATA(count2 - 11, &rle_bits, &rle_bits_size);
           clcounts[18]++;
           count -= count2;
         }
@@ -240,10 +237,8 @@ static size_t EncodeTree(const unsigned* ll_lengths,
       if (use_17) {
         while (count >= 3) {
           unsigned count2 = count > 10 ? 10 : count;
-          if (!size_only) {
-            ZOPFLI_APPEND_DATA(17, &rle, &rle_size);
-            ZOPFLI_APPEND_DATA(count2 - 3, &rle_bits, &rle_bits_size);
-          }
+          ZOPFLI_APPEND_DATA(17, &rle, &rle_size);
+          ZOPFLI_APPEND_DATA(count2 - 3, &rle_bits, &rle_bits_size);
           clcounts[17]++;
           count -= count2;
         }
@@ -254,16 +249,12 @@ static size_t EncodeTree(const unsigned* ll_lengths,
     if (use_16 && count >= 4) {
       count--;  /* Since the first one is hardcoded. */
       clcounts[symbol]++;
-      if (!size_only) {
-        ZOPFLI_APPEND_DATA(symbol, &rle, &rle_size);
-        ZOPFLI_APPEND_DATA(0, &rle_bits, &rle_bits_size);
-      }
+      ZOPFLI_APPEND_DATA(symbol, &rle, &rle_size);
+      ZOPFLI_APPEND_DATA(0, &rle_bits, &rle_bits_size);
       while (count >= 3) {
         unsigned count2 = count > 6 ? 6 : count;
-        if (!size_only) {
-          ZOPFLI_APPEND_DATA(16, &rle, &rle_size);
-          ZOPFLI_APPEND_DATA(count2 - 3, &rle_bits, &rle_bits_size);
-        }
+        ZOPFLI_APPEND_DATA(16, &rle, &rle_size);
+        ZOPFLI_APPEND_DATA(count2 - 3, &rle_bits, &rle_bits_size);
         clcounts[16]++;
         count -= count2;
       }
@@ -272,22 +263,19 @@ static size_t EncodeTree(const unsigned* ll_lengths,
     /* No or insufficient repetition */
     clcounts[symbol] += count;
     while (count > 0) {
-      if (!size_only) {
-        ZOPFLI_APPEND_DATA(symbol, &rle, &rle_size);
-        ZOPFLI_APPEND_DATA(0, &rle_bits, &rle_bits_size);
-      }
+      ZOPFLI_APPEND_DATA(symbol, &rle, &rle_size);
+      ZOPFLI_APPEND_DATA(0, &rle_bits, &rle_bits_size);
       count--;
     }
   }
 
   ZopfliCalculateBitLengths(clcounts, 19, 7, clcl);
-  if (!size_only) ZopfliLengthsToSymbols(clcl, 19, 7, clsymbols);
+  ZopfliLengthsToSymbols(clcl, 19, 7, clsymbols);
 
   hclen = 15;
   /* Trim zeros. */
   while (hclen > 0 && clcounts[order[hclen + 4 - 1]] == 0) hclen--;
 
-  if (!size_only) {
     AddBits(hlit, 5, bp, out, outsize);
     AddBits(hdist, 5, bp, out, outsize);
     AddBits(hclen, 4, bp, out, outsize);
@@ -304,7 +292,6 @@ static size_t EncodeTree(const unsigned* ll_lengths,
       else if (rle[i] == 17) AddBits(rle_bits[i], 3, bp, out, outsize);
       else if (rle[i] == 18) AddBits(rle_bits[i], 7, bp, out, outsize);
     }
-  }
 
   result_size += 14;  /* hlit, hdist, hclen bits */
   result_size += (hclen + 4) * 3;  /* clcl bits */
@@ -316,7 +303,6 @@ static size_t EncodeTree(const unsigned* ll_lengths,
   result_size += clcounts[17] * 3;
   result_size += clcounts[18] * 7;
 
-  /* Note: in case of "size_only" these are null pointers so no effect. */
   free(rle);
   free(rle_bits);
 
