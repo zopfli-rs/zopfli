@@ -1,10 +1,10 @@
-use std::{mem, slice, ptr, cmp};
+use std::{mem, slice, cmp};
 
 use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
 
 use hash::ZopfliHash;
-use lz77::{ZopfliLZ77Store, Lz77Store, ZopfliBlockState, find_longest_match, lz77_store_from_c,     lz77_store_result, verify_len_dist};
-use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
+use lz77::{ZopfliLZ77Store, Lz77Store, ZopfliBlockState, find_longest_match, lz77_store_from_c, lz77_store_result};
+use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
@@ -465,7 +465,7 @@ pub fn get_best_lengths(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, ins
 
 // TODO: upstream is now reusing an already allocated hash; we're ignoring it
 pub fn follow_path(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, path: Vec<c_ushort>, store_ptr: *mut ZopfliLZ77Store, _h_ptr: *mut ZopfliHash) {
-    let s = unsafe {
+    let mut s = unsafe {
         assert!(!s_ptr.is_null());
         &mut *s_ptr
     };
@@ -475,59 +475,10 @@ pub fn follow_path(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instar
     };
     let rust_store = lz77_store_from_c(store_ptr);
 
-    let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
-        instart - ZOPFLI_WINDOW_SIZE
-    } else {
-        0
-    };
-
-    if instart == inend {
-        return;
+    unsafe {
+        (&mut *rust_store).follow_path(in_data, instart, inend, path, &mut s);
     }
 
-    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
-
-    let arr = unsafe { slice::from_raw_parts(in_data, inend) };
-    h.warmup(arr, windowstart, inend);
-
-    for i in windowstart..instart {
-        h.update(arr, i);
-    }
-
-    let mut pos = instart;
-    let pathsize = path.len();
-    for i in 0..pathsize {
-        let mut length = path[i];
-        assert!(pos < inend);
-
-        h.update(arr, pos);
-
-        // Add to output.
-        if length >= ZOPFLI_MIN_MATCH as c_ushort {
-            // Get the distance by recalculating longest match. The found length
-            // should match the length from the path.
-            let longest_match = find_longest_match(s, &mut h, arr, pos, inend, length as size_t, ptr::null_mut());
-            let dist = longest_match.distance;
-            let dummy_length = longest_match.length;
-            assert!(!(dummy_length != length && length > 2 && dummy_length > 2));
-            verify_len_dist(arr, pos, dist, length);
-            unsafe {
-                (&mut *rust_store).lit_len_dist(length, dist, pos);
-            }
-        } else {
-            length = 1;
-            unsafe {
-                (&mut *rust_store).lit_len_dist(arr[pos] as c_ushort, 0, pos);
-            }
-        }
-
-        assert!(pos + (length as size_t) <= inend);
-        for j in 1..(length as size_t) {
-            h.update(arr, pos + j);
-        }
-
-        pos += length as size_t;
-    }
     lz77_store_result(rust_store, store);
 }
 

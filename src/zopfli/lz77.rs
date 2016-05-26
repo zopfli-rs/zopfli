@@ -222,6 +222,58 @@ impl Lz77Store {
             i += 1;
         }
     }
+
+    pub fn follow_path(&mut self, in_data: *const c_uchar, instart: size_t, inend: size_t, path: Vec<c_ushort>, s: &mut ZopfliBlockState) {
+        let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
+            instart - ZOPFLI_WINDOW_SIZE
+        } else {
+            0
+        };
+
+        if instart == inend {
+            return;
+        }
+
+        let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+
+        let arr = unsafe { slice::from_raw_parts(in_data, inend) };
+        h.warmup(arr, windowstart, inend);
+
+        for i in windowstart..instart {
+            h.update(arr, i);
+        }
+
+        let mut pos = instart;
+        let pathsize = path.len();
+        for i in 0..pathsize {
+            let mut length = path[i];
+            assert!(pos < inend);
+
+            h.update(arr, pos);
+
+            // Add to output.
+            if length >= ZOPFLI_MIN_MATCH as c_ushort {
+                // Get the distance by recalculating longest match. The found length
+                // should match the length from the path.
+                let longest_match = find_longest_match(s, &mut h, arr, pos, inend, length as size_t, ptr::null_mut());
+                let dist = longest_match.distance;
+                let dummy_length = longest_match.length;
+                assert!(!(dummy_length != length && length > 2 && dummy_length > 2));
+                verify_len_dist(arr, pos, dist, length);
+                self.lit_len_dist(length, dist, pos);
+            } else {
+                length = 1;
+                self.lit_len_dist(arr[pos] as c_ushort, 0, pos);
+            }
+
+            assert!(pos + (length as size_t) <= inend);
+            for j in 1..(length as size_t) {
+                h.update(arr, pos + j);
+            }
+
+            pos += length as size_t;
+        }
+    }
 }
 
 #[no_mangle]
