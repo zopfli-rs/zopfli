@@ -27,15 +27,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 extern void ZopfliInitLZ77Store(ZopfliLZ77Store* store);
 
-void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
-  free(store->litlens);
-  free(store->dists);
-  free(store->pos);
-  free(store->ll_symbol);
-  free(store->d_symbol);
-  free(store->ll_counts);
-  free(store->d_counts);
-}
+extern void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
 
 extern size_t CeilDiv(size_t a, size_t b);
 

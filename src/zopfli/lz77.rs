@@ -64,6 +64,16 @@ impl Lz77Store {
        }
     }
 
+    pub fn reset(&mut self) {
+        self.litlens.clear();
+        self.dists.clear();
+        self.pos.clear();
+        self.ll_symbol.clear();
+        self.d_symbol.clear();
+        self.ll_counts.clear();
+        self.d_counts.clear();
+    }
+
     pub fn size(&self) -> usize {
         self.litlens.len()
     }
@@ -288,6 +298,22 @@ pub extern fn ZopfliInitLZ77Store(store_ptr: *mut ZopfliLZ77Store) {
     store.d_symbol = ptr::null_mut();
     store.ll_counts = ptr::null_mut();
     store.d_counts = ptr::null_mut();
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCleanLZ77Store(store_ptr: *mut ZopfliLZ77Store) {
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+
+    let rust_store = lz77_store_from_c(store_ptr);
+    unsafe {
+        (&mut *rust_store).reset();
+    }
+
+    lz77_store_result(rust_store, store);
 }
 
 /// Some state information for compressing a block.
