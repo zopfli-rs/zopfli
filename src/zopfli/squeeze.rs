@@ -529,9 +529,18 @@ pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
         assert!(!s_ptr.is_null());
         &mut *s_ptr
     };
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+    let rust_store = lz77_store_from_c(store_ptr);
+    lz77_optimal_run(s, in_data, instart, inend, costmodel, costcontext, unsafe { &mut *rust_store }, h_ptr, costs);
+    lz77_store_result(rust_store, store);
+}
 
+pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store: &mut Lz77Store, h_ptr: *mut ZopfliHash, costs: *mut c_float) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h_ptr, costs);
     let path = trace_backwards(inend - instart, length_array);
-    follow_path(s_ptr, in_data, instart, inend, path, store_ptr, h_ptr);
+    store.follow_path(in_data, instart, inend, path, s);
     assert!(cost < ZOPFLI_LARGE_FLOAT);
 }
