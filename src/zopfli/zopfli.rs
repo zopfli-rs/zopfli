@@ -14,10 +14,6 @@ pub struct ZopfliOptions {
   */
   numiterations: c_int,
   /*
-  No longer used, left for compatibility.
-  */
-  blocksplittinglast: c_int,
-  /*
   Maximum amount of blocks to split into (0 for unlimited, but this can give
   extreme results that hurt compression on some files). Default value: 15.
   */

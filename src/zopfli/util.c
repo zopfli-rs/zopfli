@@ -29,6 +29,5 @@ void ZopfliInitOptions(ZopfliOptions* options) {
   options->verbose = 0;
   options->verbose_more = 0;
   options->numiterations = 15;
-  options->blocksplittinglast = 0;
   options->blocksplittingmax = 15;
 }
