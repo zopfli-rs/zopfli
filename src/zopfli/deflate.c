@@ -686,6 +686,80 @@ static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
   ZopfliCleanLZ77Store(&fixedstore);
 }
 
+
+void BlocksplitAttempt(const ZopfliOptions* options, int final,
+                       const unsigned char* in, size_t instart, size_t inend,
+                       unsigned char* bp, unsigned char** out,
+                       size_t* outsize) {
+    size_t i;
+    double totalcost = 0;
+    ZopfliLZ77Store lz77;
+    /* byte coordinates rather than lz77 index */
+    size_t* splitpoints_uncompressed = 0;
+    size_t npoints = 0;
+    size_t* splitpoints = 0;
+
+    ZopfliBlockSplit(options, in, instart, inend,
+                   options->blocksplittingmax,
+                   &splitpoints_uncompressed, &npoints);
+    splitpoints = (size_t*)malloc(sizeof(*splitpoints) * npoints);
+
+    ZopfliInitLZ77Store(&lz77);
+
+    for (i = 0; i <= npoints; i++) {
+      size_t start = i == 0 ? instart : splitpoints_uncompressed[i - 1];
+      size_t end = i == npoints ? inend : splitpoints_uncompressed[i];
+      ZopfliBlockState s;
+      ZopfliLZ77Store store;
+      ZopfliInitLZ77Store(&store);
+      ZopfliInitBlockState(options, start, end, 1, &s);
+      ZopfliLZ77Optimal(&s, in, start, end, options->numiterations, &store);
+      totalcost += ZopfliCalculateBlockSizeAutoType(&store, 0, store.size);
+
+      ZopfliAppendLZ77Store(&store, &lz77);
+      if (i < npoints) splitpoints[i] = lz77.size;
+
+      ZopfliCleanBlockState(&s);
+      ZopfliCleanLZ77Store(&store);
+    }
+
+    /* Second block splitting attempt */
+    if (npoints > 1) {
+      size_t* splitpoints2 = 0;
+      size_t npoints2 = 0;
+      double totalcost2 = 0;
+
+      ZopfliBlockSplitLZ77(options, &lz77,
+                           options->blocksplittingmax, &splitpoints2, &npoints2);
+
+      for (i = 0; i <= npoints2; i++) {
+        size_t start = i == 0 ? 0 : splitpoints2[i - 1];
+        size_t end = i == npoints2 ? lz77.size : splitpoints2[i];
+        totalcost2 += ZopfliCalculateBlockSizeAutoType(&lz77, start, end);
+      }
+
+      if (totalcost2 < totalcost) {
+        free(splitpoints);
+        splitpoints = splitpoints2;
+        npoints = npoints2;
+      } else {
+        free(splitpoints2);
+      }
+    }
+
+    for (i = 0; i <= npoints; i++) {
+      size_t start = i == 0 ? 0 : splitpoints[i - 1];
+      size_t end = i == npoints ? lz77.size : splitpoints[i];
+      AddLZ77BlockAutoType(options, i == npoints && final,
+                           in, &lz77, start, end, 0,
+                           bp, out, outsize);
+    }
+
+    ZopfliCleanLZ77Store(&lz77);
+    free(splitpoints);
+    free(splitpoints_uncompressed);
+}
+
 /*
 Deflate a part, to allow ZopfliDeflate() to use multiple master blocks if
 needed.
@@ -701,13 +775,6 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
                        const unsigned char* in, size_t instart, size_t inend,
                        unsigned char* bp, unsigned char** out,
                        size_t* outsize) {
-  size_t i;
-  /* byte coordinates rather than lz77 index */
-  size_t* splitpoints_uncompressed = 0;
-  size_t npoints = 0;
-  size_t* splitpoints = 0;
-  double totalcost = 0;
-  ZopfliLZ77Store lz77;
 
   /* If btype=2 is specified, it tries all block types. If a lesser btype is
   given, then however it forces that one. Neither of the lesser types needs
@@ -730,66 +797,8 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
     return;
   }
 
+  BlocksplitAttempt(options, final, in, instart, inend, bp, out, outsize);
 
-  ZopfliBlockSplit(options, in, instart, inend,
-                 options->blocksplittingmax,
-                 &splitpoints_uncompressed, &npoints);
-  splitpoints = (size_t*)malloc(sizeof(*splitpoints) * npoints);
-
-  ZopfliInitLZ77Store(&lz77);
-
-  for (i = 0; i <= npoints; i++) {
-    size_t start = i == 0 ? instart : splitpoints_uncompressed[i - 1];
-    size_t end = i == npoints ? inend : splitpoints_uncompressed[i];
-    ZopfliBlockState s;
-    ZopfliLZ77Store store;
-    ZopfliInitLZ77Store(&store);
-    ZopfliInitBlockState(options, start, end, 1, &s);
-    ZopfliLZ77Optimal(&s, in, start, end, options->numiterations, &store);
-    totalcost += ZopfliCalculateBlockSizeAutoType(&store, 0, store.size);
-
-    ZopfliAppendLZ77Store(&store, &lz77);
-    if (i < npoints) splitpoints[i] = lz77.size;
-
-    ZopfliCleanBlockState(&s);
-    ZopfliCleanLZ77Store(&store);
-  }
-
-  /* Second block splitting attempt */
-  if (npoints > 1) {
-    size_t* splitpoints2 = 0;
-    size_t npoints2 = 0;
-    double totalcost2 = 0;
-
-    ZopfliBlockSplitLZ77(options, &lz77,
-                         options->blocksplittingmax, &splitpoints2, &npoints2);
-
-    for (i = 0; i <= npoints2; i++) {
-      size_t start = i == 0 ? 0 : splitpoints2[i - 1];
-      size_t end = i == npoints2 ? lz77.size : splitpoints2[i];
-      totalcost2 += ZopfliCalculateBlockSizeAutoType(&lz77, start, end);
-    }
-
-    if (totalcost2 < totalcost) {
-      free(splitpoints);
-      splitpoints = splitpoints2;
-      npoints = npoints2;
-    } else {
-      free(splitpoints2);
-    }
-  }
-
-  for (i = 0; i <= npoints; i++) {
-    size_t start = i == 0 ? 0 : splitpoints[i - 1];
-    size_t end = i == npoints ? lz77.size : splitpoints[i];
-    AddLZ77BlockAutoType(options, i == npoints && final,
-                         in, &lz77, start, end, 0,
-                         bp, out, outsize);
-  }
-
-  ZopfliCleanLZ77Store(&lz77);
-  free(splitpoints);
-  free(splitpoints_uncompressed);
 }
 
 // Passthrough
