@@ -81,7 +81,7 @@ static unsigned long CRC(const unsigned char* data, size_t size) {
 }
 
 /* Compresses the data according to the gzip specification, RFC 1952. */
-// Passthrough AND writes bp/out/outsize
+/* Passthrough AND writes bp/out/outsize */
 void ZopfliGzipCompress(const ZopfliOptions* options,
                         const unsigned char* in, size_t insize,
                         unsigned char** out, size_t* outsize) {

@@ -42,7 +42,7 @@ decompressor.
 Loads a file into a memory array. Returns 1 on success, 0 if file doesn't exist
 or couldn't be opened.
 */
-// MISNOMER/FALSE COGNATE - THIS IS NOT "OUT"
+/* MISNOMER/FALSE COGNATE - THIS IS NOT "OUT" */
 static int LoadFile(const char* filename,
                     unsigned char** out, size_t* outsize) {
   FILE* file;
@@ -97,7 +97,7 @@ static void SaveFile(const char* filename,
 /*
 outfilename: filename to write output to, or 0 to write to stdout instead
 */
-// DECLARES OUT AND OUTSIZE
+/* DECLARES OUT AND OUTSIZE */
 static void CompressFile(const ZopfliOptions* options,
                          ZopfliFormat output_type,
                          const char* infilename,

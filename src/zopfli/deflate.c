@@ -35,7 +35,7 @@ Given the value of bp and the amount of bytes, the amount of bits represented
 is not simply bytesize * 8 + bp because even representing one bit requires a
 whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
 */
-// Actually writes to bp, out, outsize
+/* Actually writes to bp, out, outsize */
 static void AddBit(int bit,
                    unsigned char* bp, unsigned char** out, size_t* outsize) {
   if (*bp == 0) ZOPFLI_APPEND_DATA(0, out, outsize);
@@ -43,7 +43,7 @@ static void AddBit(int bit,
   *bp = (*bp + 1) & 7;
 }
 
-// Actually writes to bp, out, outsize
+/* Actually writes to bp, out, outsize */
 static void AddBits(unsigned symbol, unsigned length,
                     unsigned char* bp, unsigned char** out, size_t* outsize) {
   /* TODO(lode): make more efficient (add more bits at once). */
@@ -60,7 +60,7 @@ static void AddBits(unsigned symbol, unsigned length,
 Adds bits, like AddBits, but the order is inverted. The deflate specification
 uses both orders in one standard.
 */
-// Actually writes to bp, out, outsize
+/* Actually writes to bp, out, outsize */
 static void AddHuffmanBits(unsigned symbol, unsigned length,
                            unsigned char* bp, unsigned char** out,
                            size_t* outsize) {
@@ -175,8 +175,8 @@ static size_t EncodeTreeNoOutput(const unsigned* ll_lengths,
 /*
 Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
 */
-// Passthrough of bp/out/outsize
-// Allocates and writes rle
+/* Passthrough of bp/out/outsize
+ Allocates and writes rle */
 static size_t EncodeTree(const unsigned* ll_lengths,
                          const unsigned* d_lengths,
                          int use_16, int use_17, int use_18,
@@ -309,7 +309,7 @@ static size_t EncodeTree(const unsigned* ll_lengths,
   return result_size;
 }
 
-// Passthrough
+/* Passthrough */
 static void AddDynamicTree(const unsigned* ll_lengths,
                            const unsigned* d_lengths,
                            unsigned char* bp,
@@ -354,7 +354,7 @@ Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
 end code 256. expected_data_size is the uncompressed block size, used for
 assert, but you can set it to 0 to not do the assertion.
 */
-// Passthrough
+/* Passthrough */
 static void AddLZ77Data(const ZopfliLZ77Store* lz77,
                         size_t lstart, size_t lend,
                         size_t expected_data_size,
@@ -503,8 +503,8 @@ double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
 
 /* Since an uncompressed block can be max 65535 in size, it actually adds
 multible blocks if needed. */
-// Actually writes to bp, out, outsize
-// AND passthrough
+/* Actually writes to bp, out, outsize
+ AND passthrough */
 static void AddNonCompressedBlock(const ZopfliOptions* options, int final,
                                   const unsigned char* in, size_t instart,
                                   size_t inend,
@@ -562,7 +562,7 @@ bp: output bit pointer
 out: dynamic output array to append to
 outsize: dynamic output array size
 */
-// Passthrough, reads size
+/* Passthrough, reads size */
 static void AddLZ77Block(const ZopfliOptions* options, int btype, int final,
                          const unsigned char* in,
                          const ZopfliLZ77Store* lz77,
@@ -629,7 +629,7 @@ static void AddLZ77Block(const ZopfliOptions* options, int btype, int final,
   }
 }
 
-// Passthrough
+/* Passthrough */
 static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
                                  const unsigned char* in,
                                  const ZopfliLZ77Store* lz77,
@@ -774,8 +774,8 @@ previous bytes are used as the initial dictionary for LZ77.
 This function will usually output multiple deflate blocks. If final is 1, then
 the final bit will be set on the last block.
 */
-// Passthrough of bp/out/outsize
-// Allocates npoints/splitpoints/splitpoints_uncompressed
+/* Passthrough of bp/out/outsize
+ Allocates npoints/splitpoints/splitpoints_uncompressed */
 void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
                        const unsigned char* in, size_t instart, size_t inend,
                        unsigned char* bp, unsigned char** out,
@@ -806,7 +806,7 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
 
 }
 
-// Passthrough
+/* Passthrough */
 void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
                    const unsigned char* in, size_t insize,
                    unsigned char* bp, unsigned char** out, size_t* outsize) {

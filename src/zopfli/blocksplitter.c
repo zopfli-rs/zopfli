@@ -127,7 +127,7 @@ static double SplitCost(size_t i, void* context) {
   return EstimateCost(c->lz77, c->start, i) + EstimateCost(c->lz77, i, c->end);
 }
 
-// Actually writes to out, outsize which are splitpoints, npoints
+/* Actually writes to out, outsize which are splitpoints, npoints */
 static void AddSorted(size_t value, size_t** out, size_t* outsize) {
   size_t i;
   ZOPFLI_APPEND_DATA(value, out, outsize);
@@ -193,7 +193,7 @@ lstart: output variable, giving start of block.
 lend: output variable, giving end of block.
 returns 1 if a block was found, 0 if no block found (all are done).
 */
-// Reads splitpoints, npoints
+/* Reads splitpoints, npoints */
 static int FindLargestSplittableBlock(
     size_t lz77size, const unsigned char* done,
     const size_t* splitpoints, size_t npoints,
@@ -214,7 +214,7 @@ static int FindLargestSplittableBlock(
   return found;
 }
 
-// Passthrough of splitponits and npoints
+/* Passthrough of splitponits and npoints */
 void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
                           const ZopfliLZ77Store* lz77, size_t maxblocks,
                           size_t** splitpoints, size_t* npoints) {
@@ -275,7 +275,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
   free(done);
 }
 
-// Resets splitpoints, npoints then writes to them
+/* Resets splitpoints, npoints then writes to them */
 void ZopfliBlockSplit(const ZopfliOptions* options,
                       const unsigned char* in, size_t instart, size_t inend,
                       size_t maxblocks, size_t** splitpoints, size_t* npoints) {
