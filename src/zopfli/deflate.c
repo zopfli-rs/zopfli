@@ -686,6 +686,17 @@ static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
   ZopfliCleanLZ77Store(&fixedstore);
 }
 
+void AddAllBlocks(size_t npoints, size_t* splitpoints, ZopfliLZ77Store lz77, const ZopfliOptions* options, int final, const unsigned char* in, unsigned char* bp, unsigned char** out, size_t* outsize) {
+    size_t i;
+
+    for (i = 0; i <= npoints; i++) {
+      size_t start = i == 0 ? 0 : splitpoints[i - 1];
+      size_t end = i == npoints ? lz77.size : splitpoints[i];
+      AddLZ77BlockAutoType(options, i == npoints && final,
+                           in, &lz77, start, end, 0,
+                           bp, out, outsize);
+    }
+}
 
 void BlocksplitAttempt(const ZopfliOptions* options, int final,
                        const unsigned char* in, size_t instart, size_t inend,
@@ -747,13 +758,7 @@ void BlocksplitAttempt(const ZopfliOptions* options, int final,
       }
     }
 
-    for (i = 0; i <= npoints; i++) {
-      size_t start = i == 0 ? 0 : splitpoints[i - 1];
-      size_t end = i == npoints ? lz77.size : splitpoints[i];
-      AddLZ77BlockAutoType(options, i == npoints && final,
-                           in, &lz77, start, end, 0,
-                           bp, out, outsize);
-    }
+    AddAllBlocks(npoints, splitpoints, lz77, options, final, in, bp, out, outsize);
 
     ZopfliCleanLZ77Store(&lz77);
     free(splitpoints);
