@@ -45,13 +45,6 @@ typedef struct ZopfliOptions {
   int numiterations;
 
   /*
-  If true, splits the data in multiple deflate blocks with optimal choice
-  for the block boundaries. Block splitting gives better compression. Default:
-  true (1).
-  */
-  int blocksplitting;
-
-  /*
   No longer used, left for compatibility.
   */
   int blocksplittinglast;

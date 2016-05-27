@@ -731,12 +731,10 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
   }
 
 
-  if (options->blocksplitting) {
-    ZopfliBlockSplit(options, in, instart, inend,
-                     options->blocksplittingmax,
-                     &splitpoints_uncompressed, &npoints);
-    splitpoints = (size_t*)malloc(sizeof(*splitpoints) * npoints);
-  }
+  ZopfliBlockSplit(options, in, instart, inend,
+                 options->blocksplittingmax,
+                 &splitpoints_uncompressed, &npoints);
+  splitpoints = (size_t*)malloc(sizeof(*splitpoints) * npoints);
 
   ZopfliInitLZ77Store(&lz77);
 
@@ -758,7 +756,7 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
   }
 
   /* Second block splitting attempt */
-  if (options->blocksplitting && npoints > 1) {
+  if (npoints > 1) {
     size_t* splitpoints2 = 0;
     size_t npoints2 = 0;
     double totalcost2 = 0;
