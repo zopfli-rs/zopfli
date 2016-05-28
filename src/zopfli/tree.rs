@@ -18,7 +18,7 @@ pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxb
     }
 }
 
-pub fn lengths_to_symbols(lengths: &[size_t], maxbits: c_uint) -> Vec<c_uint> {
+pub fn lengths_to_symbols(lengths: &[usize], maxbits: c_uint) -> Vec<c_uint> {
     let mut bl_count = vec![0; (maxbits + 1) as usize];
     let mut next_code = vec![0; (maxbits + 1) as usize];
     let n = lengths.len();
@@ -29,7 +29,7 @@ pub fn lengths_to_symbols(lengths: &[size_t], maxbits: c_uint) -> Vec<c_uint> {
     // number of codes of length N, N >= 1. */
     for i in 0..n {
         assert!(lengths[i] <= maxbits as usize);
-        bl_count[lengths[i] as usize] += 1;
+        bl_count[lengths[i]] += 1;
     }
     // 2) Find the numerical value of the smallest code for each code length.
     let mut code = 0;
@@ -41,7 +41,7 @@ pub fn lengths_to_symbols(lengths: &[size_t], maxbits: c_uint) -> Vec<c_uint> {
     // 3) Assign numerical values to all codes, using consecutive values for all
     // codes of the same length with the base values determined at step 2.
     for i in 0..n {
-        let len = lengths[i] as usize;
+        let len = lengths[i];
         if len != 0 {
             symbols[i] = next_code[len];
             next_code[len] += 1;

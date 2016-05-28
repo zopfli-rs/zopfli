@@ -54,7 +54,7 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
 
     // 2) Let's mark all population counts that already can be encoded
     // with an rle code.
-    let mut good_for_rle = vec![0; length as size_t];
+    let mut good_for_rle = vec![0; length];
 
     // Let's not spoil any of the existing good rle codes.
     // Mark any seq of 0's that is longer than 5 as a good_for_rle.
@@ -65,7 +65,7 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
         if i == length || c[i] != symbol {
             if (symbol == 0 && stride >= 5) || (symbol != 0 && stride >= 7) {
                 for k in 0..stride {
-                    good_for_rle[(i - k - 1) as usize] = 1;
+                    good_for_rle[i - k - 1] = 1;
                 }
             }
             stride = 1;
@@ -83,7 +83,7 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
     let mut sum = 0;
     for i in 0..(length + 1) {
         // Heuristic for selecting the stride ranges to collapse.
-        if i == length || good_for_rle[i as usize] != 0 || (c[i] as i32 - limit as i32).abs() >= 4 {
+        if i == length || good_for_rle[i] != 0 || (c[i] as i32 - limit as i32).abs() >= 4 {
             if stride >= 4 || (stride >= 3 && sum == 0) {
                 // The stride must end, collapse what we have, if we have enough (4).
                 let mut count = (sum + stride / 2) / stride;
@@ -97,7 +97,7 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
                 for k in 0..stride {
                     // We don't want to change value at counts[i],
                     // that is already belonging to the next stride. Thus - 1.
-                    unsafe { *counts.offset((i - k - 1) as isize) = count as size_t };
+                    unsafe { *counts.offset((i - k - 1) as isize) = count };
                 }
             }
             stride = 0;
@@ -233,7 +233,7 @@ pub extern fn EncodeTreeNoOutput(ll_lengths: *const c_uint, d_lengths: *const c_
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
-    let mut clcounts = [0 as usize; 19];
+    let mut clcounts = [0; 19];
     /* The order in which code length code lengths are encoded as per deflate. */
     let order = [
         16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
@@ -380,7 +380,7 @@ pub extern fn EncodeTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, us
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
-    let mut clcounts = [0 as usize; 19];
+    let mut clcounts = [0; 19];
     /* The order in which code length code lengths are encoded as per deflate. */
     let order = [
         16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15

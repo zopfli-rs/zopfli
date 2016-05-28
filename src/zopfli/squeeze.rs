@@ -114,7 +114,7 @@ impl SymbolStats {
         fn randomize_freqs(freqs: &mut [size_t], state: &mut RanState) {
             let n = freqs.len();
             let mut i: usize = 0;
-            let end = n as usize;
+            let end = n;
 
             while i < end {
                 if (state.random_marsaglia() >> 4) % 3 == 0 {
@@ -356,7 +356,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
     let mut length_array = vec![0; blocksize + 1];
     let mut leng;
     let mut longest_match;
-    let sublen = unsafe { malloc(mem::size_of::<c_ushort>() as size_t * 259) as *mut c_ushort };
+    let sublen = unsafe { malloc(mem::size_of::<c_ushort>() * 259) as *mut c_ushort };
     let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
         instart - ZOPFLI_WINDOW_SIZE
     } else {
@@ -431,7 +431,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
             }
         }
         // Lengths.
-        let kend = cmp::min(leng as size_t, inend - i) as usize;
+        let kend = cmp::min(leng as size_t, inend - i);
         let mincostaddcostj = mincost + unsafe { *costs.offset(j as isize) } as c_double;
 
         for k in 3..(kend + 1) {
@@ -444,7 +444,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
             let new_cost = costmodel(k as c_uint, unsafe { *sublen.offset(k as isize) } as c_uint, costcontext) + unsafe { *costs.offset(j as isize) } as c_double;
             assert!(new_cost >= 0.0);
             if new_cost < unsafe { *costs.offset((j + k) as isize) } as c_double {
-                assert!(k as usize <= ZOPFLI_MAX_MATCH);
+                assert!(k <= ZOPFLI_MAX_MATCH);
                 unsafe {
                     *costs.offset((j + k) as isize) = new_cost as c_float;
                 }

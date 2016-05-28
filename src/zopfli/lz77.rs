@@ -288,9 +288,9 @@ impl From<*const ZopfliLZ77Store> for Lz77Store {
             &*ptr
         };
 
-        let len = store.size as usize;
-        let ll_len = (ZOPFLI_NUM_LL * (store.size / ZOPFLI_NUM_LL) + ZOPFLI_NUM_LL) as usize;
-        let d_len = (ZOPFLI_NUM_D * (store.size / ZOPFLI_NUM_D) + ZOPFLI_NUM_D) as usize;
+        let len = store.size;
+        let ll_len = ZOPFLI_NUM_LL * (store.size / ZOPFLI_NUM_LL) + ZOPFLI_NUM_LL;
+        let d_len = ZOPFLI_NUM_D * (store.size / ZOPFLI_NUM_D) + ZOPFLI_NUM_D;
 
         Lz77Store {
             litlens: ptr_to_vec(store.litlens, len),
