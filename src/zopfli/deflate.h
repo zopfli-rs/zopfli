@@ -85,6 +85,13 @@ Calculates block size in bits, automatically using the best btype.
 double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
                                         size_t lstart, size_t lend);
 
+
+void AddBits(unsigned symbol, unsigned length,
+                    unsigned char* bp, unsigned char** out, size_t* outsize);
+
+void AddHuffmanBits(unsigned symbol, unsigned length,
+                           unsigned char* bp, unsigned char** out,
+                           size_t* outsize);
 #ifdef __cplusplus
 }  // extern "C"
 #endif

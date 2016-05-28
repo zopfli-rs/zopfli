@@ -5,6 +5,7 @@ use libc::{c_uint, c_int, size_t, c_uchar};
 use katajainen::length_limited_code_lengths;
 use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL};
+use tree::lengths_to_symbols;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -364,4 +365,178 @@ pub extern fn CalculateTreeSize(ll_lengths: *const c_uint, d_lengths: *const c_u
         }
     }
     result
+}
+
+#[link(name = "zopfli")]
+extern {
+    fn AddBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t);
+    fn AddHuffmanBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t);
+}
+
+/// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn EncodeTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: c_int, use_17: c_int, use_18: c_int, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t) -> size_t {
+    let mut hlit = 29;  /* 286 - 257 */
+    let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
+
+    let mut clcounts = [0 as usize; 19];
+    /* The order in which code length code lengths are encoded as per deflate. */
+    let order = [
+        16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
+    ];
+    let mut result_size = 0;
+
+
+    let mut rle = vec![];
+    let mut rle_bits = vec![];
+
+    /* Trim zeros. */
+    while hlit > 0 && unsafe { *ll_lengths.offset(257 + hlit - 1) } == 0 {
+        hlit -= 1;
+    }
+    while hdist > 0 && unsafe { *d_lengths.offset(1 + hdist - 1) } == 0 {
+        hdist -= 1;
+    }
+    let hlit2 = hlit + 257;
+
+    let lld_total = hlit2 + hdist + 1; /* Total amount of literal, length, distance codes. */
+
+    let mut i = 0;
+
+    while i < lld_total {
+        /* This is an encoding of a huffman tree, so now the length is a symbol */
+        let symbol = if i < hlit2 {
+            unsafe { *ll_lengths.offset(i) }
+        } else {
+            unsafe { *d_lengths.offset(i - hlit2) }
+        } as c_uchar;
+
+        let mut count = 1;
+        if use_16 != 0 || (symbol == 0 && (use_17 != 0 || use_18 != 0)) {
+            let mut j = i + 1;
+            let mut symbol_calc = if j < hlit2 {
+                unsafe { *ll_lengths.offset(j) }
+            } else {
+                unsafe { *d_lengths.offset(j - hlit2) }
+            } as c_uchar;
+
+            while j < lld_total && symbol == symbol_calc {
+                count += 1;
+                j += 1;
+                symbol_calc = if j < hlit2 {
+                    unsafe { *ll_lengths.offset(j) }
+                } else {
+                    unsafe { *d_lengths.offset(j - hlit2) }
+                } as c_uchar;
+            }
+        }
+
+        i += count - 1;
+
+        /* Repetitions of zeroes */
+        if symbol == 0 && count >= 3 {
+            if use_18 != 0 {
+                while count >= 11 {
+                    let count2 = if count > 138 {
+                        138
+                    } else {
+                        count
+                    };
+                    rle.push(18);
+                    rle_bits.push(count2 - 11);
+                    clcounts[18] += 1;
+                    count -= count2;
+                }
+            }
+            if use_17 != 0 {
+                while count >= 3 {
+                    let count2 = if count > 10 {
+                        10
+                    } else {
+                        count
+                    };
+                    rle.push(17);
+                    rle_bits.push(count2 - 3);
+                    clcounts[17] += 1;
+                    count -= count2;
+                }
+            }
+        }
+
+        /* Repetitions of any symbol */
+        if use_16 != 0 && count >= 4 {
+            count -= 1;  /* Since the first one is hardcoded. */
+            clcounts[symbol as usize] += 1;
+            rle.push(symbol);
+            rle_bits.push(0);
+
+            while count >= 3 {
+                let count2 = if count > 6 {
+                    6
+                } else {
+                    count
+                };
+                rle.push(16);
+                rle_bits.push(count2 - 3);
+                clcounts[16] += 1;
+                count -= count2;
+            }
+        }
+
+        /* No or insufficient repetition */
+        clcounts[symbol as usize] += count as usize;
+        while count > 0 {
+            rle.push(symbol);
+            rle_bits.push(0);
+            count -= 1;
+        }
+        i += 1;
+    }
+
+    let clcl = length_limited_code_lengths(&clcounts, 7);
+    let clsymbols = lengths_to_symbols(&clcl, 7);
+
+    let mut hclen = 15;
+    /* Trim zeros. */
+    while hclen > 0 && clcounts[order[hclen + 4 - 1]] == 0 {
+        hclen -= 1;
+    }
+
+    unsafe {
+        AddBits(hlit as c_uint, 5, bp, out, outsize);
+        AddBits(hdist as c_uint, 5, bp, out, outsize);
+        AddBits(hclen as c_uint, 4, bp, out, outsize);
+
+        for i in 0..(hclen + 4) {
+            AddBits(clcl[order[i]] as c_uint, 3, bp, out, outsize);
+        }
+
+        for i in 0..rle.len() {
+            let rle_i = rle[i] as usize;
+            let rle_bits_i = rle_bits[i] as c_uint;
+            let sym = clsymbols[rle_i];
+            AddHuffmanBits(sym, clcl[rle_i] as c_uint, bp, out, outsize);
+            /* Extra bits. */
+            if rle_i == 16 {
+                AddBits(rle_bits_i, 2, bp, out, outsize);
+            } else if rle_i == 17 {
+                AddBits(rle_bits_i, 3, bp, out, outsize);
+            } else if rle_i == 18 {
+                AddBits(rle_bits_i, 7, bp, out, outsize);
+            }
+        }
+    }
+
+    result_size += 14;  /* hlit, hdist, hclen bits */
+    result_size += (hclen + 4) * 3;  /* clcl bits */
+    for i in 0..19 {
+        result_size += clcl[i] * clcounts[i];
+    }
+    /* Extra bits. */
+    result_size += clcounts[16] * 2;
+    result_size += clcounts[17] * 3;
+    result_size += clcounts[18] * 7;
+
+    result_size
 }
