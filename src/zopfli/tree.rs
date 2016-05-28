@@ -8,19 +8,27 @@ use katajainen::length_limited_code_lengths;
 #[allow(non_snake_case)]
 pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxbits: c_uint, symbols: *mut c_uint) {
     let lengths = unsafe { slice::from_raw_parts(lengths_ptr, n) };
-    let mut bl_count = vec![0; (maxbits + 1) as usize];
-    let mut next_code = vec![0; (maxbits + 1) as usize];
+    let lengths_size_t = lengths.iter().map(|&len| len as size_t).collect::<Vec<_>>();
 
+    let syms = lengths_to_symbols(&lengths_size_t, maxbits);
     for i in 0..n {
         unsafe {
-            *symbols.offset(i as isize) = 0;
+            *symbols.offset(i as isize) = syms[i];
         }
     }
+}
+
+pub fn lengths_to_symbols(lengths: &[size_t], maxbits: c_uint) -> Vec<c_uint> {
+    let mut bl_count = vec![0; (maxbits + 1) as usize];
+    let mut next_code = vec![0; (maxbits + 1) as usize];
+    let n = lengths.len();
+
+    let mut symbols = vec![0; n];
 
     // 1) Count the number of codes for each code length. Let bl_count[N] be the
     // number of codes of length N, N >= 1. */
     for i in 0..n {
-        assert!(lengths[i] <= maxbits);
+        assert!(lengths[i] <= maxbits as usize);
         bl_count[lengths[i] as usize] += 1;
     }
     // 2) Find the numerical value of the smallest code for each code length.
@@ -35,12 +43,11 @@ pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxb
     for i in 0..n {
         let len = lengths[i] as usize;
         if len != 0 {
-            unsafe {
-                *symbols.offset(i as isize) = next_code[len];
-            }
+            symbols[i] = next_code[len];
             next_code[len] += 1;
         }
     }
+    symbols
 }
 
 #[no_mangle]
