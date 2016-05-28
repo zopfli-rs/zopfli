@@ -540,3 +540,21 @@ pub extern fn EncodeTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, us
 
     result_size
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t) {
+
+    let mut best = 0;
+    let mut bestsize = 0;
+
+    for i in 0..8 {
+        let size = EncodeTreeNoOutput(ll_lengths, d_lengths, i & 1, i & 2, i & 4);
+        if bestsize == 0 || size < bestsize {
+            bestsize = size;
+            best = i;
+        }
+    }
+
+    EncodeTree(ll_lengths, d_lengths, best & 1, best & 2, best & 4, bp, out, outsize);
+}

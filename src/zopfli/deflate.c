@@ -80,28 +80,7 @@ extern size_t EncodeTreeNoOutput(const unsigned* ll_lengths, const unsigned* d_l
 
 extern size_t EncodeTree(const unsigned* ll_lengths, const unsigned* d_lengths, int use_16, int use_17, int use_18, unsigned char* bp, unsigned char** out, size_t* outsize);
 
-/* Passthrough */
-static void AddDynamicTree(const unsigned* ll_lengths,
-                           const unsigned* d_lengths,
-                           unsigned char* bp,
-                           unsigned char** out, size_t* outsize) {
-  int i;
-  int best = 0;
-  size_t bestsize = 0;
-
-  for(i = 0; i < 8; i++) {
-    size_t size = EncodeTreeNoOutput(ll_lengths, d_lengths,
-                             i & 1, i & 2, i & 4);
-    if (bestsize == 0 || size < bestsize) {
-      bestsize = size;
-      best = i;
-    }
-  }
-
-  EncodeTree(ll_lengths, d_lengths,
-             best & 1, best & 2, best & 4,
-             bp, out, outsize);
-}
+extern void AddDynamicTree(const unsigned* ll_lengths, const unsigned* d_lengths, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 extern size_t CalculateTreeSize(const unsigned* ll_lengths, const unsigned* d_lengths);
 
