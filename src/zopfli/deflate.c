@@ -238,22 +238,7 @@ static void AddDynamicTree(const unsigned* ll_lengths,
              bp, out, outsize);
 }
 
-/*
-Gives the exact size of the tree, in bits, as it will be encoded in DEFLATE.
-*/
-static size_t CalculateTreeSize(const unsigned* ll_lengths,
-                                const unsigned* d_lengths) {
-  size_t result = 0;
-  int i;
-
-  for(i = 0; i < 8; i++) {
-    size_t size = EncodeTreeNoOutput(ll_lengths, d_lengths,
-                             i & 1, i & 2, i & 4);
-    if (result == 0 || size < result) result = size;
-  }
-
-  return result;
-}
+extern size_t CalculateTreeSize(const unsigned* ll_lengths, const unsigned* d_lengths);
 
 /*
 Adds all lit/len and dist codes from the lists as huffman symbols. Does not add

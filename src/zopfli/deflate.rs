@@ -351,3 +351,17 @@ pub extern fn EncodeTreeNoOutput(ll_lengths: *const c_uint, d_lengths: *const c_
 
     result_size
 }
+
+/// Gives the exact size of the tree, in bits, as it will be encoded in DEFLATE.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn CalculateTreeSize(ll_lengths: *const c_uint, d_lengths: *const c_uint) -> size_t {
+    let mut result = 0;
+    for i in 0..8 {
+        let size = EncodeTreeNoOutput(ll_lengths, d_lengths, i & 1, i & 2, i & 4);
+        if result == 0 || size < result {
+            result = size;
+        }
+    }
+    result
+}
