@@ -1,7 +1,8 @@
 use std::slice;
 
-use libc::{c_uint, c_int, size_t};
+use libc::{c_uint, c_int, size_t, c_uchar};
 
+use katajainen::length_limited_code_lengths;
 use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL};
 
@@ -211,9 +212,7 @@ pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_co
     }
 }
 
-/*
-Calculates size of the part after the header and tree of an LZ77 block, in bits.
-*/
+/// Calculates size of the part after the header and tree of an LZ77 block, in bits.
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
@@ -223,4 +222,132 @@ pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *co
         let (ll_counts, d_counts) = get_histogram(unsafe { &*lz77 }, lstart, lend);
         CalculateBlockSymbolSizeGivenCounts(ll_counts.as_ptr(), d_counts.as_ptr(), ll_lengths, d_lengths, lz77, lstart, lend)
     }
+}
+
+/// Encodes the Huffman tree and returns how many bits its encoding takes; only returns the size
+/// and runs faster.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn EncodeTreeNoOutput(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: c_int, use_17: c_int, use_18: c_int) -> size_t {
+    let mut hlit = 29;  /* 286 - 257 */
+    let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
+
+    let mut clcounts = [0 as usize; 19];
+    /* The order in which code length code lengths are encoded as per deflate. */
+    let order = [
+        16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
+    ];
+    let mut result_size = 0;
+
+    /* Trim zeros. */
+    while hlit > 0 && unsafe { *ll_lengths.offset(257 + hlit - 1) } == 0 {
+        hlit -= 1;
+    }
+    while hdist > 0 && unsafe { *d_lengths.offset(1 + hdist - 1) } == 0 {
+        hdist -= 1;
+    }
+    let hlit2 = hlit + 257;
+
+    let lld_total = hlit2 + hdist + 1; /* Total amount of literal, length, distance codes. */
+
+    let mut i = 0;
+
+    while i < lld_total {
+        /* This is an encoding of a huffman tree, so now the length is a symbol */
+        let symbol = if i < hlit2 {
+            unsafe { *ll_lengths.offset(i) }
+        } else {
+            unsafe { *d_lengths.offset(i - hlit2) }
+        } as c_uchar;
+
+        let mut count = 1;
+        if use_16 != 0 || (symbol == 0 && (use_17 != 0 || use_18 != 0)) {
+            let mut j = i + 1;
+            let mut symbol_calc = if j < hlit2 {
+                unsafe { *ll_lengths.offset(j) }
+            } else {
+                unsafe { *d_lengths.offset(j - hlit2) }
+            } as c_uchar;
+
+            while j < lld_total && symbol == symbol_calc {
+                count += 1;
+                j += 1;
+                symbol_calc = if j < hlit2 {
+                    unsafe { *ll_lengths.offset(j) }
+                } else {
+                    unsafe { *d_lengths.offset(j - hlit2) }
+                } as c_uchar;
+            }
+        }
+
+        i += count - 1;
+
+        /* Repetitions of zeroes */
+        if symbol == 0 && count >= 3 {
+            if use_18 != 0 {
+                while count >= 11 {
+                    let count2 = if count > 138 {
+                        138
+                    } else {
+                        count
+                    };
+                    clcounts[18] += 1;
+                    count -= count2;
+                }
+            }
+            if use_17 != 0 {
+                while count >= 3 {
+                    let count2 = if count > 10 {
+                        10
+                    } else {
+                        count
+                    };
+                    clcounts[17] += 1;
+                    count -= count2;
+                }
+            }
+        }
+
+        /* Repetitions of any symbol */
+        if use_16 != 0 && count >= 4 {
+            count -= 1;  /* Since the first one is hardcoded. */
+            clcounts[symbol as usize] += 1;
+            while count >= 3 {
+                let count2 = if count > 6 {
+                    6
+                } else {
+                    count
+                };
+                clcounts[16] += 1;
+                count -= count2;
+            }
+        }
+
+        /* No or insufficient repetition */
+        clcounts[symbol as usize] += count as usize;
+        while count > 0 {
+            count -= 1;
+        }
+        i += 1;
+    }
+
+    let clcl = length_limited_code_lengths(&clcounts, 7);
+
+    let mut hclen = 15;
+    /* Trim zeros. */
+    while hclen > 0 && clcounts[order[hclen + 4 - 1]] == 0 {
+        hclen -= 1;
+    }
+
+    result_size += 14;  /* hlit, hdist, hclen bits */
+    result_size += (hclen + 4) * 3;  /* clcl bits */
+    for i in 0..19 {
+        result_size += clcl[i] * clcounts[i];
+    }
+    /* Extra bits. */
+    result_size += clcounts[16] * 2;
+    result_size += clcounts[17] * 3;
+    result_size += clcounts[18] * 7;
+
+    result_size
 }
