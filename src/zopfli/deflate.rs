@@ -227,9 +227,7 @@ pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *co
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes; only returns the size
 /// and runs faster.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn EncodeTreeNoOutput(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: c_int, use_17: c_int, use_18: c_int) -> size_t {
+pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: c_int, use_17: c_int, use_18: c_int) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -359,7 +357,7 @@ pub extern fn EncodeTreeNoOutput(ll_lengths: *const c_uint, d_lengths: *const c_
 pub extern fn CalculateTreeSize(ll_lengths: *const c_uint, d_lengths: *const c_uint) -> size_t {
     let mut result = 0;
     for i in 0..8 {
-        let size = EncodeTreeNoOutput(ll_lengths, d_lengths, i & 1, i & 2, i & 4);
+        let size = encode_tree_no_output(ll_lengths, d_lengths, i & 1, i & 2, i & 4);
         if result == 0 || size < result {
             result = size;
         }
@@ -374,9 +372,7 @@ extern {
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn EncodeTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: c_int, use_17: c_int, use_18: c_int, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t) -> size_t {
+pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: c_int, use_17: c_int, use_18: c_int, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -549,12 +545,12 @@ pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint
     let mut bestsize = 0;
 
     for i in 0..8 {
-        let size = EncodeTreeNoOutput(ll_lengths, d_lengths, i & 1, i & 2, i & 4);
+        let size = encode_tree_no_output(ll_lengths, d_lengths, i & 1, i & 2, i & 4);
         if bestsize == 0 || size < bestsize {
             bestsize = size;
             best = i;
         }
     }
 
-    EncodeTree(ll_lengths, d_lengths, best & 1, best & 2, best & 4, bp, out, outsize);
+    encode_tree(ll_lengths, d_lengths, best & 1, best & 2, best & 4, bp, out, outsize);
 }

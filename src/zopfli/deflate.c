@@ -76,10 +76,6 @@ void AddHuffmanBits(unsigned symbol, unsigned length,
 
 extern void PatchDistanceCodesForBuggyDecoders(unsigned* d_lengths);
 
-extern size_t EncodeTreeNoOutput(const unsigned* ll_lengths, const unsigned* d_lengths, int use_16, int use_17, int use_18);
-
-extern size_t EncodeTree(const unsigned* ll_lengths, const unsigned* d_lengths, int use_16, int use_17, int use_18, unsigned char* bp, unsigned char** out, size_t* outsize);
-
 extern void AddDynamicTree(const unsigned* ll_lengths, const unsigned* d_lengths, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 extern size_t CalculateTreeSize(const unsigned* ll_lengths, const unsigned* d_lengths);
