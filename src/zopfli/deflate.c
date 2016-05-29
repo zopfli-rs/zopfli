@@ -129,47 +129,7 @@ extern size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts, const
 extern size_t CalculateBlockSymbolSize(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 extern void OptimizeHuffmanForRle(int length, size_t* counts);
 
-/*
-Tries out OptimizeHuffmanForRle for this block, if the result is smaller,
-uses it, otherwise keeps the original. Returns size of encoded tree and data in
-bits, not including the 3-bit block header.
-*/
-static double TryOptimizeHuffmanForRle(
-    const ZopfliLZ77Store* lz77, size_t lstart, size_t lend,
-    const size_t* ll_counts, const size_t* d_counts,
-    unsigned* ll_lengths, unsigned* d_lengths) {
-  size_t ll_counts2[ZOPFLI_NUM_LL];
-  size_t d_counts2[ZOPFLI_NUM_D];
-  unsigned ll_lengths2[ZOPFLI_NUM_LL];
-  unsigned d_lengths2[ZOPFLI_NUM_D];
-  double treesize;
-  double datasize;
-  double treesize2;
-  double datasize2;
-
-  treesize = CalculateTreeSize(ll_lengths, d_lengths);
-  datasize = CalculateBlockSymbolSizeGivenCounts(ll_counts, d_counts,
-      ll_lengths, d_lengths, lz77, lstart, lend);
-
-  memcpy(ll_counts2, ll_counts, sizeof(ll_counts2));
-  memcpy(d_counts2, d_counts, sizeof(d_counts2));
-  OptimizeHuffmanForRle(ZOPFLI_NUM_LL, ll_counts2);
-  OptimizeHuffmanForRle(ZOPFLI_NUM_D, d_counts2);
-  ZopfliCalculateBitLengths(ll_counts2, ZOPFLI_NUM_LL, 15, ll_lengths2);
-  ZopfliCalculateBitLengths(d_counts2, ZOPFLI_NUM_D, 15, d_lengths2);
-  PatchDistanceCodesForBuggyDecoders(d_lengths2);
-
-  treesize2 = CalculateTreeSize(ll_lengths2, d_lengths2);
-  datasize2 = CalculateBlockSymbolSizeGivenCounts(ll_counts, d_counts,
-      ll_lengths2, d_lengths2, lz77, lstart, lend);
-
-  if (treesize2 + datasize2 < treesize + datasize) {
-    memcpy(ll_lengths, ll_lengths2, sizeof(ll_lengths2));
-    memcpy(d_lengths, d_lengths2, sizeof(d_lengths2));
-    return treesize2 + datasize2;
-  }
-  return treesize + datasize;
-}
+extern double TryOptimizeHuffmanForRle(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, const size_t* ll_counts, const size_t* d_counts, unsigned* ll_lengths, unsigned* d_lengths);
 
 /*
 Calculates the bit lengths for the symbols for dynamic blocks. Chooses bit

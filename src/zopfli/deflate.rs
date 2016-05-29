@@ -694,3 +694,47 @@ pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t
     }
     result
 }
+
+/// Tries out OptimizeHuffmanForRle for this block, if the result is smaller,
+/// uses it, otherwise keeps the original. Returns size of encoded tree and data in
+/// bits, not including the 3-bit block header.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_counts_ptr: *mut size_t, d_counts_ptr: *mut size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+    let ll_counts = unsafe { slice::from_raw_parts_mut(ll_counts_ptr, ZOPFLI_NUM_LL) };
+    let d_counts = unsafe { slice::from_raw_parts_mut(d_counts_ptr, ZOPFLI_NUM_D) };
+
+    let mut ll_counts2 = [0; ZOPFLI_NUM_LL];
+    let mut d_counts2 = [0; ZOPFLI_NUM_D];
+
+    ll_counts2.clone_from_slice(ll_counts);
+    d_counts2.clone_from_slice(d_counts);
+
+    let treesize = CalculateTreeSize(ll_lengths, d_lengths);
+    let datasize = CalculateBlockSymbolSizeGivenCounts(ll_counts_ptr, d_counts_ptr, ll_lengths, d_lengths, lz77_ptr, lstart, lend);
+
+    optimize_huffman_for_rle(&mut ll_counts2);
+    optimize_huffman_for_rle(&mut d_counts2);
+
+    let ll_lengths2: Vec<c_uint> = length_limited_code_lengths(&ll_counts2, 15).iter().map(|&len| len as c_uint).collect();
+    let mut d_lengths2: Vec<c_uint> = length_limited_code_lengths(&d_counts2, 15).iter().map(|&len| len as c_uint).collect();
+    patch_distance_codes_for_buggy_decoders(&mut d_lengths2[..]);
+
+    let treesize2 = CalculateTreeSize(ll_lengths2.as_ptr(), d_lengths2.as_ptr());
+    let datasize2 = CalculateBlockSymbolSizeGivenCounts(ll_counts_ptr, d_counts_ptr, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77_ptr, lstart, lend);
+
+    if treesize2 + datasize2 < treesize + datasize {
+        for i in 0..ZOPFLI_NUM_LL {
+            unsafe {
+                *ll_lengths.offset(i as isize) = ll_lengths2[i];
+            }
+        }
+        for i in 0..ZOPFLI_NUM_D {
+            unsafe {
+                *d_lengths.offset(i as isize) = d_lengths2[i];
+            }
+        }
+        return (treesize2 + datasize2) as c_double;
+    }
+    (treesize + datasize) as c_double
+}
