@@ -16,12 +16,12 @@ use zopfli::ZopfliOptions;
 
 #[repr(C)]
 pub struct ZopfliLZ77Store {
-  litlens: *mut c_ushort,  /* Lit or len. */
-  dists: *mut c_ushort,  /* If 0: indicates literal in corresponding litlens,
+  pub litlens: *mut c_ushort,  /* Lit or len. */
+  pub dists: *mut c_ushort,  /* If 0: indicates literal in corresponding litlens,
       if > 0: length in corresponding litlens, this is the distance. */
   size: size_t,
 
-  pos: *mut size_t,  /* position in data where this LZ77 command begins */
+  pub pos: *mut size_t,  /* position in data where this LZ77 command begins */
 
   ll_symbol: *mut c_ushort,
   d_symbol: *mut c_ushort,

@@ -1,11 +1,12 @@
 use std::slice;
 
-use libc::{c_uint, c_int, size_t, c_uchar};
+use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use katajainen::length_limited_code_lengths;
-use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram};
+use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, ZopfliLZ77GetByteRange};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
-use tree::lengths_to_symbols;
+use tree::{lengths_to_symbols, ZopfliLengthsToSymbols};
+use zopfli::ZopfliOptions;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -370,12 +371,16 @@ pub extern fn CalculateTreeSize(ll_lengths: *const c_uint, d_lengths: *const c_u
 
 #[link(name = "zopfli")]
 extern {
-    fn AddBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t);
-    fn AddHuffmanBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t);
+    fn AddBit(bit: c_int, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
+    fn AddBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
+    fn AddHuffmanBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
+    fn AddNonCompressedBlock(options: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
+    fn GetDynamicLengths(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double;
+    fn AddLZ77Data(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, ll_symbols: *const c_uint, ll_lengths: *const c_uint, d_symbols: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
-pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: bool, use_17: bool, use_18: bool, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t) -> size_t {
+pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: bool, use_17: bool, use_18: bool, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -542,7 +547,7 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uint, outsize: *const size_t) {
+pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
 
     let mut best = 0;
     let mut bestsize = 0;
@@ -556,4 +561,96 @@ pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint
     }
 
     encode_tree(ll_lengths, d_lengths, best & 1 > 0, best & 2 > 0, best & 4 > 0, bp, out, outsize);
+}
+
+/// Adds a deflate block with the given LZ77 data to the output.
+/// options: global program options
+/// btype: the block type, must be 1 or 2
+/// final: whether to set the "final" bit on this block, must be the last block
+/// litlens: literal/length array of the LZ77 data, in the same format as in
+///     ZopfliLZ77Store.
+/// dists: distance array of the LZ77 data, in the same format as in
+///     ZopfliLZ77Store.
+/// lstart: where to start in the LZ77 data
+/// lend: where to end in the LZ77 data (not inclusive)
+/// expected_data_size: the uncompressed block size, used for assert, but you can
+///   set it to 0 to not do the assertion.
+/// bp: output bit pointer
+/// out: dynamic output array to append to
+/// outsize: dynamic output array size
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let options = unsafe {
+        assert!(!options_ptr.is_null());
+        &*options_ptr
+    };
+    let mut ll_lengths = [0; ZOPFLI_NUM_LL];
+    let mut d_lengths = [0; ZOPFLI_NUM_D];
+    let mut ll_symbols = [0; ZOPFLI_NUM_LL];
+    let mut d_symbols = [0; ZOPFLI_NUM_D];
+    let compressed_size;
+    let mut uncompressed_size = 0;
+
+    if btype == 0 {
+        let length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
+        let pos = if lstart == lend {
+            0
+        } else {
+            unsafe { *(&*lz77).pos.offset(lstart as isize) }
+        };
+        let end = pos + length;
+        unsafe { AddNonCompressedBlock(options, final_block, in_data, pos, end, bp, out, outsize) };
+        return;
+    }
+
+    unsafe {
+        AddBit(final_block, bp, out, outsize);
+        AddBit(btype & 1, bp, out, outsize);
+        AddBit((btype & 2) >> 1, bp, out, outsize);
+    }
+
+    if btype == 1 {
+        /* Fixed block. */
+        let fixed_tree = fixed_tree();
+        ll_lengths = fixed_tree.0;
+        d_lengths = fixed_tree.1;
+    } else {
+        /* Dynamic block. */
+        assert!(btype == 2);
+        unsafe {
+            GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());         }
+
+        let detect_tree_size = unsafe { *outsize };
+        AddDynamicTree(ll_lengths.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
+        if options.verbose > 0 {
+            println!("treesize: {}", unsafe { *outsize } - detect_tree_size);
+        }
+    }
+
+    ZopfliLengthsToSymbols(ll_lengths.as_ptr(), ZOPFLI_NUM_LL, 15, ll_symbols.as_mut_ptr());
+    ZopfliLengthsToSymbols(d_lengths.as_ptr(), ZOPFLI_NUM_D, 15, d_symbols.as_mut_ptr());
+
+    let detect_block_size = unsafe { *outsize };
+    unsafe {
+        AddLZ77Data(lz77, lstart, lend, expected_data_size, ll_symbols.as_ptr(), ll_lengths.as_ptr(), d_symbols.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
+    }
+    /* End symbol. */
+    unsafe {
+        AddHuffmanBits(ll_symbols[256], ll_lengths[256], bp, out, outsize);
+    }
+
+    for i in lstart..lend {
+        uncompressed_size += if unsafe { *(&*lz77).dists.offset(i as isize) } == 0 {
+            1
+        } else {
+            unsafe {
+                *(&*lz77).litlens.offset(i as isize)
+            }
+        };
+    }
+    compressed_size = unsafe { *outsize } - detect_block_size;
+    if options.verbose > 0 {
+        println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
+    }
 }

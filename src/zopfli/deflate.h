@@ -86,12 +86,32 @@ double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
                                         size_t lstart, size_t lend);
 
 
+void AddBit(int bit, unsigned char* bp, unsigned char** out, size_t* outsize);
 void AddBits(unsigned symbol, unsigned length,
                     unsigned char* bp, unsigned char** out, size_t* outsize);
 
 void AddHuffmanBits(unsigned symbol, unsigned length,
                            unsigned char* bp, unsigned char** out,
                            size_t* outsize);
+
+void AddLZ77Data(const ZopfliLZ77Store* lz77,
+                       size_t lstart, size_t lend,
+                       size_t expected_data_size,
+                       const unsigned* ll_symbols, const unsigned* ll_lengths,
+                       const unsigned* d_symbols, const unsigned* d_lengths,
+                       unsigned char* bp,
+                       unsigned char** out, size_t* outsize);
+
+void AddNonCompressedBlock(const ZopfliOptions* options, int final,
+                                 const unsigned char* in, size_t instart,
+                                 size_t inend,
+                                 unsigned char* bp,
+                                 unsigned char** out, size_t* outsize);
+
+double GetDynamicLengths(const ZopfliLZ77Store* lz77,
+                             size_t lstart, size_t lend,
+                             unsigned* ll_lengths, unsigned* d_lengths);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

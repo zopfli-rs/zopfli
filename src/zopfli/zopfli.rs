@@ -4,7 +4,7 @@ use libc::c_int;
 #[repr(C)]
 pub struct ZopfliOptions {
   /* Whether to print output */
-  verbose: c_int,
+  pub verbose: c_int,
   /* Whether to print more detailed output */
   verbose_more: c_int,
   /*

@@ -36,7 +36,7 @@ is not simply bytesize * 8 + bp because even representing one bit requires a
 whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
 */
 /* Actually writes to bp, out, outsize */
-static void AddBit(int bit,
+void AddBit(int bit,
                    unsigned char* bp, unsigned char** out, size_t* outsize) {
   if (*bp == 0) ZOPFLI_APPEND_DATA(0, out, outsize);
   (*out)[*outsize - 1] |= bit << *bp;
@@ -86,7 +86,7 @@ end code 256. expected_data_size is the uncompressed block size, used for
 assert, but you can set it to 0 to not do the assertion.
 */
 /* Passthrough */
-static void AddLZ77Data(const ZopfliLZ77Store* lz77,
+void AddLZ77Data(const ZopfliLZ77Store* lz77,
                         size_t lstart, size_t lend,
                         size_t expected_data_size,
                         const unsigned* ll_symbols, const unsigned* ll_lengths,
@@ -178,7 +178,7 @@ symbols to have smallest output size. This are not necessarily the ideal Huffman
 bit lengths. Returns size of encoded tree and data in bits, not including the
 3-bit block header.
 */
-static double GetDynamicLengths(const ZopfliLZ77Store* lz77,
+double GetDynamicLengths(const ZopfliLZ77Store* lz77,
                                 size_t lstart, size_t lend,
                                 unsigned* ll_lengths, unsigned* d_lengths) {
   size_t ll_counts[ZOPFLI_NUM_LL];
@@ -236,7 +236,7 @@ double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
 multible blocks if needed. */
 /* Actually writes to bp, out, outsize
  AND passthrough */
-static void AddNonCompressedBlock(const ZopfliOptions* options, int final,
+void AddNonCompressedBlock(const ZopfliOptions* options, int final,
                                   const unsigned char* in, size_t instart,
                                   size_t inend,
                                   unsigned char* bp,
@@ -276,89 +276,7 @@ static void AddNonCompressedBlock(const ZopfliOptions* options, int final,
   }
 }
 
-/*
-Adds a deflate block with the given LZ77 data to the output.
-options: global program options
-btype: the block type, must be 1 or 2
-final: whether to set the "final" bit on this block, must be the last block
-litlens: literal/length array of the LZ77 data, in the same format as in
-    ZopfliLZ77Store.
-dists: distance array of the LZ77 data, in the same format as in
-    ZopfliLZ77Store.
-lstart: where to start in the LZ77 data
-lend: where to end in the LZ77 data (not inclusive)
-expected_data_size: the uncompressed block size, used for assert, but you can
-  set it to 0 to not do the assertion.
-bp: output bit pointer
-out: dynamic output array to append to
-outsize: dynamic output array size
-*/
-/* Passthrough, reads size */
-static void AddLZ77Block(const ZopfliOptions* options, int btype, int final,
-                         const unsigned char* in,
-                         const ZopfliLZ77Store* lz77,
-                         size_t lstart, size_t lend,
-                         size_t expected_data_size,
-                         unsigned char* bp,
-                         unsigned char** out, size_t* outsize) {
-  unsigned ll_lengths[ZOPFLI_NUM_LL];
-  unsigned d_lengths[ZOPFLI_NUM_D];
-  unsigned ll_symbols[ZOPFLI_NUM_LL];
-  unsigned d_symbols[ZOPFLI_NUM_D];
-  size_t detect_block_size = *outsize;
-  size_t compressed_size;
-  size_t uncompressed_size = 0;
-  size_t i;
-  if (btype == 0) {
-    size_t length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
-    size_t pos = lstart == lend ? 0 : lz77->pos[lstart];
-    size_t end = pos + length;
-    AddNonCompressedBlock(options, final,
-                          in, pos, end, bp, out, outsize);
-    return;
-  }
-
-  AddBit(final, bp, out, outsize);
-  AddBit(btype & 1, bp, out, outsize);
-  AddBit((btype & 2) >> 1, bp, out, outsize);
-
-  if (btype == 1) {
-    /* Fixed block. */
-    GetFixedTree(ll_lengths, d_lengths);
-  } else {
-    /* Dynamic block. */
-    unsigned detect_tree_size;
-    assert(btype == 2);
-
-    GetDynamicLengths(lz77, lstart, lend, ll_lengths, d_lengths);
-
-    detect_tree_size = *outsize;
-    AddDynamicTree(ll_lengths, d_lengths, bp, out, outsize);
-    if (options->verbose) {
-      fprintf(stderr, "treesize: %d\n", (int)(*outsize - detect_tree_size));
-    }
-  }
-
-  ZopfliLengthsToSymbols(ll_lengths, ZOPFLI_NUM_LL, 15, ll_symbols);
-  ZopfliLengthsToSymbols(d_lengths, ZOPFLI_NUM_D, 15, d_symbols);
-
-  detect_block_size = *outsize;
-  AddLZ77Data(lz77, lstart, lend, expected_data_size,
-              ll_symbols, ll_lengths, d_symbols, d_lengths,
-              bp, out, outsize);
-  /* End symbol. */
-  AddHuffmanBits(ll_symbols[256], ll_lengths[256], bp, out, outsize);
-
-  for (i = lstart; i < lend; i++) {
-    uncompressed_size += lz77->dists[i] == 0 ? 1 : lz77->litlens[i];
-  }
-  compressed_size = *outsize - detect_block_size;
-  if (options->verbose) {
-    fprintf(stderr, "compressed block size: %d (%dk) (unc: %d)\n",
-           (int)compressed_size, (int)(compressed_size / 1024),
-           (int)(uncompressed_size));
-  }
-}
+extern void AddLZ77Block(const ZopfliOptions* options, int btype, int final, const unsigned char* in, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 /* Passthrough */
 static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
