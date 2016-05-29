@@ -38,20 +38,7 @@ extern size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77, size_t lstart,
 
 extern void ZopfliLZ77GetHistogram(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t* ll_counts, size_t* d_counts);
 
-void ZopfliInitBlockState(const ZopfliOptions* options,
-                          size_t blockstart, size_t blockend, int add_lmc,
-                          ZopfliBlockState* s) {
-  s->options = options;
-  s->blockstart = blockstart;
-  s->blockend = blockend;
-#ifdef ZOPFLI_LONGEST_MATCH_CACHE
-  if (add_lmc) {
-    s->lmc = ZopfliInitCache(blockend - blockstart);
-  } else {
-    s->lmc = 0;
-  }
-#endif
-}
+extern void ZopfliInitBlockState(const ZopfliOptions* options, size_t blockstart, size_t blockend, int add_lmc, ZopfliBlockState* s);
 
 void ZopfliCleanBlockState(ZopfliBlockState* s) {
 #ifdef ZOPFLI_LONGEST_MATCH_CACHE

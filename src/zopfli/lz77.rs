@@ -2,7 +2,7 @@ use std::{slice, ptr, cmp};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache};
+use cache::{ZopfliLongestMatchCache, ZopfliInitCache};
 use hash::ZopfliHash;
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
@@ -479,6 +479,24 @@ impl ZopfliBlockState {
                 (*self.lmc).store_sublen(sublen, lmcpos, length as size_t);
             }
         }
+    }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliInitBlockState(options: *const ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int, s_ptr: *mut ZopfliBlockState) {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+
+    s.options = options;
+    s.blockstart = blockstart;
+    s.blockend = blockend;
+    if add_lmc > 0 {
+        s.lmc = ZopfliInitCache(blockend - blockstart);
+    } else {
+      s.lmc = ptr::null_mut();
     }
 }
 
