@@ -621,7 +621,7 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     } else {
         /* Dynamic block. */
         assert!(btype == 2);
-        GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
+        get_dynamic_lengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
 
         let detect_tree_size = unsafe { *outsize };
         AddDynamicTree(ll_lengths.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
@@ -688,7 +688,7 @@ pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t
         d_lengths = fixed_tree.1;
         result += CalculateBlockSymbolSize(ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend) as c_double;
     } else {
-        result += GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
+        result += get_dynamic_lengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
     }
     result
 }
@@ -742,9 +742,7 @@ pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart:
 /// symbols to have smallest output size. This are not necessarily the ideal Huffman
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn GetDynamicLengths(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+pub fn get_dynamic_lengths(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
     let lz77 = unsafe {
         assert!(!lz77_ptr.is_null());
         &*lz77_ptr

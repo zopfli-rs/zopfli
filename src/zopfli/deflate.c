@@ -131,8 +131,6 @@ extern void OptimizeHuffmanForRle(int length, size_t* counts);
 
 extern double TryOptimizeHuffmanForRle(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, const size_t* ll_counts, const size_t* d_counts, unsigned* ll_lengths, unsigned* d_lengths);
 
-extern double GetDynamicLengths(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, unsigned* ll_lengths, unsigned* d_lengths);
-
 extern double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, int btype);
 
 double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,

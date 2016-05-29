@@ -108,10 +108,6 @@ void AddNonCompressedBlock(const ZopfliOptions* options, int final,
                                  unsigned char* bp,
                                  unsigned char** out, size_t* outsize);
 
-double GetDynamicLengths(const ZopfliLZ77Store* lz77,
-                             size_t lstart, size_t lend,
-                             unsigned* ll_lengths, unsigned* d_lengths);
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif
