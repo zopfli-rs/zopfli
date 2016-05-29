@@ -39,7 +39,7 @@ pub struct Lz77Store {
    pub litlens: Vec<c_ushort>,
    pub dists: Vec<c_ushort>,
 
-   pos: Vec<size_t>,
+   pub pos: Vec<size_t>,
 
    ll_symbol: Vec<c_ushort>,
    d_symbol: Vec<c_ushort>,
@@ -735,56 +735,44 @@ pub extern fn CeilDiv(a: size_t, b: size_t) -> size_t {
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &*lz77_ptr
-    };
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
 
-    get_byte_range(&lz77, lstart, lend)
+    get_byte_range(lz77, lstart, lend)
 }
 
-pub fn get_byte_range(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
-    let l = (lend - 1) as isize;
+pub fn get_byte_range(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
+    let l = lend - 1;
     if lstart == lend {
         return 0;
     }
 
-    unsafe {
-        *lz77.pos.offset(l) + (if *lz77.dists.offset(l) == 0 { 1 } else { *lz77.litlens.offset(l) }) as size_t - *lz77.pos.offset(lstart as isize)
-    }
+    lz77.pos[l] + (if lz77.dists[l] == 0 { 1 } else { lz77.litlens[l] }) as size_t - lz77.pos[lstart]
 }
 
-pub fn get_histogram_at(lz77: &ZopfliLZ77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
+pub fn get_histogram_at(lz77: &Lz77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
     let mut ll = vec![0; ZOPFLI_NUM_LL];
     let mut d = vec![0; ZOPFLI_NUM_D];
 
     /* The real histogram is created by using the histogram for this chunk, but
     all superfluous values of this chunk subtracted. */
-    let llpos = (ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL)) as isize;
-    let dpos = (ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D)) as isize;
+    let llpos = ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL);
+    let dpos = ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D);
 
-    for i in 0..ZOPFLI_NUM_LL as isize {
-        unsafe {
-            ll[i as usize] = *lz77.ll_counts.offset(llpos + i);
-        }
+    for i in 0..ZOPFLI_NUM_LL {
+        ll[i] = lz77.ll_counts[llpos + i];
     }
-    let end = cmp::min(llpos + ZOPFLI_NUM_LL as isize, lz77.size as isize);
-    for i in (lpos + 1) as isize..end {
-        unsafe {
-            ll[*lz77.ll_symbol.offset(i) as usize] -= 1;
-        }
+    let end = cmp::min(llpos + ZOPFLI_NUM_LL, lz77.size());
+    for i in (lpos + 1)..end {
+        ll[lz77.ll_symbol[i] as usize] -= 1;
     }
-    for i in 0..ZOPFLI_NUM_D as isize {
-        unsafe {
-            d[i as usize] = *lz77.d_counts.offset(dpos + i);
-        }
+    for i in 0..ZOPFLI_NUM_D {
+        d[i] = lz77.d_counts[dpos + i];
     }
-    let end = cmp::min(dpos + ZOPFLI_NUM_D as isize, lz77.size as isize);
-    for i in (lpos + 1) as isize..end {
-        unsafe {
-            if *lz77.dists.offset(i) != 0 {
-                d[*lz77.d_symbol.offset(i) as usize] -= 1;
-            }
+    let end = cmp::min(dpos + ZOPFLI_NUM_D, lz77.size());
+    for i in (lpos + 1)..end {
+        if lz77.dists[i] != 0 {
+            d[lz77.d_symbol[i] as usize] -= 1;
         }
     }
 
@@ -794,12 +782,10 @@ pub fn get_histogram_at(lz77: &ZopfliLZ77Store, lpos: size_t) -> (Vec<size_t>, V
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_counts: *mut size_t, d_counts: *mut size_t) {
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &mut *lz77_ptr
-    };
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
 
-    let (ll_counts_result, d_counts_result) = get_histogram(&*lz77, lstart, lend);
+    let (ll_counts_result, d_counts_result) = get_histogram(lz77, lstart, lend);
 
     for i in 0..ZOPFLI_NUM_LL as isize {
         unsafe { *ll_counts.offset(i) = ll_counts_result[i as usize]; }
@@ -809,16 +795,14 @@ pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: siz
     }
 }
 
-pub fn get_histogram(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t) -> (Vec<size_t>, Vec<size_t>) {
+pub fn get_histogram(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (Vec<size_t>, Vec<size_t>) {
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
         let mut d_counts = vec![0; ZOPFLI_NUM_D];
         for i in lstart..lend  {
-            unsafe {
-                ll_counts[*lz77.ll_symbol.offset(i as isize) as usize] += 1;
-                if *lz77.dists.offset(i as isize) != 0 {
-                    d_counts[*lz77.d_symbol.offset(i as isize) as usize] += 1;
-                }
+            ll_counts[lz77.ll_symbol[i] as usize] += 1;
+            if lz77.dists[i] != 0 {
+                d_counts[lz77.d_symbol[i] as usize] += 1;
             }
         }
         (ll_counts, d_counts)

@@ -3,7 +3,7 @@ use std::slice;
 use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use katajainen::length_limited_code_lengths;
-use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, ZopfliLZ77GetByteRange, get_byte_range};
+use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, get_byte_range, Lz77Store};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZopfliGetLengthExtraBitsValue, ZopfliGetLengthExtraBits, ZopfliGetDistExtraBitsValue, ZopfliGetDistExtraBits};
 use tree::{lengths_to_symbols, ZopfliLengthsToSymbols, ZopfliCalculateBitLengths};
 use zopfli::ZopfliOptions;
@@ -171,15 +171,13 @@ pub fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut[c_uint]) {
 
 /// Same as CalculateBlockSymbolSize, but for block size smaller than histogram
 /// size.
-pub fn calculate_block_symbol_size_small(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
-    let rust_store = lz77_store_from_c(lz77_ptr);
-    let rs = unsafe { &*rust_store };
+pub fn calculate_block_symbol_size_small(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
 
     for i in lstart..lend {
-        assert!(i < rs.size());
-        let litlens_i = rs.litlens[i];
-        let dists_i = rs.dists[i];
+        assert!(i < lz77.size());
+        let litlens_i = lz77.litlens[i];
+        let dists_i = lz77.dists[i];
         assert!(litlens_i < 259);
         if dists_i == 0 {
             result += unsafe { *ll_lengths.offset(litlens_i as isize) };
@@ -199,7 +197,7 @@ pub fn calculate_block_symbol_size_small(ll_lengths: *const c_uint, d_lengths: *
 /// Same as CalculateBlockSymbolSize, but with the histogram provided by the caller.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_counts: *const size_t, ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_counts: *const size_t, ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
 
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
@@ -224,11 +222,11 @@ pub extern fn CalculateBlockSymbolSizeGivenCounts(ll_counts: *const size_t, d_co
 /// Calculates size of the part after the header and tree of an LZ77 block, in bits.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+pub extern fn CalculateBlockSymbolSize(ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
-        let (ll_counts, d_counts) = get_histogram(unsafe { &*lz77 }, lstart, lend);
+        let (ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
         CalculateBlockSymbolSizeGivenCounts(ll_counts.as_ptr(), d_counts.as_ptr(), ll_lengths, d_lengths, lz77, lstart, lend)
     }
 }
@@ -582,11 +580,14 @@ pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint
 /// outsize: dynamic output array size
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
     };
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
+
     let mut ll_lengths = [0; ZOPFLI_NUM_LL];
     let mut d_lengths = [0; ZOPFLI_NUM_D];
     let mut ll_symbols = [0; ZOPFLI_NUM_LL];
@@ -595,11 +596,11 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     let mut uncompressed_size: size_t = 0;
 
     if btype == 0 {
-        let length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
+        let length = get_byte_range(lz77, lstart, lend);
         let pos = if lstart == lend {
             0
         } else {
-            unsafe { *(&*lz77).pos.offset(lstart as isize) }
+            lz77.pos[lstart]
         };
         let end = pos + length;
         unsafe { AddNonCompressedBlock(options, final_block, in_data, pos, end, bp, out, outsize) };
@@ -641,12 +642,10 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     }
 
     for i in lstart..lend {
-        uncompressed_size += if unsafe { *(&*lz77).dists.offset(i as isize) } == 0 {
+        uncompressed_size += if lz77.dists[i] == 0 {
             1
         } else {
-            unsafe {
-                *(&*lz77).litlens.offset(i as isize) as size_t
-            }
+            lz77.litlens[i] as size_t
         };
     }
     compressed_size = unsafe { *outsize } - detect_block_size;
@@ -658,14 +657,13 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliCalculateBlockSize(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &*lz77_ptr
-    };
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
+
     calculate_block_size(lz77, lstart, lend, btype)
 }
 
-pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
+pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
 
     let mut ll_lengths = [0; ZOPFLI_NUM_LL];
     let mut d_lengths = [0; ZOPFLI_NUM_D];
@@ -673,7 +671,7 @@ pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t
     let mut result: c_double = 3.0; /* bfinal and btype bits */
 
     if btype == 0 {
-        let length = get_byte_range(&lz77, lstart, lend);
+        let length = get_byte_range(lz77, lstart, lend);
         let rem = length % 65535;
         let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
         /* An uncompressed block must actually be split into multiple blocks if it's
@@ -696,7 +694,7 @@ pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t
 /// bits, not including the 3-bit block header.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_counts_ptr: *mut size_t, d_counts_ptr: *mut size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+pub extern fn TryOptimizeHuffmanForRle(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_counts_ptr: *mut size_t, d_counts_ptr: *mut size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
     let ll_counts = unsafe { slice::from_raw_parts_mut(ll_counts_ptr, ZOPFLI_NUM_LL) };
     let d_counts = unsafe { slice::from_raw_parts_mut(d_counts_ptr, ZOPFLI_NUM_D) };
 
@@ -707,7 +705,7 @@ pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart:
     d_counts2.clone_from_slice(d_counts);
 
     let treesize = CalculateTreeSize(ll_lengths, d_lengths);
-    let datasize = CalculateBlockSymbolSizeGivenCounts(ll_counts_ptr, d_counts_ptr, ll_lengths, d_lengths, lz77_ptr, lstart, lend);
+    let datasize = CalculateBlockSymbolSizeGivenCounts(ll_counts_ptr, d_counts_ptr, ll_lengths, d_lengths, lz77, lstart, lend);
 
     optimize_huffman_for_rle(&mut ll_counts2);
     optimize_huffman_for_rle(&mut d_counts2);
@@ -717,7 +715,7 @@ pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart:
     patch_distance_codes_for_buggy_decoders(&mut d_lengths2[..]);
 
     let treesize2 = CalculateTreeSize(ll_lengths2.as_ptr(), d_lengths2.as_ptr());
-    let datasize2 = CalculateBlockSymbolSizeGivenCounts(ll_counts_ptr, d_counts_ptr, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77_ptr, lstart, lend);
+    let datasize2 = CalculateBlockSymbolSizeGivenCounts(ll_counts_ptr, d_counts_ptr, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77, lstart, lend);
 
     if treesize2 + datasize2 < treesize + datasize {
         for i in 0..ZOPFLI_NUM_LL {
@@ -740,11 +738,7 @@ pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart:
 /// symbols to have smallest output size. This are not necessarily the ideal Huffman
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
-pub fn get_dynamic_lengths(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &*lz77_ptr
-    };
+pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
 
     let (mut ll_counts, mut d_counts) = get_histogram(&lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
@@ -759,12 +753,12 @@ pub fn get_dynamic_lengths(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, len
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
 /// end code 256. expected_data_size is the uncompressed block size, used for
 /// assert, but you can set it to 0 to not do the assertion.
-pub fn add_lz77_data(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let mut testlength: size_t = 0;
 
     for i in lstart..lend {
-        let dist: c_uint = unsafe { *(&*lz77).dists.offset(i as isize) } as c_uint;
-        let litlen: c_uint = unsafe { *(&*lz77).litlens.offset(i as isize) } as c_uint;
+        let dist: c_uint = lz77.dists[i] as c_uint;
+        let litlen: c_uint = lz77.litlens[i] as c_uint;
         if dist == 0 {
             assert!(litlen < 256);
             assert!(ll_lengths[litlen as usize] > 0);
