@@ -377,8 +377,8 @@ pub struct ZopfliBlockState {
     /* Cache for length/distance pairs found so far. */
     lmc: *mut ZopfliLongestMatchCache,
     /* The start (inclusive) and end (not inclusive) of the current block. */
-    blockstart: size_t,
-    blockend: size_t,
+    pub blockstart: size_t,
+    pub blockend: size_t,
 }
 
 impl ZopfliBlockState {

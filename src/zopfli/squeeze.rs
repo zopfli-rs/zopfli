@@ -1,4 +1,4 @@
-use std::{mem, slice, cmp};
+use std::{mem, slice, cmp, ptr};
 
 use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
 
@@ -10,9 +10,8 @@ const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
 /// type: CostModelFun
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: c_void) -> c_double {
+pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: *const c_void) -> c_double {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -350,7 +349,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, *const c_void) -> c
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the costmodel, needed to get to the end.
 // TODO: upstream is now reusing an already allocated hash; we're ignoring it
-pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h_ptr: *mut ZopfliHash, costs: *mut c_float) -> (c_double, Vec<c_ushort>) {
+pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -369,10 +368,6 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
         return (0.0, length_array);
     }
 
-    let h = unsafe {
-        assert!(!h_ptr.is_null());
-        &mut *h_ptr
-    };
     h.reset(ZOPFLI_WINDOW_SIZE);
     let arr = unsafe { slice::from_raw_parts(in_data, inend) };
     h.warmup(arr, windowstart, inend);
@@ -380,12 +375,12 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
         h.update(arr, i);
     }
 
-    unsafe {
-        for i in 1..(blocksize + 1) {
-            *costs.offset(i as isize) = ZOPFLI_LARGE_FLOAT as c_float;
-        }
-        *costs.offset(0) = 0.0; /* Because it's the start. */
+    costs.resize(blocksize + 1, 0.0);
+
+    for i in 1..(blocksize + 1) {
+        costs[i] = ZOPFLI_LARGE_FLOAT as c_float;
     }
+    costs[0] = 0.0; /* Because it's the start. */
     length_array[0] = 0;
 
     let mut i = instart;
@@ -406,9 +401,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
             // ZOPFLI_MAX_MATCH values to avoid calling ZopfliFindLongestMatch.
 
             for _ in 0..ZOPFLI_MAX_MATCH {
-                unsafe {
-                    *costs.offset((j + ZOPFLI_MAX_MATCH) as isize) = *costs.offset(j as isize) + symbolcost as c_float;
-                }
+                costs[j + ZOPFLI_MAX_MATCH] = costs[j] + symbolcost as c_float;
                 length_array[j + ZOPFLI_MAX_MATCH] = ZOPFLI_MAX_MATCH as c_ushort;
                 i += 1;
                 j += 1;
@@ -421,41 +414,37 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
 
         // Literal.
         if i + 1 <= inend {
-            let new_cost = costmodel(arr[i] as c_uint, 0, costcontext) + unsafe { *costs.offset(j as isize) } as c_double;
+            let new_cost = costmodel(arr[i] as c_uint, 0, costcontext) + costs[j] as c_double;
             assert!(new_cost >= 0.0);
-            if new_cost < unsafe { *costs.offset(j as isize + 1) } as c_double {
-                unsafe {
-                    *costs.offset(j as isize + 1) = new_cost as c_float;
-                }
+            if new_cost < costs[j + 1] as c_double {
+                costs[j + 1] = new_cost as c_float;
                 length_array[j + 1] = 1;
             }
         }
         // Lengths.
         let kend = cmp::min(leng as size_t, inend - i);
-        let mincostaddcostj = mincost + unsafe { *costs.offset(j as isize) } as c_double;
+        let mincostaddcostj = mincost + costs[j] as c_double;
 
         for k in 3..(kend + 1) {
             // Calling the cost model is expensive, avoid this if we are already at
             // the minimum possible cost that it can return.
-            if unsafe { *costs.offset((j + k) as isize) } as c_double <= mincostaddcostj {
+            if costs[j + k] as c_double <= mincostaddcostj {
                 continue;
             }
 
-            let new_cost = costmodel(k as c_uint, unsafe { *sublen.offset(k as isize) } as c_uint, costcontext) + unsafe { *costs.offset(j as isize) } as c_double;
+            let new_cost = costmodel(k as c_uint, unsafe { *sublen.offset(k as isize) } as c_uint, costcontext) + costs[j] as c_double;
             assert!(new_cost >= 0.0);
-            if new_cost < unsafe { *costs.offset((j + k) as isize) } as c_double {
+            if new_cost < costs[j + k] as c_double {
                 assert!(k <= ZOPFLI_MAX_MATCH);
-                unsafe {
-                    *costs.offset((j + k) as isize) = new_cost as c_float;
-                }
+                costs[j + k] = new_cost as c_float;
                 length_array[j + k] = k as c_ushort;
             }
         }
         i += 1;
     }
 
-    assert!(unsafe { *costs.offset(blocksize as isize) } >= 0.0);
-    (unsafe { *costs.offset(blocksize as isize) as c_double }, length_array)
+    assert!(costs[blocksize] >= 0.0);
+    (costs[blocksize] as c_double, length_array)
 }
 
 // TODO: upstream is now reusing an already allocated hash; we're ignoring it
@@ -524,7 +513,7 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
 ///     This is not the actual cost.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store_ptr: *mut ZopfliLZ77Store, h_ptr: *mut ZopfliHash, costs: *mut c_float) {
+pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store_ptr: *mut ZopfliLZ77Store, h_ptr: *mut ZopfliHash, _costs: *mut c_float) {
     let s = unsafe {
         assert!(!s_ptr.is_null());
         &mut *s_ptr
@@ -533,14 +522,49 @@ pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
         assert!(!store_ptr.is_null());
         &mut *store_ptr
     };
+    let mut h = unsafe {
+        assert!(!h_ptr.is_null());
+        &mut *h_ptr
+    };
     let rust_store = lz77_store_from_c(store_ptr);
-    lz77_optimal_run(s, in_data, instart, inend, costmodel, costcontext, unsafe { &mut *rust_store }, h_ptr, costs);
+    let mut temp_costs_vec = Vec::with_capacity(inend - instart + 1);
+    lz77_optimal_run(s, in_data, instart, inend, costmodel, costcontext, unsafe { &mut *rust_store }, &mut h, &mut temp_costs_vec);
     lz77_store_result(rust_store, store);
 }
 
-pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store: &mut Lz77Store, h_ptr: *mut ZopfliHash, costs: *mut c_float) {
-    let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h_ptr, costs);
+pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
+    let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
     let path = trace_backwards(inend - instart, length_array);
     store.follow_path(in_data, instart, inend, path, s);
     assert!(cost < ZOPFLI_LARGE_FLOAT);
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLZ77OptimalFixed(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store) {
+    /* Dist to get to here with smallest cost. */
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+    let rust_store = lz77_store_from_c(store_ptr);
+
+    /* Shortest path for fixed tree This one should give the shortest possible
+    result for fixed tree, no repeated runs are needed since the tree is known. */
+    lz77_optimal_fixed(s, in_data, instart, inend, unsafe { &mut *rust_store });
+
+    lz77_store_result(rust_store, store);
+}
+
+pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store: &mut Lz77Store) {
+    s.blockstart = instart;
+    s.blockend = inend;
+    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+    let mut costs = Vec::with_capacity(inend - instart - 1);
+    lz77_optimal_run(s, in_data, instart, inend, GetCostFixed, ptr::null(), store, &mut h, &mut costs);
 }
