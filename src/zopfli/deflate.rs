@@ -5,7 +5,7 @@ use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 use katajainen::length_limited_code_lengths;
 use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, ZopfliLZ77GetByteRange, get_byte_range};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
-use tree::{lengths_to_symbols, ZopfliLengthsToSymbols};
+use tree::{lengths_to_symbols, ZopfliLengthsToSymbols, ZopfliCalculateBitLengths};
 use zopfli::ZopfliOptions;
 
 #[no_mangle]
@@ -379,7 +379,6 @@ extern {
     fn AddBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
     fn AddHuffmanBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
     fn AddNonCompressedBlock(options: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
-    fn GetDynamicLengths(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double;
     fn AddLZ77Data(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, ll_symbols: *const c_uint, ll_lengths: *const c_uint, d_symbols: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
 }
 
@@ -622,8 +621,7 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     } else {
         /* Dynamic block. */
         assert!(btype == 2);
-        unsafe {
-            GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());         }
+        GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
 
         let detect_tree_size = unsafe { *outsize };
         AddDynamicTree(ll_lengths.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
@@ -690,7 +688,7 @@ pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t
         d_lengths = fixed_tree.1;
         result += CalculateBlockSymbolSize(ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend) as c_double;
     } else {
-        result += unsafe { GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr()) };
+        result += GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
     }
     result
 }
@@ -737,4 +735,27 @@ pub extern fn TryOptimizeHuffmanForRle(lz77_ptr: *const ZopfliLZ77Store, lstart:
         return (treesize2 + datasize2) as c_double;
     }
     (treesize + datasize) as c_double
+}
+
+/// Calculates the bit lengths for the symbols for dynamic blocks. Chooses bit
+/// lengths that give the smallest size of tree encoding + encoding of all the
+/// symbols to have smallest output size. This are not necessarily the ideal Huffman
+/// bit lengths. Returns size of encoded tree and data in bits, not including the
+/// 3-bit block header.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn GetDynamicLengths(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+    let lz77 = unsafe {
+        assert!(!lz77_ptr.is_null());
+        &*lz77_ptr
+    };
+
+    let (mut ll_counts, mut d_counts) = get_histogram(&lz77, lstart, lend);
+    ll_counts[256] = 1;  /* End symbol. */
+
+    ZopfliCalculateBitLengths(ll_counts.as_ptr(), ZOPFLI_NUM_LL, 15, ll_lengths);
+    ZopfliCalculateBitLengths(d_counts.as_ptr(), ZOPFLI_NUM_D, 15, d_lengths);
+
+    PatchDistanceCodesForBuggyDecoders(d_lengths);
+    TryOptimizeHuffmanForRle(lz77, lstart, lend, ll_counts.as_mut_ptr(), d_counts.as_mut_ptr(), ll_lengths, d_lengths)
 }

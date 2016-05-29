@@ -131,27 +131,7 @@ extern void OptimizeHuffmanForRle(int length, size_t* counts);
 
 extern double TryOptimizeHuffmanForRle(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, const size_t* ll_counts, const size_t* d_counts, unsigned* ll_lengths, unsigned* d_lengths);
 
-/*
-Calculates the bit lengths for the symbols for dynamic blocks. Chooses bit
-lengths that give the smallest size of tree encoding + encoding of all the
-symbols to have smallest output size. This are not necessarily the ideal Huffman
-bit lengths. Returns size of encoded tree and data in bits, not including the
-3-bit block header.
-*/
-double GetDynamicLengths(const ZopfliLZ77Store* lz77,
-                                size_t lstart, size_t lend,
-                                unsigned* ll_lengths, unsigned* d_lengths) {
-  size_t ll_counts[ZOPFLI_NUM_LL];
-  size_t d_counts[ZOPFLI_NUM_D];
-
-  ZopfliLZ77GetHistogram(lz77, lstart, lend, ll_counts, d_counts);
-  ll_counts[256] = 1;  /* End symbol. */
-  ZopfliCalculateBitLengths(ll_counts, ZOPFLI_NUM_LL, 15, ll_lengths);
-  ZopfliCalculateBitLengths(d_counts, ZOPFLI_NUM_D, 15, d_lengths);
-  PatchDistanceCodesForBuggyDecoders(d_lengths);
-  return TryOptimizeHuffmanForRle(
-      lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths);
-}
+extern double GetDynamicLengths(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, unsigned* ll_lengths, unsigned* d_lengths);
 
 extern double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, int btype);
 
