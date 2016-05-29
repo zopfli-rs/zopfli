@@ -80,49 +80,7 @@ extern void AddDynamicTree(const unsigned* ll_lengths, const unsigned* d_lengths
 
 extern size_t CalculateTreeSize(const unsigned* ll_lengths, const unsigned* d_lengths);
 
-/*
-Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
-end code 256. expected_data_size is the uncompressed block size, used for
-assert, but you can set it to 0 to not do the assertion.
-*/
-/* Passthrough */
-void AddLZ77Data(const ZopfliLZ77Store* lz77,
-                        size_t lstart, size_t lend,
-                        size_t expected_data_size,
-                        const unsigned* ll_symbols, const unsigned* ll_lengths,
-                        const unsigned* d_symbols, const unsigned* d_lengths,
-                        unsigned char* bp,
-                        unsigned char** out, size_t* outsize) {
-  size_t testlength = 0;
-  size_t i;
-
-  for (i = lstart; i < lend; i++) {
-    unsigned dist = lz77->dists[i];
-    unsigned litlen = lz77->litlens[i];
-    if (dist == 0) {
-      assert(litlen < 256);
-      assert(ll_lengths[litlen] > 0);
-      AddHuffmanBits(ll_symbols[litlen], ll_lengths[litlen], bp, out, outsize);
-      testlength++;
-    } else {
-      unsigned lls = ZopfliGetLengthSymbol(litlen);
-      unsigned ds = ZopfliGetDistSymbol(dist);
-      assert(litlen >= 3 && litlen <= 288);
-      assert(ll_lengths[lls] > 0);
-      assert(d_lengths[ds] > 0);
-      AddHuffmanBits(ll_symbols[lls], ll_lengths[lls], bp, out, outsize);
-      AddBits(ZopfliGetLengthExtraBitsValue(litlen),
-              ZopfliGetLengthExtraBits(litlen),
-              bp, out, outsize);
-      AddHuffmanBits(d_symbols[ds], d_lengths[ds], bp, out, outsize);
-      AddBits(ZopfliGetDistExtraBitsValue(dist),
-              ZopfliGetDistExtraBits(dist),
-              bp, out, outsize);
-      testlength += litlen;
-    }
-  }
-  assert(expected_data_size == 0 || testlength == expected_data_size);
-}
+extern void AddLZ77Data(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, const unsigned* ll_symbols, const unsigned* ll_lengths, const unsigned* d_symbols, const unsigned* d_lengths, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 extern void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths);
 extern size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts, const size_t* d_counts, const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);

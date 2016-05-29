@@ -4,7 +4,7 @@ use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use katajainen::length_limited_code_lengths;
 use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, ZopfliLZ77GetByteRange, get_byte_range};
-use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZopfliGetLengthExtraBitsValue, ZopfliGetLengthExtraBits, ZopfliGetDistExtraBitsValue, ZopfliGetDistExtraBits};
 use tree::{lengths_to_symbols, ZopfliLengthsToSymbols, ZopfliCalculateBitLengths};
 use zopfli::ZopfliOptions;
 
@@ -379,7 +379,6 @@ extern {
     fn AddBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
     fn AddHuffmanBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
     fn AddNonCompressedBlock(options: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
-    fn AddLZ77Data(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, ll_symbols: *const c_uint, ll_lengths: *const c_uint, d_symbols: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
@@ -593,7 +592,7 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     let mut ll_symbols = [0; ZOPFLI_NUM_LL];
     let mut d_symbols = [0; ZOPFLI_NUM_D];
     let compressed_size;
-    let mut uncompressed_size = 0;
+    let mut uncompressed_size: size_t = 0;
 
     if btype == 0 {
         let length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
@@ -634,9 +633,8 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     ZopfliLengthsToSymbols(d_lengths.as_ptr(), ZOPFLI_NUM_D, 15, d_symbols.as_mut_ptr());
 
     let detect_block_size = unsafe { *outsize };
-    unsafe {
-        AddLZ77Data(lz77, lstart, lend, expected_data_size, ll_symbols.as_ptr(), ll_lengths.as_ptr(), d_symbols.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
-    }
+    AddLZ77Data(lz77, lstart, lend, expected_data_size, ll_symbols.as_ptr(), ll_lengths.as_ptr(), d_symbols.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
+
     /* End symbol. */
     unsafe {
         AddHuffmanBits(ll_symbols[256], ll_lengths[256], bp, out, outsize);
@@ -647,7 +645,7 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
             1
         } else {
             unsafe {
-                *(&*lz77).litlens.offset(i as isize)
+                *(&*lz77).litlens.offset(i as isize) as size_t
             }
         };
     }
@@ -756,4 +754,40 @@ pub fn get_dynamic_lengths(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, len
 
     PatchDistanceCodesForBuggyDecoders(d_lengths);
     TryOptimizeHuffmanForRle(lz77, lstart, lend, ll_counts.as_mut_ptr(), d_counts.as_mut_ptr(), ll_lengths, d_lengths)
+}
+
+/// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
+/// end code 256. expected_data_size is the uncompressed block size, used for
+/// assert, but you can set it to 0 to not do the assertion.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn AddLZ77Data(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: *const c_uint, ll_lengths: *const c_uint, d_symbols: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let mut testlength: size_t = 0;
+
+    for i in lstart..lend {
+        let dist: c_uint = unsafe { *(&*lz77).dists.offset(i as isize) } as c_uint;
+        let litlen: c_uint = unsafe { *(&*lz77).litlens.offset(i as isize) } as c_uint;
+        if dist == 0 {
+            assert!(litlen < 256);
+            assert!(unsafe { *ll_lengths.offset(litlen as isize) } > 0);
+            unsafe {
+                AddHuffmanBits(*ll_symbols.offset(litlen as isize), *ll_lengths.offset(litlen as isize), bp, out, outsize);
+            }
+            testlength += 1;
+        } else {
+            let lls: c_uint = ZopfliGetLengthSymbol(litlen as c_int) as c_uint;
+            let ds: c_uint = ZopfliGetDistSymbol(dist as c_int) as c_uint;
+            assert!(litlen >= 3 && litlen <= 288);
+            assert!(unsafe { *ll_lengths.offset(lls as isize) } > 0);
+            assert!(unsafe { *d_lengths.offset(ds as isize) } > 0);
+            unsafe {
+                AddHuffmanBits(*ll_symbols.offset(lls as isize), *ll_lengths.offset(lls as isize), bp, out, outsize);
+                AddBits(ZopfliGetLengthExtraBitsValue(litlen as c_int) as c_uint, ZopfliGetLengthExtraBits(litlen as c_int) as c_uint, bp, out, outsize);
+                AddHuffmanBits(*d_symbols.offset(ds as isize), *d_lengths.offset(ds as isize), bp, out, outsize);
+                AddBits(ZopfliGetDistExtraBitsValue(dist as c_int) as c_uint, ZopfliGetDistExtraBits(dist as c_int) as c_uint, bp, out, outsize);
+            }
+            testlength += litlen as size_t;
+        }
+    }
+    assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
