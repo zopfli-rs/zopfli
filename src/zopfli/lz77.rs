@@ -708,9 +708,13 @@ pub extern fn CeilDiv(a: size_t, b: size_t) -> size_t {
 pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
     let lz77 = unsafe {
         assert!(!lz77_ptr.is_null());
-        &mut *lz77_ptr
+        &*lz77_ptr
     };
 
+    get_byte_range(&lz77, lstart, lend)
+}
+
+pub fn get_byte_range(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
     let l = (lend - 1) as isize;
     if lstart == lend {
         return 0;
