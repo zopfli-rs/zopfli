@@ -3,7 +3,7 @@ use std::slice;
 use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use katajainen::length_limited_code_lengths;
-use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, ZopfliLZ77GetByteRange};
+use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, ZopfliLZ77GetByteRange, get_byte_range};
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 use tree::{lengths_to_symbols, ZopfliLengthsToSymbols};
 use zopfli::ZopfliOptions;
@@ -657,14 +657,23 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliCalculateBlockSize(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
+pub extern fn ZopfliCalculateBlockSize(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
+    let lz77 = unsafe {
+        assert!(!lz77_ptr.is_null());
+        &*lz77_ptr
+    };
+    calculate_block_size(lz77, lstart, lend, btype)
+}
+
+pub fn calculate_block_size(lz77: &ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
+
     let mut ll_lengths = [0; ZOPFLI_NUM_LL];
     let mut d_lengths = [0; ZOPFLI_NUM_D];
 
     let mut result: c_double = 3.0; /* bfinal and btype bits */
 
     if btype == 0 {
-        let length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
+        let length = get_byte_range(&lz77, lstart, lend);
         let rem = length % 65535;
         let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
         /* An uncompressed block must actually be split into multiple blocks if it's
