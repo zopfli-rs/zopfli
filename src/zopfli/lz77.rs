@@ -382,6 +382,19 @@ pub struct ZopfliBlockState {
 }
 
 impl ZopfliBlockState {
+    pub fn new(options: *const ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int) -> ZopfliBlockState {
+        ZopfliBlockState {
+            options: options,
+            blockstart: blockstart,
+            blockend: blockend,
+            lmc: if add_lmc > 0 {
+                ZopfliInitCache(blockend - blockstart)
+            } else {
+                ptr::null_mut()
+            },
+        }
+    }
+
     /// Gets distance, length and sublen values from the cache if possible.
     /// Returns 1 if it got the values from the cache, 0 if not.
     /// Updates the limit value to a smaller one if possible with more limited
@@ -485,19 +498,17 @@ impl ZopfliBlockState {
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliInitBlockState(options: *const ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int, s_ptr: *mut ZopfliBlockState) {
+    let new_s = ZopfliBlockState::new(options, blockstart, blockend, add_lmc);
+
     let s = unsafe {
         assert!(!s_ptr.is_null());
         &mut *s_ptr
     };
 
-    s.options = options;
-    s.blockstart = blockstart;
-    s.blockend = blockend;
-    if add_lmc > 0 {
-        s.lmc = ZopfliInitCache(blockend - blockstart);
-    } else {
-      s.lmc = ptr::null_mut();
-    }
+    s.options = new_s.options;
+    s.blockstart = new_s.blockstart;
+    s.blockend = new_s.blockend;
+    s.lmc = new_s.lmc;
 }
 
 #[repr(C)]
