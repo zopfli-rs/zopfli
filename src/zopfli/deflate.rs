@@ -40,16 +40,19 @@ pub fn fixed_tree() -> ([c_uint; ZOPFLI_NUM_LL], [c_uint; ZOPFLI_NUM_D]) {
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
-    let mut length = length as usize;
-    let c = unsafe { slice::from_raw_parts(counts, length) };
+    let c = unsafe { slice::from_raw_parts_mut(counts, length as usize) };
+    optimize_huffman_for_rle(c);
+}
 
+pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
+    let mut length = counts.len();
     // 1) We don't want to touch the trailing zeros. We may break the
     // rules of the format by adding more data in the distance codes.
     loop {
         if length == 0 {
             return;
         }
-        if c[length - 1] != 0 {
+        if counts[length - 1] != 0 {
             // Now counts[0..length - 1] does not have trailing zeros.
             break;
         }
@@ -63,10 +66,10 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
     // Let's not spoil any of the existing good rle codes.
     // Mark any seq of 0's that is longer than 5 as a good_for_rle.
     // Mark any seq of non-0's that is longer than 7 as a good_for_rle.
-    let mut symbol = c[0];
+    let mut symbol = counts[0];
     let mut stride = 0;
     for i in 0..(length + 1) {
-        if i == length || c[i] != symbol {
+        if i == length || counts[i] != symbol {
             if (symbol == 0 && stride >= 5) || (symbol != 0 && stride >= 7) {
                 for k in 0..stride {
                     good_for_rle[i - k - 1] = 1;
@@ -74,7 +77,7 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
             }
             stride = 1;
             if i != length {
-                symbol = c[i];
+                symbol = counts[i];
             }
         } else {
             stride += 1;
@@ -83,11 +86,11 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
 
     // 3) Let's replace those population counts that lead to more rle codes.
     stride = 0;
-    let mut limit = c[0];
+    let mut limit = counts[0];
     let mut sum = 0;
     for i in 0..(length + 1) {
         // Heuristic for selecting the stride ranges to collapse.
-        if i == length || good_for_rle[i] != 0 || (c[i] as i32 - limit as i32).abs() >= 4 {
+        if i == length || good_for_rle[i] != 0 || (counts[i] as i32 - limit as i32).abs() >= 4 {
             if stride >= 4 || (stride >= 3 && sum == 0) {
                 // The stride must end, collapse what we have, if we have enough (4).
                 let mut count = (sum + stride / 2) / stride;
@@ -101,7 +104,7 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
                 for k in 0..stride {
                     // We don't want to change value at counts[i],
                     // that is already belonging to the next stride. Thus - 1.
-                    unsafe { *counts.offset((i - k - 1) as isize) = count };
+                    counts[i - k - 1] = count;
                 }
             }
             stride = 0;
@@ -109,16 +112,16 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
             if length > 2 && i < length - 3 {
                 // All interesting strides have a count of at least 4,
                 // at least when non-zeros.
-                limit = (c[i] + c[i + 1] + c[i + 2] + c[i + 3] + 2) / 4;
+                limit = (counts[i] + counts[i + 1] + counts[i + 2] + counts[i + 3] + 2) / 4;
             } else if i < length {
-                limit = c[i];
+                limit = counts[i];
             } else {
                 limit = 0;
             }
         }
         stride += 1;
         if i != length {
-            sum += c[i];
+            sum += counts[i];
         }
     }
 }
