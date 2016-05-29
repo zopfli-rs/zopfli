@@ -654,3 +654,30 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCalculateBlockSize(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
+    let mut ll_lengths = [0; ZOPFLI_NUM_LL];
+    let mut d_lengths = [0; ZOPFLI_NUM_D];
+
+    let mut result: c_double = 3.0; /* bfinal and btype bits */
+
+    if btype == 0 {
+        let length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
+        let rem = length % 65535;
+        let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
+        /* An uncompressed block must actually be split into multiple blocks if it's
+           larger than 65535 bytes long. Eeach block header is 5 bytes: 3 bits,
+           padding, LEN and NLEN (potential less padding for first one ignored). */
+        return (blocks * 5 * 8 + length * 8) as c_double;
+    } else if btype == 1 {
+        let fixed_tree = fixed_tree();
+        ll_lengths = fixed_tree.0;
+        d_lengths = fixed_tree.1;
+        result += CalculateBlockSymbolSize(ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend) as c_double;
+    } else {
+        result += unsafe { GetDynamicLengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr()) };
+    }
+    result
+}

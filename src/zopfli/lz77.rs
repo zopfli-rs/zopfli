@@ -734,7 +734,7 @@ pub extern fn CeilDiv(a: size_t, b: size_t) -> size_t {
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
+pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
     let lz77 = unsafe {
         assert!(!lz77_ptr.is_null());
         &*lz77_ptr

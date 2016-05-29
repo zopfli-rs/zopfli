@@ -193,31 +193,7 @@ double GetDynamicLengths(const ZopfliLZ77Store* lz77,
       lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths);
 }
 
-double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77,
-                                size_t lstart, size_t lend, int btype) {
-  unsigned ll_lengths[ZOPFLI_NUM_LL];
-  unsigned d_lengths[ZOPFLI_NUM_D];
-
-  double result = 3; /* bfinal and btype bits */
-
-  if (btype == 0) {
-    size_t length = ZopfliLZ77GetByteRange(lz77, lstart, lend);
-    size_t rem = length % 65535;
-    size_t blocks = length / 65535 + (rem ? 1 : 0);
-    /* An uncompressed block must actually be split into multiple blocks if it's
-       larger than 65535 bytes long. Eeach block header is 5 bytes: 3 bits,
-       padding, LEN and NLEN (potential less padding for first one ignored). */
-    return blocks * 5 * 8 + length * 8;
-  } if (btype == 1) {
-    GetFixedTree(ll_lengths, d_lengths);
-    result += CalculateBlockSymbolSize(
-        ll_lengths, d_lengths, lz77, lstart, lend);
-  } else {
-    result += GetDynamicLengths(lz77, lstart, lend, ll_lengths, d_lengths);
-  }
-
-  return result;
-}
+extern double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, int btype);
 
 double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
                                         size_t lstart, size_t lend) {
