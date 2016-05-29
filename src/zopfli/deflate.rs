@@ -136,10 +136,15 @@ pub extern fn OptimizeHuffmanForRle(length: c_int, counts: *mut size_t) {
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn PatchDistanceCodesForBuggyDecoders(d_lengths: *mut c_uint) {
+    let mut d_lengths_slice = unsafe { slice::from_raw_parts_mut(d_lengths, ZOPFLI_NUM_D) };
+    patch_distance_codes_for_buggy_decoders(&mut d_lengths_slice);
+}
+
+pub fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut[c_uint]) {
     let mut num_dist_codes = 0; // Amount of non-zero distance codes
     // Ignore the two unused codes from the spec
     for i in 0..30 {
-        if unsafe { *d_lengths.offset(i as isize) } != 0 {
+        if d_lengths[i] != 0 {
             num_dist_codes += 1;
         }
         // Two or more codes is fine.
@@ -149,19 +154,15 @@ pub extern fn PatchDistanceCodesForBuggyDecoders(d_lengths: *mut c_uint) {
     }
 
     if num_dist_codes == 0 {
-        unsafe {
-            *d_lengths.offset(0) = 1;
-            *d_lengths.offset(1) = 1;
-        }
+        d_lengths[0] = 1;
+        d_lengths[1] = 1;
     } else if num_dist_codes == 1 {
-        unsafe {
-            let index = if *d_lengths.offset(0) == 0 {
-                0
-            } else {
-                1
-            };
-            *d_lengths.offset(index) = 1;
-        }
+        let index = if d_lengths[0] == 0 {
+            0
+        } else {
+            1
+        };
+        d_lengths[index] = 1;
     }
 }
 
