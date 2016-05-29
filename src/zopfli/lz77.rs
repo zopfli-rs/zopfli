@@ -124,12 +124,7 @@ impl Lz77Store {
         }
     }
 
-    pub fn greedy(&mut self, s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t) {
-        let s = unsafe {
-            assert!(!s_ptr.is_null());
-            &mut *s_ptr
-        };
-
+    pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t) {
         let mut leng: c_ushort;
         let mut dist: c_ushort;
         let mut lengthscore: c_int;
@@ -836,10 +831,15 @@ pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uch
         &mut *store_ptr
     };
 
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+
     let rust_store = lz77_store_from_c(store_ptr);
 
     unsafe {
-        (&mut *rust_store).greedy(s_ptr, in_data, instart, inend);
+        (&mut *rust_store).greedy(s, in_data, instart, inend);
     }
 
     lz77_store_result(rust_store, store);
