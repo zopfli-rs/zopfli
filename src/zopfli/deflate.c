@@ -80,8 +80,6 @@ extern void AddDynamicTree(const unsigned* ll_lengths, const unsigned* d_lengths
 
 extern size_t CalculateTreeSize(const unsigned* ll_lengths, const unsigned* d_lengths);
 
-extern void AddLZ77Data(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, const unsigned* ll_symbols, const unsigned* ll_lengths, const unsigned* d_symbols, const unsigned* d_lengths, unsigned char* bp, unsigned char** out, size_t* outsize);
-
 extern void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths);
 extern size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts, const size_t* d_counts, const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 extern size_t CalculateBlockSymbolSize(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
