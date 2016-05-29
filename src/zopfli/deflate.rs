@@ -3,7 +3,8 @@ use std::slice;
 use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use katajainen::length_limited_code_lengths;
-use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, get_byte_range, Lz77Store};
+use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
+use squeeze::lz77_optimal_fixed;
 use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZopfliGetLengthSymbolExtraBits, ZopfliGetDistSymbolExtraBits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZopfliGetLengthExtraBitsValue, ZopfliGetLengthExtraBits, ZopfliGetDistExtraBitsValue, ZopfliGetDistExtraBits};
 use tree::{lengths_to_symbols, ZopfliLengthsToSymbols, ZopfliCalculateBitLengths};
 use zopfli::ZopfliOptions;
@@ -580,13 +581,11 @@ pub extern fn AddDynamicTree(ll_lengths: *const c_uint, d_lengths: *const c_uint
 /// outsize: dynamic output array size
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
     };
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
 
     let mut ll_lengths = [0; ZOPFLI_NUM_LL];
     let mut d_lengths = [0; ZOPFLI_NUM_D];
@@ -782,4 +781,56 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
         }
     }
     assert!(expected_data_size == 0 || testlength == expected_data_size);
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let options = unsafe {
+        assert!(!options_ptr.is_null());
+        &*options_ptr
+    };
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
+
+    let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
+    let mut fixedcost = calculate_block_size(lz77, lstart, lend, 1);
+    let dyncost = calculate_block_size(lz77, lstart, lend, 2);
+
+    /* Whether to perform the expensive calculation of creating an optimal block
+    with fixed huffman tree to check if smaller. Only do this for small blocks or
+    blocks which already are pretty good with fixed huffman tree. */
+    let expensivefixed = (lz77.size() < 1000) || fixedcost <= dyncost * 1.1;
+
+    let mut fixedstore = Lz77Store::new();
+    if lstart == lend {
+        unsafe {
+            /* Smallest empty block is represented by fixed block */
+            AddBits(final_block as c_uint, 1, bp, out, outsize);
+            AddBits(1, 2, bp, out, outsize);  /* btype 01 */
+            AddBits(0, 7, bp, out, outsize);  /* end symbol has code 0000000 */
+        }
+        return;
+    }
+    if expensivefixed {
+        /* Recalculate the LZ77 with ZopfliLZ77OptimalFixed */
+        let instart = lz77.pos[lstart];
+        let inend = instart + get_byte_range(lz77, lstart, lend);
+
+        let mut s = ZopfliBlockState::new(options, instart, inend, 1);
+        lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut fixedstore);
+        fixedcost = calculate_block_size(&fixedstore, 0, fixedstore.size(), 1);
+    }
+
+    if uncompressedcost < fixedcost && uncompressedcost < dyncost {
+        AddLZ77Block(options, 0, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+    } else if fixedcost < dyncost {
+        if expensivefixed {
+            AddLZ77Block(options, 1, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out, outsize);
+        } else {
+            AddLZ77Block(options, 1, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+        }
+    } else {
+        AddLZ77Block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+    }
 }

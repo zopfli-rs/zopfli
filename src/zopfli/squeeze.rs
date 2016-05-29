@@ -349,7 +349,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, *const c_void) -> c
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the costmodel, needed to get to the end.
 // TODO: upstream is now reusing an already allocated hash; we're ignoring it
-pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
+pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -532,7 +532,7 @@ pub extern fn LZ77OptimalRun(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar
     lz77_store_result(rust_store, store);
 }
 
-pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
+pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
     let path = trace_backwards(inend - instart, length_array);
     store.follow_path(in_data, instart, inend, path, s);
@@ -541,7 +541,7 @@ pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliLZ77OptimalFixed(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store) {
+pub extern fn ZopfliLZ77OptimalFixed(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store) {
     /* Dist to get to here with smallest cost. */
     let s = unsafe {
         assert!(!s_ptr.is_null());
@@ -561,7 +561,7 @@ pub extern fn ZopfliLZ77OptimalFixed(s_ptr: *mut ZopfliBlockState, in_data: *mut
     lz77_store_result(rust_store, store);
 }
 
-pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store: &mut Lz77Store) {
+pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, store: &mut Lz77Store) {
     s.blockstart = instart;
     s.blockend = inend;
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);

@@ -19,7 +19,7 @@ pub struct ZopfliLZ77Store {
   pub litlens: *mut c_ushort,  /* Lit or len. */
   pub dists: *mut c_ushort,  /* If 0: indicates literal in corresponding litlens,
       if > 0: length in corresponding litlens, this is the distance. */
-  size: size_t,
+  pub size: size_t,
 
   pub pos: *mut size_t,  /* position in data where this LZ77 command begins */
 

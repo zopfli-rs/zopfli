@@ -148,62 +148,7 @@ void AddNonCompressedBlock(const ZopfliOptions* options, int final,
 
 extern void AddLZ77Block(const ZopfliOptions* options, int btype, int final, const unsigned char* in, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, unsigned char* bp, unsigned char** out, size_t* outsize);
 
-/* Passthrough */
-static void AddLZ77BlockAutoType(const ZopfliOptions* options, int final,
-                                 const unsigned char* in,
-                                 const ZopfliLZ77Store* lz77,
-                                 size_t lstart, size_t lend,
-                                 size_t expected_data_size,
-                                 unsigned char* bp,
-                                 unsigned char** out, size_t* outsize) {
-  double uncompressedcost = ZopfliCalculateBlockSize(lz77, lstart, lend, 0);
-  double fixedcost = ZopfliCalculateBlockSize(lz77, lstart, lend, 1);
-  double dyncost = ZopfliCalculateBlockSize(lz77, lstart, lend, 2);
-
-  /* Whether to perform the expensive calculation of creating an optimal block
-  with fixed huffman tree to check if smaller. Only do this for small blocks or
-  blocks which already are pretty good with fixed huffman tree. */
-  int expensivefixed = (lz77->size < 1000) || fixedcost <= dyncost * 1.1;
-
-  ZopfliLZ77Store fixedstore;
-  if (lstart == lend) {
-    /* Smallest empty block is represented by fixed block */
-    AddBits(final, 1, bp, out, outsize);
-    AddBits(1, 2, bp, out, outsize);  /* btype 01 */
-    AddBits(0, 7, bp, out, outsize);  /* end symbol has code 0000000 */
-    return;
-  }
-  ZopfliInitLZ77Store(&fixedstore);
-  if (expensivefixed) {
-    /* Recalculate the LZ77 with ZopfliLZ77OptimalFixed */
-    size_t instart = lz77->pos[lstart];
-    size_t inend = instart + ZopfliLZ77GetByteRange(lz77, lstart, lend);
-
-    ZopfliBlockState s;
-    ZopfliInitBlockState(options, instart, inend, 1, &s);
-    ZopfliLZ77OptimalFixed(&s, in, instart, inend, &fixedstore);
-    fixedcost = ZopfliCalculateBlockSize(&fixedstore, 0, fixedstore.size, 1);
-    ZopfliCleanBlockState(&s);
-  }
-
-  if (uncompressedcost < fixedcost && uncompressedcost < dyncost) {
-    AddLZ77Block(options, 0, final, in, lz77, lstart, lend,
-                 expected_data_size, bp, out, outsize);
-  } else if (fixedcost < dyncost) {
-    if (expensivefixed) {
-      AddLZ77Block(options, 1, final, in, &fixedstore, 0, fixedstore.size,
-                   expected_data_size, bp, out, outsize);
-    } else {
-      AddLZ77Block(options, 1, final, in, lz77, lstart, lend,
-                   expected_data_size, bp, out, outsize);
-    }
-  } else {
-    AddLZ77Block(options, 2, final, in, lz77, lstart, lend,
-                 expected_data_size, bp, out, outsize);
-  }
-
-  ZopfliCleanLZ77Store(&fixedstore);
-}
+extern void AddLZ77BlockAutoType(const ZopfliOptions* options, int final, const unsigned char* in, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 void AddAllBlocks(size_t npoints, size_t* splitpoints, ZopfliLZ77Store lz77, const ZopfliOptions* options, int final, const unsigned char* in, unsigned char* bp, unsigned char** out, size_t* outsize) {
     size_t i;
