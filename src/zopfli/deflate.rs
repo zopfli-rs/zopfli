@@ -837,12 +837,19 @@ pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_bloc
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliCalculateBlockSizeAutoType(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
-    let uncompressedcost = ZopfliCalculateBlockSize(lz77, lstart, lend, 0);
+pub extern fn ZopfliCalculateBlockSizeAutoType(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
+
+    calculate_block_size_auto_type(lz77, lstart, lend)
+}
+
+pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
+    let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
     /* Don't do the expensive fixed cost calculation for larger blocks that are
      unlikely to use it. */
-    let fixedcost = if unsafe { (&*lz77).size } > 1000 { uncompressedcost } else { ZopfliCalculateBlockSize(lz77, lstart, lend, 1) };
-    let dyncost = ZopfliCalculateBlockSize(lz77, lstart, lend, 2);
+    let fixedcost = if lz77.size() > 1000 { uncompressedcost } else { calculate_block_size(lz77, lstart, lend, 1) };
+    let dyncost = calculate_block_size(lz77, lstart, lend, 2);
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
         uncompressedcost
     } else if fixedcost < dyncost {
