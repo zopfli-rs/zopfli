@@ -61,4 +61,6 @@ void ZopfliBlockSplit(const ZopfliOptions* options,
                       const unsigned char* in, size_t instart, size_t inend,
                       size_t maxblocks, size_t** splitpoints, size_t* npoints);
 
+void AddSorted(size_t value, size_t** out, size_t* outsize);
+
 #endif  /* ZOPFLI_BLOCKSPLITTER_H_ */

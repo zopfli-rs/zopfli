@@ -48,7 +48,7 @@ typedef struct SplitCostContext {
 extern double SplitCost(size_t i, void* context);
 
 /* Actually writes to out, outsize which are splitpoints, npoints */
-static void AddSorted(size_t value, size_t** out, size_t* outsize) {
+void AddSorted(size_t value, size_t** out, size_t* outsize) {
   size_t i;
   ZOPFLI_APPEND_DATA(value, out, outsize);
   for (i = 0; i + 1 < *outsize; i++) {
@@ -67,66 +67,7 @@ extern void PrintBlockSplitPoints(const ZopfliLZ77Store* lz77, const size_t* lz7
 
 extern int FindLargestSplittableBlock(size_t lz77size, const unsigned char* done, const size_t* splitpoints, size_t npoints, size_t* lstart, size_t* lend);
 
-/* Passthrough of splitponits and npoints */
-void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
-                          const ZopfliLZ77Store* lz77, size_t maxblocks,
-                          size_t** splitpoints, size_t* npoints) {
-  size_t lstart, lend;
-  size_t i;
-  size_t llpos = 0;
-  size_t numblocks = 1;
-  unsigned char* done;
-  double splitcost, origcost;
-
-  if (lz77->size < 10) return;  /* This code fails on tiny files. */
-
-  done = (unsigned char*)malloc(lz77->size);
-  if (!done) exit(-1); /* Allocation failed. */
-  for (i = 0; i < lz77->size; i++) done[i] = 0;
-
-  lstart = 0;
-  lend = lz77->size;
-  for (;;) {
-    SplitCostContext c;
-
-    if (maxblocks > 0 && numblocks >= maxblocks) {
-      break;
-    }
-
-    c.lz77 = lz77;
-    c.start = lstart;
-    c.end = lend;
-    assert(lstart < lend);
-    llpos = FindMinimum(SplitCost, &c, lstart + 1, lend, &splitcost);
-
-    assert(llpos > lstart);
-    assert(llpos < lend);
-
-    origcost = EstimateCost(lz77, lstart, lend);
-
-    if (splitcost > origcost || llpos == lstart + 1 || llpos == lend) {
-      done[lstart] = 1;
-    } else {
-      AddSorted(llpos, splitpoints, npoints);
-      numblocks++;
-    }
-
-    if (!FindLargestSplittableBlock(
-        lz77->size, done, *splitpoints, *npoints, &lstart, &lend)) {
-      break;  /* No further split will probably reduce compression. */
-    }
-
-    if (lend - lstart < 10) {
-      break;
-    }
-  }
-
-  if (options->verbose) {
-    PrintBlockSplitPoints(lz77, *splitpoints, *npoints);
-  }
-
-  free(done);
-}
+extern void ZopfliBlockSplitLZ77(const ZopfliOptions* options, const ZopfliLZ77Store* lz77, size_t maxblocks, size_t** splitpoints, size_t* npoints);
 
 /* Resets splitpoints, npoints then writes to them */
 void ZopfliBlockSplit(const ZopfliOptions* options,
