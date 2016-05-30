@@ -38,9 +38,6 @@ to every possible shorter-than-the-best length (the so called "sublen" array).
 */
 typedef struct ZopfliLongestMatchCache ZopfliLongestMatchCache;
 
-/* Initializes the ZopfliLongestMatchCache. */
-extern ZopfliLongestMatchCache* ZopfliInitCache(size_t blocksize);
-
 /* Frees up the memory of the ZopfliLongestMatchCache. */
 void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
 

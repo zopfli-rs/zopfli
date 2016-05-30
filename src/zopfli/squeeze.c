@@ -25,8 +25,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include "blocksplitter.h"
 #include "deflate.h"
-#include "symbols.h"
-#include "tree.h"
 #include "util.h"
 
 typedef struct SymbolStats SymbolStats;

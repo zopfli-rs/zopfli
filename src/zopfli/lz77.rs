@@ -2,9 +2,9 @@ use std::{slice, ptr, cmp};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache, ZopfliInitCache};
+use cache::{ZopfliLongestMatchCache, init_cache};
 use hash::ZopfliHash;
-use symbols::{ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
+use symbols::{get_dist_symbol, get_length_symbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
 /// Comment from C:
@@ -117,10 +117,10 @@ impl Lz77Store {
             self.d_symbol.push(0);
             self.ll_counts[llstart + length as usize] += 1;
         } else {
-            self.ll_symbol.push(ZopfliGetLengthSymbol(length as c_int) as c_ushort);
-            self.d_symbol.push(ZopfliGetDistSymbol(dist as c_int) as c_ushort);
-            self.ll_counts[llstart + ZopfliGetLengthSymbol(length as c_int) as usize] += 1;
-            self.d_counts[dstart + ZopfliGetDistSymbol(dist as c_int) as usize] += 1;
+            self.ll_symbol.push(get_length_symbol(length as c_int) as c_ushort);
+            self.d_symbol.push(get_dist_symbol(dist as c_int) as c_ushort);
+            self.ll_counts[llstart + get_length_symbol(length as c_int) as usize] += 1;
+            self.d_counts[dstart + get_dist_symbol(dist as c_int) as usize] += 1;
         }
     }
 
@@ -310,8 +310,7 @@ fn ptr_to_vec<T: Clone>(ptr: *mut T, length: usize) -> Vec<T> {
     }
 }
 
-#[no_mangle]
-pub extern fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store) {
+pub fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store) {
     let lz77 = unsafe {
         assert!(!ptr.is_null());
         &mut *ptr
@@ -383,7 +382,7 @@ impl ZopfliBlockState {
             blockstart: blockstart,
             blockend: blockend,
             lmc: if add_lmc > 0 {
-                ZopfliInitCache(blockend - blockstart)
+                init_cache(blockend - blockstart)
             } else {
                 ptr::null_mut()
             },
@@ -700,7 +699,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
 ///  rather unpredictable way
 /// -the first zopfli run, so it affects the chance of the first run being closer
 ///  to the optimal output
-pub extern fn get_length_score(length: c_int, distance: c_int) -> c_int {
+pub fn get_length_score(length: c_int, distance: c_int) -> c_int {
     // At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
     // on tested files.
     if distance > 1024 {
@@ -719,21 +718,6 @@ pub fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_
             break;
         }
     }
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn CeilDiv(a: size_t, b: size_t) -> size_t {
-    (a + b - 1) / b
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLZ77GetByteRange(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> size_t {
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
-
-    get_byte_range(lz77, lstart, lend)
 }
 
 pub fn get_byte_range(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
@@ -774,22 +758,9 @@ pub fn get_histogram_at(lz77: &Lz77Store, lpos: size_t) -> (Vec<size_t>, Vec<siz
     (ll, d)
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLZ77GetHistogram(lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, ll_counts: *mut size_t, d_counts: *mut size_t) {
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
-
-    let (ll_counts_result, d_counts_result) = get_histogram(lz77, lstart, lend);
-
-    for i in 0..ZOPFLI_NUM_LL as isize {
-        unsafe { *ll_counts.offset(i) = ll_counts_result[i as usize]; }
-    }
-    for i in 0..ZOPFLI_NUM_D as isize {
-        unsafe { *d_counts.offset(i) = d_counts_result[i as usize]; }
-    }
-}
-
+/// Gets the histogram of lit/len and dist symbols in the given range, using the
+/// cumulative histograms, so faster than adding one by one for large range. Does
+/// not add the one end symbol of value 256.
 pub fn get_histogram(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (Vec<size_t>, Vec<size_t>) {
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         let mut ll_counts = vec![0; ZOPFLI_NUM_LL];

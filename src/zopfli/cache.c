@@ -25,8 +25,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #ifdef ZOPFLI_LONGEST_MATCH_CACHE
 
-extern ZopfliLongestMatchCache* ZopfliInitCache(size_t blocksize);
-
 extern void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
 
 #endif  /* ZOPFLI_LONGEST_MATCH_CACHE */

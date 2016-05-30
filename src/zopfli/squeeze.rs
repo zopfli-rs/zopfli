@@ -3,8 +3,8 @@ use std::{mem, slice, cmp, ptr};
 use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
 
 use hash::ZopfliHash;
-use lz77::{ZopfliLZ77Store, Lz77Store, ZopfliBlockState, find_longest_match, lz77_store_from_c, lz77_store_result};
-use symbols::{ZopfliGetDistExtraBits, ZopfliGetLengthExtraBits, ZopfliGetLengthSymbol, ZopfliGetDistSymbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
+use lz77::{Lz77Store, ZopfliLZ77Store, ZopfliBlockState, find_longest_match, lz77_store_from_c, lz77_store_result};
+use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
@@ -19,9 +19,9 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: *const c_void) -> c_d
             9
         }
     } else {
-        let dbits = ZopfliGetDistExtraBits(dist as c_int);
-        let lbits = ZopfliGetLengthExtraBits(litlen as c_int);
-        let lsym = ZopfliGetLengthSymbol(litlen as c_int);
+        let dbits = get_dist_extra_bits(dist as c_int);
+        let lbits = get_length_extra_bits(litlen as c_int);
+        let lsym = get_length_symbol(litlen as c_int);
         let mut cost = 0;
         if lsym <= 279 {
             cost += 7;
@@ -46,11 +46,11 @@ pub extern fn GetCostStat(litlen: c_uint, dist: c_uint, context: *const c_void) 
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
     } else {
-        let lsym = ZopfliGetLengthSymbol(litlen as c_int) as usize;
-        let lbits = ZopfliGetLengthExtraBits(litlen as c_int) as c_double;
-        let dsym = ZopfliGetDistSymbol(dist as c_int) as usize;
-        let dbits = ZopfliGetDistExtraBits(dist as c_int) as c_double;
-        stats.ll_symbols[lsym] + lbits + stats.d_symbols[dsym] + dbits
+        let lsym = get_length_symbol(litlen as c_int) as usize;
+        let lbits = get_length_extra_bits(litlen as c_int) as c_double;
+        let dsym = get_dist_symbol(dist as c_int) as usize;
+        let dbits = get_dist_extra_bits(dist as c_int) as c_double;
+        lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
     }
 }
 
@@ -129,7 +129,7 @@ impl SymbolStats {
     }
 
     /// Calculates the entropy of each symbol, based on the counts of each symbol. The
-    /// result is similar to the result of ZopfliCalculateBitLengths, but with the
+    /// result is similar to the result of zopfli_calculate_bit_lengths, but with the
     /// actual theoritical bit lengths according to the entropy. Since the resulting
     /// values are fractional, they cannot be used to encode the tree specified by
     /// DEFLATE.
@@ -176,8 +176,8 @@ impl SymbolStats {
             if store.dists[i] == 0 {
                 self.litlens[store.litlens[i] as usize] += 1;
             } else {
-                self.litlens[ZopfliGetLengthSymbol(store.litlens[i] as c_int) as usize] +=1 ;
-                self.dists[ZopfliGetDistSymbol(store.dists[i] as c_int) as usize] += 1;
+                self.litlens[get_length_symbol(store.litlens[i] as c_int) as usize] +=1 ;
+                self.dists[get_dist_symbol(store.dists[i] as c_int) as usize] += 1;
             }
         }
         self.litlens[256] = 1;  /* End symbol. */

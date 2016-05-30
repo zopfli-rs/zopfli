@@ -8,9 +8,7 @@ use zopfli::ZopfliOptions;
 /// Finds minimum of function f(i) where is is of type size_t, f(i) is of type
 /// double, i is in range start-end (excluding end).
 /// Outputs the minimum value in *smallest and returns the index of this value.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn FindMinimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, context: &SplitCostContext, start: size_t, end: size_t) -> (size_t, c_double) {
+pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, context: &SplitCostContext, start: size_t, end: size_t) -> (size_t, c_double) {
     let mut start = start;
     let mut end = end;
     if end - start < 1024 {
@@ -75,9 +73,7 @@ pub extern fn FindMinimum(f: fn(i: size_t, context: &SplitCostContext) -> c_doub
 /// dists: ll77 distances
 /// lstart: start of block
 /// lend: end of block (not inclusive)
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn EstimateCost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
+pub fn estimate_cost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
     calculate_block_size_auto_type(lz77, lstart, lend)
 }
 
@@ -86,7 +82,7 @@ pub extern fn EstimateCost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_
 /// type: FindMinimumFun
 #[allow(non_snake_case)]
 pub fn SplitCost(i: size_t, c: &SplitCostContext) -> c_double {
-    EstimateCost(c.lz77, c.start, i) + EstimateCost(c.lz77, i, c.end)
+    estimate_cost(c.lz77, c.start, i) + estimate_cost(c.lz77, i, c.end)
 }
 
 pub struct SplitCostContext<'a> {
@@ -106,9 +102,7 @@ pub struct SplitCostContext<'a> {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn FindLargestSplittableBlock(lz77size: size_t, done: *const c_uchar, splitpoints: *const size_t, npoints: size_t, lstart: size_t, lend: size_t) -> (c_int, size_t, size_t) {
+pub fn find_largest_splittable_block(lz77size: size_t, done: *const c_uchar, splitpoints: *const size_t, npoints: size_t, lstart: size_t, lend: size_t) -> (c_int, size_t, size_t) {
     let mut longest = 0;
     let mut found = 0;
     let mut lstart = lstart;
@@ -131,7 +125,7 @@ pub extern fn FindLargestSplittableBlock(lz77size: size_t, done: *const c_uchar,
 /// Prints the block split points as decimal and hex values in the terminal.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn PrintBlockSplitPoints(lz77: &Lz77Store, lz77splitpoints: *const size_t, nlz77points: size_t) {
+pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: *const size_t, nlz77points: size_t) {
     let mut splitpoints = Vec::with_capacity(nlz77points);
 
     /* The input is given as lz77 indices, but we want to see the uncompressed
@@ -196,14 +190,14 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
         };
 
         assert!(lstart < lend);
-        let find_minimum_result = FindMinimum(SplitCost, &c, lstart + 1, lend);
+        let find_minimum_result = find_minimum(SplitCost, &c, lstart + 1, lend);
         llpos = find_minimum_result.0;
         splitcost = find_minimum_result.1;
 
         assert!(llpos > lstart);
         assert!(llpos < lend);
 
-        origcost = EstimateCost(lz77, lstart, lend);
+        origcost = estimate_cost(lz77, lstart, lend);
 
         if splitcost > origcost || llpos == lstart + 1 || llpos == lend {
             done[lstart] = 1;
@@ -212,7 +206,7 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
             numblocks += 1;
         }
 
-        let find_block_results = FindLargestSplittableBlock(lz77.size(), done.as_ptr(), unsafe { *splitpoints }, unsafe { *npoints }, lstart, lend);
+        let find_block_results = find_largest_splittable_block(lz77.size(), done.as_ptr(), unsafe { *splitpoints }, unsafe { *npoints }, lstart, lend);
         lstart = find_block_results.1;
         lend = find_block_results.2;
 
@@ -226,6 +220,6 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
     }
 
     if options.verbose > 0 {
-        PrintBlockSplitPoints(lz77, unsafe { *splitpoints }, unsafe { *npoints });
+        print_block_split_points(lz77, unsafe { *splitpoints }, unsafe { *npoints });
     }
 }

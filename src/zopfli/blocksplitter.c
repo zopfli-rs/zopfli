@@ -25,19 +25,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include "deflate.h"
 #include "squeeze.h"
-#include "tree.h"
 #include "util.h"
-
-/*
-The "f" for the FindMinimum function below.
-i: the current parameter of f(i)
-context: for your implementation
-*/
-typedef double FindMinimumFun(size_t i, void* context);
-
-extern size_t FindMinimum(FindMinimumFun f, void* context, size_t start, size_t end, double* smallest);
-
-extern double EstimateCost(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
 extern double SplitCost(size_t i, void* context);
 
@@ -56,10 +44,6 @@ void AddSorted(size_t value, size_t** out, size_t* outsize) {
     }
   }
 }
-
-extern void PrintBlockSplitPoints(const ZopfliLZ77Store* lz77, const size_t* lz77splitpoints, size_t nlz77points);
-
-extern int FindLargestSplittableBlock(size_t lz77size, const unsigned char* done, const size_t* splitpoints, size_t npoints, size_t* lstart, size_t* lend);
 
 extern void ZopfliBlockSplitLZ77(const ZopfliOptions* options, const ZopfliLZ77Store* lz77, size_t maxblocks, size_t** splitpoints, size_t* npoints);
 

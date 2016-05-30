@@ -63,16 +63,6 @@ void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
 void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
 void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store,
                            ZopfliLZ77Store* target);
-/* Gets the amount of raw bytes that this range of LZ77 symbols spans. */
-size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77,
-                              size_t lstart, size_t lend);
-/* Gets the histogram of lit/len and dist symbols in the given range, using the
-cumulative histograms, so faster than adding one by one for large range. Does
-not add the one end symbol of value 256. */
-void ZopfliLZ77GetHistogram(const ZopfliLZ77Store* lz77,
-                            size_t lstart, size_t lend,
-                            size_t* ll_counts, size_t* d_counts);
-
 /*
 Some state information for compressing a block.
 This is currently a bit under-used (with mainly only the longest match cache),

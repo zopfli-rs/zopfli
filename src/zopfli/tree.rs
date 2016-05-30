@@ -4,9 +4,7 @@ use libc::{c_uint, size_t, c_int};
 
 use katajainen::length_limited_code_lengths;
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxbits: c_uint, symbols: *mut c_uint) {
+pub fn zopfli_lengths_to_symbols(lengths_ptr: *const c_uint, n: size_t, maxbits: c_uint, symbols: *mut c_uint) {
     let lengths = unsafe { slice::from_raw_parts(lengths_ptr, n) };
     let lengths_size_t = lengths.iter().map(|&len| len as size_t).collect::<Vec<_>>();
 
@@ -18,6 +16,7 @@ pub extern fn ZopfliLengthsToSymbols(lengths_ptr: *const c_uint, n: size_t, maxb
     }
 }
 
+/// Converts a series of Huffman tree bitlengths, to the bit values of the symbols.
 pub fn lengths_to_symbols(lengths: &[usize], maxbits: c_uint) -> Vec<c_uint> {
     let mut bl_count = vec![0; (maxbits + 1) as usize];
     let mut next_code = vec![0; (maxbits + 1) as usize];
@@ -50,9 +49,9 @@ pub fn lengths_to_symbols(lengths: &[usize], maxbits: c_uint) -> Vec<c_uint> {
     symbols
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCalculateBitLengths(frequencies: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) {
+/// Calculates the bitlengths for the Huffman tree, based on the counts of each
+/// symbol.
+pub fn zopfli_calculate_bit_lengths(frequencies: *const size_t, n: usize, maxbits: c_int, bitlengths: *mut c_uint) {
     let freqs = unsafe { slice::from_raw_parts(frequencies, n) };
     let result = length_limited_code_lengths(freqs, maxbits);
 

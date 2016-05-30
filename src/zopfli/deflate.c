@@ -25,8 +25,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include "blocksplitter.h"
 #include "squeeze.h"
-#include "symbols.h"
-#include "tree.h"
 
 /*
 bp = bitpointer, always in range [0, 7].
@@ -73,19 +71,6 @@ void AddHuffmanBits(unsigned symbol, unsigned length,
     *bp = (*bp + 1) & 7;
   }
 }
-
-extern void PatchDistanceCodesForBuggyDecoders(unsigned* d_lengths);
-
-extern void AddDynamicTree(const unsigned* ll_lengths, const unsigned* d_lengths, unsigned char* bp, unsigned char** out, size_t* outsize);
-
-extern size_t CalculateTreeSize(const unsigned* ll_lengths, const unsigned* d_lengths);
-
-extern void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths);
-extern size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts, const size_t* d_counts, const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
-extern size_t CalculateBlockSymbolSize(const unsigned* ll_lengths, const unsigned* d_lengths, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
-extern void OptimizeHuffmanForRle(int length, size_t* counts);
-
-extern double TryOptimizeHuffmanForRle(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, const size_t* ll_counts, const size_t* d_counts, unsigned* ll_lengths, unsigned* d_lengths);
 
 extern double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, int btype);
 

@@ -18,7 +18,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
 #include "lz77.h"
-#include "symbols.h"
 #include "util.h"
 
 #include <assert.h>
@@ -29,14 +28,8 @@ extern void ZopfliInitLZ77Store(ZopfliLZ77Store* store);
 
 extern void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
 
-extern size_t CeilDiv(size_t a, size_t b);
-
 extern void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
 extern void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store, ZopfliLZ77Store* target);
-
-extern size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
-
-extern void ZopfliLZ77GetHistogram(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t* ll_counts, size_t* d_counts);
 
 extern void ZopfliInitBlockState(const ZopfliOptions* options, size_t blockstart, size_t blockend, int add_lmc, ZopfliBlockState* s);
 
@@ -50,6 +43,5 @@ void ZopfliCleanBlockState(ZopfliBlockState* s) {
 
 typedef struct lz77_store_S lz77_store_t;
 extern lz77_store_t * lz77_store_from_c(ZopfliLZ77Store *);
-extern void lz77_store_result(lz77_store_t *, ZopfliLZ77Store *);
 
 extern void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in, size_t instart, size_t inend, ZopfliLZ77Store* store, ZopfliHash* h);
