@@ -124,7 +124,7 @@ impl Lz77Store {
         }
     }
 
-    pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t) {
+    pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t) {
         let mut leng: c_ushort;
         let mut dist: c_ushort;
         let mut lengthscore: c_int;
