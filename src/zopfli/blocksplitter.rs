@@ -1,7 +1,7 @@
 use libc::{size_t, c_double, c_uchar, c_int};
 
-use deflate::ZopfliCalculateBlockSizeAutoType;
-use lz77::ZopfliLZ77Store;
+use deflate::calculate_block_size_auto_type;
+use lz77::{ZopfliLZ77Store, Lz77Store, lz77_store_from_c};
 use symbols::{ZOPFLI_LARGE_FLOAT};
 use zopfli::ZopfliOptions;
 
@@ -77,8 +77,8 @@ pub extern fn FindMinimum(f: fn(i: size_t, context: &SplitCostContext) -> c_doub
 /// lend: end of block (not inclusive)
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn EstimateCost(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
-    ZopfliCalculateBlockSizeAutoType(lz77, lstart, lend)
+pub extern fn EstimateCost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
+    calculate_block_size_auto_type(lz77, lstart, lend)
 }
 
 /// Gets the cost which is the sum of the cost of the left and the right section
@@ -89,8 +89,8 @@ pub fn SplitCost(i: size_t, c: &SplitCostContext) -> c_double {
     EstimateCost(c.lz77, c.start, i) + EstimateCost(c.lz77, i, c.end)
 }
 
-pub struct SplitCostContext {
-    lz77: *const ZopfliLZ77Store,
+pub struct SplitCostContext<'a> {
+    lz77: &'a Lz77Store,
     start: size_t,
     end: size_t,
 }
@@ -131,22 +131,18 @@ pub extern fn FindLargestSplittableBlock(lz77size: size_t, done: *const c_uchar,
 /// Prints the block split points as decimal and hex values in the terminal.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn PrintBlockSplitPoints(lz77_ptr: *const ZopfliLZ77Store, lz77splitpoints: *const size_t, nlz77points: size_t) {
+pub extern fn PrintBlockSplitPoints(lz77: &Lz77Store, lz77splitpoints: *const size_t, nlz77points: size_t) {
     let mut splitpoints = Vec::with_capacity(nlz77points);
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &*lz77_ptr
-    };
 
     /* The input is given as lz77 indices, but we want to see the uncompressed
     index values. */
     let mut pos = 0;
     if nlz77points > 0 {
-        for i in 0..lz77.size {
-            let length = if unsafe { *lz77.dists.offset(i as isize) } == 0 {
+        for i in 0..lz77.size() {
+            let length = if lz77.dists[i] == 0 {
                 1
             } else {
-                unsafe { *lz77.litlens.offset(i as isize) }
+                lz77.litlens[i]
             };
             if unsafe { *lz77splitpoints.offset(splitpoints.len() as isize) } == i {
                 splitpoints.push(pos);
@@ -174,12 +170,10 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
         assert!(!options_ptr.is_null());
         &*options_ptr
     };
-    let lz77 = unsafe {
-        assert!(!lz77_ptr.is_null());
-        &*lz77_ptr
-    };
+    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
+    let lz77 = unsafe { &*lz77_still_pointer };
 
-    if lz77.size < 10 {
+    if lz77.size() < 10 {
         return;  /* This code fails on tiny files. */
     }
 
@@ -187,9 +181,9 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
     let mut numblocks = 1;
     let mut splitcost: c_double;
     let mut origcost;
-    let mut done = vec![0; lz77.size];
+    let mut done = vec![0; lz77.size()];
     let mut lstart = 0;
-    let mut lend = lz77.size;
+    let mut lend = lz77.size();
 
     loop {
         if maxblocks > 0 && numblocks >= maxblocks {
@@ -218,7 +212,7 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
             numblocks += 1;
         }
 
-        let find_block_results = FindLargestSplittableBlock(lz77.size, done.as_ptr(), unsafe { *splitpoints }, unsafe { *npoints }, lstart, lend);
+        let find_block_results = FindLargestSplittableBlock(lz77.size(), done.as_ptr(), unsafe { *splitpoints }, unsafe { *npoints }, lstart, lend);
         lstart = find_block_results.1;
         lend = find_block_results.2;
 
