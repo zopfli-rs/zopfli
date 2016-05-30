@@ -2,6 +2,7 @@
 
 extern crate libc;
 
+pub mod blocksplitter;
 pub mod cache;
 pub mod deflate;
 pub mod hash;

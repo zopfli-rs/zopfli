@@ -35,65 +35,7 @@ context: for your implementation
 */
 typedef double FindMinimumFun(size_t i, void* context);
 
-/*
-Finds minimum of function f(i) where is is of type size_t, f(i) is of type
-double, i is in range start-end (excluding end).
-Outputs the minimum value in *smallest and returns the index of this value.
-*/
-static size_t FindMinimum(FindMinimumFun f, void* context,
-                          size_t start, size_t end, double* smallest) {
-  if (end - start < 1024) {
-    double best = ZOPFLI_LARGE_FLOAT;
-    size_t result = start;
-    size_t i;
-    for (i = start; i < end; i++) {
-      double v = f(i, context);
-      if (v < best) {
-        best = v;
-        result = i;
-      }
-    }
-    *smallest = best;
-    return result;
-  } else {
-    /* Try to find minimum faster by recursively checking multiple points. */
-#define NUM 9  /* Good value: 9. */
-    size_t i;
-    size_t p[NUM];
-    double vp[NUM];
-    size_t besti;
-    double best;
-    double lastbest = ZOPFLI_LARGE_FLOAT;
-    size_t pos = start;
-
-    for (;;) {
-      if (end - start <= NUM) break;
-
-      for (i = 0; i < NUM; i++) {
-        p[i] = start + (i + 1) * ((end - start) / (NUM + 1));
-        vp[i] = f(p[i], context);
-      }
-      besti = 0;
-      best = vp[0];
-      for (i = 1; i < NUM; i++) {
-        if (vp[i] < best) {
-          best = vp[i];
-          besti = i;
-        }
-      }
-      if (best > lastbest) break;
-
-      start = besti == 0 ? start : p[besti - 1];
-      end = besti == NUM - 1 ? end : p[besti + 1];
-
-      pos = p[besti];
-      lastbest = best;
-    }
-    *smallest = lastbest;
-    return pos;
-#undef NUM
-  }
-}
+extern size_t FindMinimum(FindMinimumFun f, void* context, size_t start, size_t end, double* smallest);
 
 /*
 Returns estimated cost of a block in bits.  It includes the size to encode the
