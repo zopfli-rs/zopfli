@@ -100,39 +100,7 @@ static void PrintBlockSplitPoints(const ZopfliLZ77Store* lz77,
   free(splitpoints);
 }
 
-/*
-Finds next block to try to split, the largest of the available ones.
-The largest is chosen to make sure that if only a limited amount of blocks is
-requested, their sizes are spread evenly.
-lz77size: the size of the LL77 data, which is the size of the done array here.
-done: array indicating which blocks starting at that position are no longer
-    splittable (splitting them increases rather than decreases cost).
-splitpoints: the splitpoints found so far.
-npoints: the amount of splitpoints found so far.
-lstart: output variable, giving start of block.
-lend: output variable, giving end of block.
-returns 1 if a block was found, 0 if no block found (all are done).
-*/
-/* Reads splitpoints, npoints */
-static int FindLargestSplittableBlock(
-    size_t lz77size, const unsigned char* done,
-    const size_t* splitpoints, size_t npoints,
-    size_t* lstart, size_t* lend) {
-  size_t longest = 0;
-  int found = 0;
-  size_t i;
-  for (i = 0; i <= npoints; i++) {
-    size_t start = i == 0 ? 0 : splitpoints[i - 1];
-    size_t end = i == npoints ? lz77size - 1 : splitpoints[i];
-    if (!done[start] && end - start > longest) {
-      *lstart = start;
-      *lend = end;
-      found = 1;
-      longest = end - start;
-    }
-  }
-  return found;
-}
+extern int FindLargestSplittableBlock(size_t lz77size, const unsigned char* done, const size_t* splitpoints, size_t npoints, size_t* lstart, size_t* lend);
 
 /* Passthrough of splitponits and npoints */
 void ZopfliBlockSplitLZ77(const ZopfliOptions* options,

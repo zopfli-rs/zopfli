@@ -1,4 +1,4 @@
-use libc::{size_t, c_void, c_double};
+use libc::{size_t, c_void, c_double, c_uchar, c_int};
 
 use deflate::ZopfliCalculateBlockSizeAutoType;
 use lz77::ZopfliLZ77Store;
@@ -101,4 +101,37 @@ pub struct SplitCostContext {
     lz77: *const ZopfliLZ77Store,
     start: size_t,
     end: size_t,
+}
+
+/// Finds next block to try to split, the largest of the available ones.
+/// The largest is chosen to make sure that if only a limited amount of blocks is
+/// requested, their sizes are spread evenly.
+/// lz77size: the size of the LL77 data, which is the size of the done array here.
+/// done: array indicating which blocks starting at that position are no longer
+///     splittable (splitting them increases rather than decreases cost).
+/// splitpoints: the splitpoints found so far.
+/// npoints: the amount of splitpoints found so far.
+/// lstart: output variable, giving start of block.
+/// lend: output variable, giving end of block.
+/// returns 1 if a block was found, 0 if no block found (all are done).
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn FindLargestSplittableBlock(lz77size: size_t, done: *const c_uchar, splitpoints: *const size_t, npoints: size_t, lstart: *mut size_t, lend: *mut size_t) -> c_int {
+    let mut longest = 0;
+    let mut found = 0;
+
+    for i in 0..(npoints + 1) {
+        let start = if i == 0 { 0 } else { unsafe { *splitpoints.offset(i as isize - 1) } };
+        let end = if i == npoints { lz77size - 1 } else { unsafe { *splitpoints.offset(i as isize) } };
+        if unsafe { *done.offset(start as isize) } == 0 && end - start > longest {
+            unsafe {
+                *lstart = start;
+                *lend = end;
+            }
+            found = 1;
+            longest = end - start;
+        }
+    }
+
+    found
 }
