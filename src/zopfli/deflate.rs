@@ -834,3 +834,20 @@ pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_bloc
         AddLZ77Block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
     }
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCalculateBlockSizeAutoType(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
+    let uncompressedcost = ZopfliCalculateBlockSize(lz77, lstart, lend, 0);
+    /* Don't do the expensive fixed cost calculation for larger blocks that are
+     unlikely to use it. */
+    let fixedcost = if unsafe { (&*lz77).size } > 1000 { uncompressedcost } else { ZopfliCalculateBlockSize(lz77, lstart, lend, 1) };
+    let dyncost = ZopfliCalculateBlockSize(lz77, lstart, lend, 2);
+    if uncompressedcost < fixedcost && uncompressedcost < dyncost {
+        uncompressedcost
+    } else if fixedcost < dyncost {
+        fixedcost
+    } else {
+        dyncost
+    }
+}

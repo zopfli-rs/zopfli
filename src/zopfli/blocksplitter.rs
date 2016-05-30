@@ -1,5 +1,7 @@
 use libc::{size_t, c_void, c_double};
 
+use deflate::ZopfliCalculateBlockSizeAutoType;
+use lz77::ZopfliLZ77Store;
 use symbols::{ZOPFLI_LARGE_FLOAT};
 
 /// Finds minimum of function f(i) where is is of type size_t, f(i) is of type
@@ -64,4 +66,18 @@ pub extern fn FindMinimum(f: fn(i: size_t, context: *const c_void) -> c_double, 
         unsafe { *smallest = lastbest };
         pos
     }
+}
+
+/// Returns estimated cost of a block in bits.  It includes the size to encode the
+/// tree and the size to encode all literal, length and distance symbols and their
+/// extra bits.
+///
+/// litlens: lz77 lit/lengths
+/// dists: ll77 distances
+/// lstart: start of block
+/// lend: end of block (not inclusive)
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn EstimateCost(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
+    ZopfliCalculateBlockSizeAutoType(lz77, lstart, lend)
 }

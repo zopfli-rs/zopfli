@@ -89,18 +89,7 @@ extern double TryOptimizeHuffmanForRle(const ZopfliLZ77Store* lz77, size_t lstar
 
 extern double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, int btype);
 
-double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
-                                        size_t lstart, size_t lend) {
-  double uncompressedcost = ZopfliCalculateBlockSize(lz77, lstart, lend, 0);
-  /* Don't do the expensive fixed cost calculation for larger blocks that are
-     unlikely to use it. */
-  double fixedcost = (lz77->size > 1000) ?
-      uncompressedcost : ZopfliCalculateBlockSize(lz77, lstart, lend, 1);
-  double dyncost = ZopfliCalculateBlockSize(lz77, lstart, lend, 2);
-  return (uncompressedcost < fixedcost && uncompressedcost < dyncost)
-      ? uncompressedcost
-      : (fixedcost < dyncost ? fixedcost : dyncost);
-}
+extern double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
 /* Since an uncompressed block can be max 65535 in size, it actually adds
 multible blocks if needed. */

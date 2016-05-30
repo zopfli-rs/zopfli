@@ -37,20 +37,7 @@ typedef double FindMinimumFun(size_t i, void* context);
 
 extern size_t FindMinimum(FindMinimumFun f, void* context, size_t start, size_t end, double* smallest);
 
-/*
-Returns estimated cost of a block in bits.  It includes the size to encode the
-tree and the size to encode all literal, length and distance symbols and their
-extra bits.
-
-litlens: lz77 lit/lengths
-dists: ll77 distances
-lstart: start of block
-lend: end of block (not inclusive)
-*/
-static double EstimateCost(const ZopfliLZ77Store* lz77,
-                           size_t lstart, size_t lend) {
-  return ZopfliCalculateBlockSizeAutoType(lz77, lstart, lend);
-}
+extern double EstimateCost(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
 typedef struct SplitCostContext {
   const ZopfliLZ77Store* lz77;
