@@ -135,3 +135,37 @@ pub extern fn FindLargestSplittableBlock(lz77size: size_t, done: *const c_uchar,
 
     found
 }
+
+/// Prints the block split points as decimal and hex values in the terminal.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn PrintBlockSplitPoints(lz77_ptr: *const ZopfliLZ77Store, lz77splitpoints: *const size_t, nlz77points: size_t) {
+    let mut splitpoints = Vec::with_capacity(nlz77points);
+    let lz77 = unsafe {
+        assert!(!lz77_ptr.is_null());
+        &*lz77_ptr
+    };
+
+    /* The input is given as lz77 indices, but we want to see the uncompressed
+    index values. */
+    let mut pos = 0;
+    if nlz77points > 0 {
+        for i in 0..lz77.size {
+            let length = if unsafe { *lz77.dists.offset(i as isize) } == 0 {
+                1
+            } else {
+                unsafe { *lz77.litlens.offset(i as isize) }
+            };
+            if unsafe { *lz77splitpoints.offset(splitpoints.len() as isize) } == i {
+                splitpoints.push(pos);
+                if splitpoints.len() == nlz77points {
+                    break;
+                }
+            }
+            pos += length;
+        }
+    }
+    assert!(splitpoints.len() == nlz77points);
+
+    println!("block split points: {} (hex: {})", splitpoints.iter().map(|&sp| format!("{}", sp)).collect::<Vec<_>>().join(" "), splitpoints.iter().map(|&sp| format!("{:x}", sp)).collect::<Vec<_>>().join(" "));
+}

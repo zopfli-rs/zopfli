@@ -63,42 +63,7 @@ static void AddSorted(size_t value, size_t** out, size_t* outsize) {
   }
 }
 
-/*
-Prints the block split points as decimal and hex values in the terminal.
-*/
-static void PrintBlockSplitPoints(const ZopfliLZ77Store* lz77,
-                                  const size_t* lz77splitpoints,
-                                  size_t nlz77points) {
-  size_t* splitpoints = 0;
-  size_t npoints = 0;
-  size_t i;
-  /* The input is given as lz77 indices, but we want to see the uncompressed
-  index values. */
-  size_t pos = 0;
-  if (nlz77points > 0) {
-    for (i = 0; i < lz77->size; i++) {
-      size_t length = lz77->dists[i] == 0 ? 1 : lz77->litlens[i];
-      if (lz77splitpoints[npoints] == i) {
-        ZOPFLI_APPEND_DATA(pos, &splitpoints, &npoints);
-        if (npoints == nlz77points) break;
-      }
-      pos += length;
-    }
-  }
-  assert(npoints == nlz77points);
-
-  fprintf(stderr, "block split points: ");
-  for (i = 0; i < npoints; i++) {
-    fprintf(stderr, "%d ", (int)splitpoints[i]);
-  }
-  fprintf(stderr, "(hex:");
-  for (i = 0; i < npoints; i++) {
-    fprintf(stderr, " %x", (int)splitpoints[i]);
-  }
-  fprintf(stderr, ")\n");
-
-  free(splitpoints);
-}
+extern void PrintBlockSplitPoints(const ZopfliLZ77Store* lz77, const size_t* lz77splitpoints, size_t nlz77points);
 
 extern int FindLargestSplittableBlock(size_t lz77size, const unsigned char* done, const size_t* splitpoints, size_t npoints, size_t* lstart, size_t* lend);
 
