@@ -89,7 +89,6 @@ pub fn SplitCost(i: size_t, c: &SplitCostContext) -> c_double {
     EstimateCost(c.lz77, c.start, i) + EstimateCost(c.lz77, i, c.end)
 }
 
-#[repr(C)]
 pub struct SplitCostContext {
     lz77: *const ZopfliLZ77Store,
     start: size_t,

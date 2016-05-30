@@ -39,12 +39,6 @@ extern size_t FindMinimum(FindMinimumFun f, void* context, size_t start, size_t 
 
 extern double EstimateCost(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
 
-typedef struct SplitCostContext {
-  const ZopfliLZ77Store* lz77;
-  size_t start;
-  size_t end;
-} SplitCostContext;
-
 extern double SplitCost(size_t i, void* context);
 
 /* Actually writes to out, outsize which are splitpoints, npoints */
