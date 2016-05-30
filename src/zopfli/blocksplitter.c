@@ -45,16 +45,7 @@ typedef struct SplitCostContext {
   size_t end;
 } SplitCostContext;
 
-
-/*
-Gets the cost which is the sum of the cost of the left and the right section
-of the data.
-type: FindMinimumFun
-*/
-static double SplitCost(size_t i, void* context) {
-  SplitCostContext* c = (SplitCostContext*)context;
-  return EstimateCost(c->lz77, c->start, i) + EstimateCost(c->lz77, i, c->end);
-}
+extern double SplitCost(size_t i, void* context);
 
 /* Actually writes to out, outsize which are splitpoints, npoints */
 static void AddSorted(size_t value, size_t** out, size_t* outsize) {

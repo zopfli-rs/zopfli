@@ -81,3 +81,24 @@ pub extern fn FindMinimum(f: fn(i: size_t, context: *const c_void) -> c_double, 
 pub extern fn EstimateCost(lz77: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
     ZopfliCalculateBlockSizeAutoType(lz77, lstart, lend)
 }
+
+/// Gets the cost which is the sum of the cost of the left and the right section
+/// of the data.
+/// type: FindMinimumFun
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn SplitCost(i: size_t, context: *const c_void) -> c_double {
+    let c = unsafe {
+        assert!(!context.is_null());
+        &*(context as *const SplitCostContext)
+    };
+
+    EstimateCost(c.lz77, c.start, i) + EstimateCost(c.lz77, i, c.end)
+}
+
+#[repr(C)]
+pub struct SplitCostContext {
+    lz77: *const ZopfliLZ77Store,
+    start: size_t,
+    end: size_t,
+}
