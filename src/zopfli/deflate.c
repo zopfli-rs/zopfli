@@ -117,8 +117,6 @@ void AddNonCompressedBlock(const ZopfliOptions* options, int final,
 
 extern void AddLZ77Block(const ZopfliOptions* options, int btype, int final, const unsigned char* in, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, unsigned char* bp, unsigned char** out, size_t* outsize);
 
-extern void AddLZ77BlockAutoType(const ZopfliOptions* options, int final, const unsigned char* in, const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, size_t expected_data_size, unsigned char* bp, unsigned char** out, size_t* outsize);
-
 extern void BlocksplitAttempt(const ZopfliOptions* options, int final, const unsigned char* in, size_t instart, size_t inend, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 /*

@@ -745,9 +745,7 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
     assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_lz77_block_auto_type(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -817,7 +815,7 @@ pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &Zop
         let start = if i == 0 { 0 } else { splitpoints[i - 1] };
         let end = if i == npoints { lz77.size() } else { splitpoints[i] };
         let final_block_i = if i == npoints && final_block > 0 { 1 } else { 0 };
-        AddLZ77BlockAutoType(options, final_block_i, in_data, lz77, start, end, 0, bp, out, outsize);
+        add_lz77_block_auto_type(options, final_block_i, in_data, lz77, start, end, 0, bp, out, outsize);
     }
 }
 
