@@ -29,22 +29,4 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 extern double SplitCost(size_t i, void* context);
 
-/* Actually writes to out, outsize which are splitpoints, npoints */
-void AddSorted(size_t value, size_t** out, size_t* outsize) {
-  size_t i;
-  ZOPFLI_APPEND_DATA(value, out, outsize);
-  for (i = 0; i + 1 < *outsize; i++) {
-    if ((*out)[i] > value) {
-      size_t j;
-      for (j = *outsize - 1; j > i; j--) {
-        (*out)[j] = (*out)[j - 1];
-      }
-      (*out)[i] = value;
-      break;
-    }
-  }
-}
-
-extern void ZopfliBlockSplitLZ77(const ZopfliOptions* options, const ZopfliLZ77Store* lz77, size_t maxblocks, size_t** splitpoints, size_t* npoints);
-
 extern void ZopfliBlockSplit(const ZopfliOptions* options, const unsigned char* in, size_t instart, size_t inend, size_t maxblocks, size_t** splitpoints, size_t* npoints);

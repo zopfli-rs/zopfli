@@ -1,7 +1,7 @@
 use libc::{size_t, c_double, c_uchar, c_int};
 
 use deflate::calculate_block_size_auto_type;
-use lz77::{ZopfliLZ77Store, Lz77Store, lz77_store_from_c, ZopfliBlockState};
+use lz77::{Lz77Store, ZopfliBlockState};
 use symbols::{ZOPFLI_LARGE_FLOAT};
 use zopfli::ZopfliOptions;
 
@@ -155,32 +155,9 @@ pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &Vec<s
     println!("block split points: {} (hex: {})", splitpoints.iter().map(|&sp| format!("{}", sp)).collect::<Vec<_>>().join(" "), splitpoints.iter().map(|&sp| format!("{:x}", sp)).collect::<Vec<_>>().join(" "));
 }
 
-#[link(name = "zopfli")]
-extern {
-    fn AddSorted(value: size_t, out: *mut *mut size_t, outsize: *mut size_t);
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: *const ZopfliLZ77Store, maxblocks: size_t, splitpoints: *mut *mut size_t, npoints: *mut size_t) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
-
-    let mut splitpoints_vec = Vec::with_capacity(maxblocks);
-
-    blocksplit_lz77(options, lz77, maxblocks, &mut splitpoints_vec);
-
-    for point in splitpoints_vec {
-        unsafe {
-            AddSorted(point, splitpoints, npoints);
-        }
-    }
-}
-
+/// Does blocksplitting on LZ77 data.
+/// The output splitpoints are indices in the LZ77 data.
+/// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
 pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
 
     if lz77.size() < 10 {
