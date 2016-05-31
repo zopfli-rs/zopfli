@@ -2,6 +2,7 @@ use std::{mem, slice, cmp, ptr};
 
 use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c_float};
 
+use deflate::calculate_block_size;
 use hash::ZopfliHash;
 use lz77::{Lz77Store, ZopfliLZ77Store, ZopfliBlockState, find_longest_match, lz77_store_from_c, lz77_store_result};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
@@ -36,9 +37,8 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: *const c_void) -> c_d
 
 /// Cost model based on symbol statistics.
 /// type: CostModelFun
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn GetCostStat(litlen: c_uint, dist: c_uint, context: *const c_void) -> c_double {
+pub fn GetCostStat(litlen: c_uint, dist: c_uint, context: *const c_void) -> c_double {
     let stats = unsafe {
         assert!(!context.is_null());
         &*(context as *const SymbolStats)
@@ -171,7 +171,7 @@ impl SymbolStats {
     }
 
     /// Appends the symbol statistics from the store.
-    pub fn get_statistics(&mut self, store: Lz77Store) {
+    pub fn get_statistics(&mut self, store: &Lz77Store) {
         for i in 0..store.dists.len() {
             if store.dists[i] == 0 {
                 self.litlens[store.litlens[i] as usize] += 1;
@@ -298,7 +298,7 @@ pub extern fn GetStatistics(store_ptr: *const ZopfliLZ77Store, stats_ptr: *mut S
         assert!(!stats_ptr.is_null());
         &mut *stats_ptr
     };
-    stats.get_statistics(store);
+    stats.get_statistics(&store);
 }
 
 /// Finds the minimum possible cost this cost model can return for valid length and
@@ -567,4 +567,79 @@ pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: *const c_uchar, ins
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
     let mut costs = Vec::with_capacity(inend - instart - 1);
     lz77_optimal_run(s, in_data, instart, inend, GetCostFixed, ptr::null(), store, &mut h, &mut costs);
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliLZ77Optimal(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, numiterations: c_int, store_ptr: *mut ZopfliLZ77Store) {
+    let s = unsafe {
+        assert!(!s_ptr.is_null());
+        &mut *s_ptr
+    };
+    let store = unsafe {
+        assert!(!store_ptr.is_null());
+        &mut *store_ptr
+    };
+
+    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+    let mut costs = Vec::with_capacity(inend - instart + 1);
+
+    /* Dist to get to here with smallest cost. */
+    let mut currentstore = Lz77Store::new();
+    let mut outputstore = currentstore.clone();
+
+    let mut stats = SymbolStats::new();
+    let mut beststats = SymbolStats::new();
+
+    let mut bestcost = ZOPFLI_LARGE_FLOAT;
+    let mut lastcost = 0.0;
+    /* Try randomizing the costs a bit once the size stabilizes. */
+    let mut ran_state = RanState::new();
+    let mut lastrandomstep = -1;
+
+    /* Do regular deflate, then loop multiple shortest path runs, each time using
+    the statistics of the previous run. */
+
+    /* Initial run. */
+    currentstore.greedy(s, in_data, instart, inend);
+    stats.get_statistics(&currentstore);
+
+    /* Repeat statistics with each time the cost model from the previous stat
+    run. */
+    for i in 0..numiterations {
+        currentstore.reset();
+        let stats_ptr: *const SymbolStats = &stats;
+        lz77_optimal_run(s, in_data, instart, inend, GetCostStat, stats_ptr as *const c_void, &mut currentstore, &mut h, &mut costs);
+        let cost = calculate_block_size(&currentstore, 0, currentstore.size(), 2);
+
+        if unsafe { (*s.options).verbose_more } != 0 || (unsafe { (*s.options).verbose } != 0 && cost < bestcost) {
+              println!("Iteration {}: {} bit", i, cost);
+        }
+        if cost < bestcost {
+            /* Copy to the output store. */
+            outputstore = currentstore.clone();
+            beststats = stats;
+            bestcost = cost;
+        }
+        let laststats = stats;
+        stats.clear_freqs();
+        stats.get_statistics(&currentstore);
+        if lastrandomstep != -1 {
+            /* This makes it converge slower but better. Do it only once the
+            randomness kicks in so that if the user does few iterations, it gives a
+            better result sooner. */
+            stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
+            stats.calculate_entropy();
+        }
+        if i > 5 && cost == lastcost {
+            stats = beststats;
+            stats.randomize_stat_freqs(&mut ran_state);
+            stats.calculate_entropy();
+            lastrandomstep = i;
+        }
+        lastcost = cost;
+    }
+    lz77_store_result(&mut outputstore, store);
+    mem::forget(currentstore);
+    mem::forget(outputstore);
 }

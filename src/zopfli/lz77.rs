@@ -34,7 +34,7 @@ pub struct ZopfliLZ77Store {
   d_counts: *mut size_t,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Lz77Store {
    pub litlens: Vec<c_ushort>,
    pub dists: Vec<c_ushort>,
@@ -367,7 +367,7 @@ pub extern fn ZopfliCleanLZ77Store(store_ptr: *mut ZopfliLZ77Store) {
 /// but is kept for easy future expansion.
 #[repr(C)]
 pub struct ZopfliBlockState {
-    options: *const ZopfliOptions,
+    pub options: *const ZopfliOptions,
     /* Cache for length/distance pairs found so far. */
     lmc: *mut ZopfliLongestMatchCache,
     /* The start (inclusive) and end (not inclusive) of the current block. */

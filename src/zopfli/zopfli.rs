@@ -6,7 +6,7 @@ pub struct ZopfliOptions {
   /* Whether to print output */
   pub verbose: c_int,
   /* Whether to print more detailed output */
-  verbose_more: c_int,
+  pub verbose_more: c_int,
   /*
   Maximum amount of times to rerun forward and backward pass to optimize LZ77
   compression cost. Good values: 10, 15 for small files, 5 for files over
