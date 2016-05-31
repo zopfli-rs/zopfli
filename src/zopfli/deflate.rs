@@ -5,7 +5,7 @@ use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
 use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
-use squeeze::{lz77_optimal_fixed, ZopfliLZ77Optimal};
+use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 use tree::{lengths_to_symbols, zopfli_lengths_to_symbols, zopfli_calculate_bit_lengths};
 use zopfli::ZopfliOptions;
@@ -764,7 +764,7 @@ pub fn add_lz77_block_auto_type(options_ptr: *const ZopfliOptions, final_block: 
         return;
     }
     if expensivefixed {
-        /* Recalculate the LZ77 with ZopfliLZ77OptimalFixed */
+        /* Recalculate the LZ77 with lz77_optimal_fixed */
         let instart = lz77.pos[lstart];
         let inend = instart + get_byte_range(lz77, lstart, lend);
 
@@ -828,7 +828,7 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
         let end = if i == npoints { inend } else { splitpoints_uncompressed[i] };
         let mut s = ZopfliBlockState::new(options, start, end, 1);
 
-        let store = ZopfliLZ77Optimal(&mut s, in_data, start, end, options.numiterations);
+        let store = lz77_optimal(&mut s, in_data, start, end, options.numiterations);
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);

@@ -239,7 +239,7 @@ pub fn blocksplit(options: &ZopfliOptions, in_data: *const c_uchar, instart: siz
 
     splitpoints.clear();
 
-    /* Unintuitively, Using a simple LZ77 method here instead of ZopfliLZ77Optimal
+    /* Unintuitively, Using a simple LZ77 method here instead of lz77_optimal
     results in better blocks. */
     store.greedy(&mut s, in_data, instart, inend);
 

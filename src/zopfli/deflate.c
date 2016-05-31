@@ -23,8 +23,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "squeeze.h"
-
 /*
 bp = bitpointer, always in range [0, 7].
 The outsize is number of necessary bytes to encode the bits.
