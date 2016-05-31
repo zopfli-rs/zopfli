@@ -877,3 +877,35 @@ pub extern fn BlocksplitAttempt(options_ptr: *const ZopfliOptions, final_block: 
 
     add_all_blocks(&splitpoints, &lz77, &options, final_block, in_data, bp, out, outsize);
 }
+
+
+/// Deflate a part, to allow ZopfliDeflate() to use multiple master blocks if
+/// needed.
+/// It is possible to call this function multiple times in a row, shifting
+/// instart and inend to next bytes of the data. If instart is larger than 0, then
+/// previous bytes are used as the initial dictionary for LZ77.
+/// This function will usually output multiple deflate blocks. If final is 1, then
+/// the final bit will be set on the last block.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliDeflatePart(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let options = unsafe {
+        assert!(!options_ptr.is_null());
+        &*options_ptr
+    };
+
+    /* If btype=2 is specified, it tries all block types. If a lesser btype is
+    given, then however it forces that one. Neither of the lesser types needs
+    block splitting as they have no dynamic huffman trees. */
+    if btype == 0 {
+        unsafe { AddNonCompressedBlock(options, final_block, in_data, instart, inend, bp, out, outsize) };
+    } else if btype == 1 {
+        let mut store = Lz77Store::new();
+        let mut s = ZopfliBlockState::new(options, instart, inend, 1);
+
+        lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
+        AddLZ77Block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out, outsize);
+    } else {
+        BlocksplitAttempt(options, final_block, in_data, instart, inend, bp, out, outsize);
+    }
+}

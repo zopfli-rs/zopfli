@@ -539,28 +539,15 @@ pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: *const c_uchar, insta
     assert!(cost < ZOPFLI_LARGE_FLOAT);
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLZ77OptimalFixed(s_ptr: *mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store) {
-    /* Dist to get to here with smallest cost. */
-    let s = unsafe {
-        assert!(!s_ptr.is_null());
-        &mut *s_ptr
-    };
 
-    let store = unsafe {
-        assert!(!store_ptr.is_null());
-        &mut *store_ptr
-    };
-    let rust_store = lz77_store_from_c(store_ptr);
-
-    /* Shortest path for fixed tree This one should give the shortest possible
-    result for fixed tree, no repeated runs are needed since the tree is known. */
-    lz77_optimal_fixed(s, in_data, instart, inend, unsafe { &mut *rust_store });
-
-    lz77_store_result(rust_store, store);
-}
-
+/// Does the same as ZopfliLZ77Optimal, but optimized for the fixed tree of the
+/// deflate standard.
+/// The fixed tree never gives the best compression. But this gives the best
+/// possible LZ77 encoding possible with the fixed tree.
+/// This does not create or output any fixed tree, only LZ77 data optimized for
+/// using with a fixed tree.
+/// If instart is larger than 0, it uses values before instart as starting
+/// dictionary.
 pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t, store: &mut Lz77Store) {
     s.blockstart = instart;
     s.blockend = inend;

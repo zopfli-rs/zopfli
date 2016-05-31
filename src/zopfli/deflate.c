@@ -119,46 +119,7 @@ extern void AddLZ77Block(const ZopfliOptions* options, int btype, int final, con
 
 extern void BlocksplitAttempt(const ZopfliOptions* options, int final, const unsigned char* in, size_t instart, size_t inend, unsigned char* bp, unsigned char** out, size_t* outsize);
 
-/*
-Deflate a part, to allow ZopfliDeflate() to use multiple master blocks if
-needed.
-It is possible to call this function multiple times in a row, shifting
-instart and inend to next bytes of the data. If instart is larger than 0, then
-previous bytes are used as the initial dictionary for LZ77.
-This function will usually output multiple deflate blocks. If final is 1, then
-the final bit will be set on the last block.
-*/
-/* Passthrough of bp/out/outsize
- Allocates npoints/splitpoints/splitpoints_uncompressed */
-void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
-                       const unsigned char* in, size_t instart, size_t inend,
-                       unsigned char* bp, unsigned char** out,
-                       size_t* outsize) {
-
-  /* If btype=2 is specified, it tries all block types. If a lesser btype is
-  given, then however it forces that one. Neither of the lesser types needs
-  block splitting as they have no dynamic huffman trees. */
-  if (btype == 0) {
-    AddNonCompressedBlock(options, final, in, instart, inend, bp, out, outsize);
-    return;
-  } else if (btype == 1) {
-    ZopfliLZ77Store store;
-    ZopfliBlockState s;
-    ZopfliInitLZ77Store(&store);
-    ZopfliInitBlockState(options, instart, inend, 1, &s);
-
-    ZopfliLZ77OptimalFixed(&s, in, instart, inend, &store);
-    AddLZ77Block(options, btype, final, in, &store, 0, store.size, 0,
-                 bp, out, outsize);
-
-    ZopfliCleanBlockState(&s);
-    ZopfliCleanLZ77Store(&store);
-    return;
-  }
-
-  BlocksplitAttempt(options, final, in, instart, inend, bp, out, outsize);
-
-}
+extern void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final, const unsigned char* in, size_t instart, size_t inend, unsigned char* bp, unsigned char** out, size_t* outsize);
 
 /* Passthrough */
 void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,

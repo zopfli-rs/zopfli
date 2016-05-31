@@ -54,5 +54,3 @@ extern void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats);
 extern void LZ77OptimalRun(ZopfliBlockState* s, const unsigned char* in, size_t instart, size_t inend, CostModelFun* costmodel, void* costcontext, ZopfliLZ77Store* store, ZopfliHash* h, float* costs);
 
 extern void ZopfliLZ77Optimal(ZopfliBlockState *s, const unsigned char* in, size_t instart, size_t inend, int numiterations, ZopfliLZ77Store* store);
-
-extern void ZopfliLZ77OptimalFixed(ZopfliBlockState *s, const unsigned char* in, size_t instart, size_t inend, ZopfliLZ77Store* store);
