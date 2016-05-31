@@ -43,8 +43,6 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
                           const ZopfliLZ77Store* lz77, size_t maxblocks,
                           size_t** splitpoints, size_t* npoints);
 
-void ZopfliAppendDataSizeT(size_t value, size_t** data, size_t* size);
-
 /*
 Does blocksplitting on uncompressed data.
 The output splitpoints are indices in the uncompressed bytes.

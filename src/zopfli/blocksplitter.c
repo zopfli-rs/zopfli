@@ -47,8 +47,4 @@ void AddSorted(size_t value, size_t** out, size_t* outsize) {
 
 extern void ZopfliBlockSplitLZ77(const ZopfliOptions* options, const ZopfliLZ77Store* lz77, size_t maxblocks, size_t** splitpoints, size_t* npoints);
 
-void ZopfliAppendDataSizeT(size_t value, size_t** data, size_t* size) {
-    ZOPFLI_APPEND_DATA(value, data, size);
-}
-
 extern void ZopfliBlockSplit(const ZopfliOptions* options, const unsigned char* in, size_t instart, size_t inend, size_t maxblocks, size_t** splitpoints, size_t* npoints);
