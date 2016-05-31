@@ -2,7 +2,7 @@ use std::slice;
 
 use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
-use blocksplitter::{ZopfliBlockSplit, blocksplit_lz77};
+use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
 use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
 use squeeze::{lz77_optimal_fixed, ZopfliLZ77Optimal};
@@ -847,7 +847,7 @@ pub extern fn BlocksplitAttempt(options_ptr: *const ZopfliOptions, final_block: 
     /* byte coordinates rather than lz77 index */
     let mut splitpoints_uncompressed = Vec::with_capacity(options.blocksplittingmax as usize);
 
-    ZopfliBlockSplit(options_ptr, in_data, instart, inend, options.blocksplittingmax as usize, &mut splitpoints_uncompressed);
+    blocksplit(options, in_data, instart, inend, options.blocksplittingmax as usize, &mut splitpoints_uncompressed);
     let npoints = splitpoints_uncompressed.len();
     let mut splitpoints = Vec::with_capacity(npoints);
 

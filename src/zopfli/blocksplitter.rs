@@ -217,16 +217,21 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliBlockSplit(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+/// Does blocksplitting on uncompressed data.
+/// The output splitpoints are indices in the uncompressed bytes.
+///
+/// options: general program options.
+/// in: uncompressed input data
+/// instart: where to start splitting
+/// inend: where to end splitting (not inclusive)
+/// maxblocks: maximum amount of blocks to split into, or 0 for no limit
+/// splitpoints: dynamic array to put the resulting split point coordinates into.
+///   The coordinates are indices in the input array.
+/// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
+///   blocks is the amount of splitpoitns + 1.
+pub fn blocksplit(options: &ZopfliOptions, in_data: *const c_uchar, instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
     let mut pos;
-    let mut s = ZopfliBlockState::new(options_ptr, instart, inend, 0);
+    let mut s = ZopfliBlockState::new(options, instart, inend, 0);
 
     let mut lz77splitpoints = Vec::with_capacity(maxblocks);
 

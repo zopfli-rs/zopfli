@@ -33,23 +33,4 @@ ones that enhance it.
 #include "lz77.h"
 #include "zopfli.h"
 
-
-/*
-Does blocksplitting on uncompressed data.
-The output splitpoints are indices in the uncompressed bytes.
-
-options: general program options.
-in: uncompressed input data
-instart: where to start splitting
-inend: where to end splitting (not inclusive)
-maxblocks: maximum amount of blocks to split into, or 0 for no limit
-splitpoints: dynamic array to put the resulting split point coordinates into.
-  The coordinates are indices in the input array.
-npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
-  blocks is the amount of splitpoitns + 1.
-*/
-void ZopfliBlockSplit(const ZopfliOptions* options,
-                      const unsigned char* in, size_t instart, size_t inend,
-                      size_t maxblocks, size_t** splitpoints, size_t* npoints);
-
 #endif  /* ZOPFLI_BLOCKSPLITTER_H_ */
