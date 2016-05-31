@@ -543,14 +543,7 @@ pub fn add_dynamic_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp:
 /// bp: output bit pointer
 /// out: dynamic output array to append to
 /// outsize: dynamic output array size
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let mut ll_lengths = [0; ZOPFLI_NUM_LL];
     let mut d_lengths = [0; ZOPFLI_NUM_D];
     let mut ll_symbols = [0; ZOPFLI_NUM_LL];
@@ -781,15 +774,15 @@ pub fn add_lz77_block_auto_type(options_ptr: *const ZopfliOptions, final_block: 
     }
 
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
-        AddLZ77Block(options, 0, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+        add_lz77_block(options, 0, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
     } else if fixedcost < dyncost {
         if expensivefixed {
-            AddLZ77Block(options, 1, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out, outsize);
+            add_lz77_block(options, 1, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out, outsize);
         } else {
-            AddLZ77Block(options, 1, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+            add_lz77_block(options, 1, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
         }
     } else {
-        AddLZ77Block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+        add_lz77_block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
     }
 }
 
@@ -897,7 +890,7 @@ pub extern fn ZopfliDeflatePart(options_ptr: *const ZopfliOptions, btype: c_int,
         let mut s = ZopfliBlockState::new(options, instart, inend, 1);
 
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
-        AddLZ77Block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out, outsize);
+        add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out, outsize);
     } else {
         blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out, outsize);
     }
