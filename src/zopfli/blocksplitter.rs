@@ -1,7 +1,9 @@
+use std::ptr;
+
 use libc::{size_t, c_double, c_uchar, c_int};
 
 use deflate::calculate_block_size_auto_type;
-use lz77::{ZopfliLZ77Store, Lz77Store, lz77_store_from_c};
+use lz77::{ZopfliLZ77Store, Lz77Store, lz77_store_from_c, ZopfliBlockState};
 use symbols::{ZOPFLI_LARGE_FLOAT};
 use zopfli::ZopfliOptions;
 
@@ -239,4 +241,55 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
     if options.verbose > 0 {
         print_block_split_points(lz77, splitpoints);
     }
+}
+
+extern {
+    fn ZopfliAppendDataSizeT(value: size_t, data: *mut *mut size_t, size: *mut size_t);
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliBlockSplit(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: *mut *mut size_t, npoints: *mut size_t) {
+    let options = unsafe {
+        assert!(!options_ptr.is_null());
+        &*options_ptr
+    };
+
+    let mut pos;
+    let mut s = ZopfliBlockState::new(options_ptr, instart, inend, 0);
+
+    let mut lz77splitpoints = Vec::with_capacity(maxblocks);
+
+    let mut store = Lz77Store::new();
+
+    unsafe {
+        *npoints = 0;
+        *splitpoints = ptr::null_mut();
+    }
+
+    /* Unintuitively, Using a simple LZ77 method here instead of ZopfliLZ77Optimal
+    results in better blocks. */
+    store.greedy(&mut s, in_data, instart, inend);
+
+    blocksplit_lz77(options, &store, maxblocks, &mut lz77splitpoints);
+
+    let nlz77points = lz77splitpoints.len();
+
+    /* Convert LZ77 positions to positions in the uncompressed input. */
+    pos = instart;
+    if nlz77points > 0 {
+        for i in 0..store.size() {
+            let length = if store.dists[i] == 0 { 1 } else { store.litlens[i] };
+            if lz77splitpoints[unsafe { *npoints }] == i {
+                unsafe {
+                    ZopfliAppendDataSizeT(pos, splitpoints, npoints);
+                }
+                if unsafe { *npoints } == nlz77points {
+                    break;
+                }
+            }
+            pos += length as size_t;
+        }
+    }
+    assert!(unsafe { *npoints } == nlz77points);
 }

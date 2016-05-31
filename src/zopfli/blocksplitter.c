@@ -51,48 +51,4 @@ void ZopfliAppendDataSizeT(size_t value, size_t** data, size_t* size) {
     ZOPFLI_APPEND_DATA(value, data, size);
 }
 
-/* Resets splitpoints, npoints then writes to them */
-void ZopfliBlockSplit(const ZopfliOptions* options,
-                      const unsigned char* in, size_t instart, size_t inend,
-                      size_t maxblocks, size_t** splitpoints, size_t* npoints) {
-  size_t pos = 0;
-  size_t i;
-  ZopfliBlockState s;
-  size_t* lz77splitpoints = 0;
-  size_t nlz77points = 0;
-  ZopfliLZ77Store store;
-  ZopfliHash* h = ZopfliInitHash(ZOPFLI_WINDOW_SIZE);
-
-  ZopfliInitLZ77Store(&store);
-  ZopfliInitBlockState(options, instart, inend, 0, &s);
-
-  *npoints = 0;
-  *splitpoints = 0;
-
-  /* Unintuitively, Using a simple LZ77 method here instead of ZopfliLZ77Optimal
-  results in better blocks. */
-  ZopfliLZ77Greedy(&s, in, instart, inend, &store, h);
-
-  ZopfliBlockSplitLZ77(options,
-                       &store, maxblocks,
-                       &lz77splitpoints, &nlz77points);
-
-  /* Convert LZ77 positions to positions in the uncompressed input. */
-  pos = instart;
-  if (nlz77points > 0) {
-    for (i = 0; i < store.size; i++) {
-      size_t length = store.dists[i] == 0 ? 1 : store.litlens[i];
-      if (lz77splitpoints[*npoints] == i) {
-        ZopfliAppendDataSizeT(pos, splitpoints, npoints);
-        if (*npoints == nlz77points) break;
-      }
-      pos += length;
-    }
-  }
-  assert(*npoints == nlz77points);
-
-  free(lz77splitpoints);
-  ZopfliCleanBlockState(&s);
-  ZopfliCleanLZ77Store(&store);
-  ZopfliCleanHash(h);
-}
+extern void ZopfliBlockSplit(const ZopfliOptions* options, const unsigned char* in, size_t instart, size_t inend, size_t maxblocks, size_t** splitpoints, size_t* npoints);
