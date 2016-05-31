@@ -2,9 +2,10 @@ use std::slice;
 
 use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
+use blocksplitter::{ZopfliBlockSplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
 use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
-use squeeze::lz77_optimal_fixed;
+use squeeze::{lz77_optimal_fixed, ZopfliLZ77Optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 use tree::{lengths_to_symbols, zopfli_lengths_to_symbols, zopfli_calculate_bit_lengths};
 use zopfli::ZopfliOptions;
@@ -750,13 +751,11 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77_ptr: *mut ZopfliLZ77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
     };
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
 
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, 1);
@@ -822,4 +821,73 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: si
     } else {
         dyncost
     }
+}
+
+pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &ZopfliOptions, final_block: c_int, in_data: *const c_uchar, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let npoints = splitpoints.len();
+    for i in 0..(npoints + 1) {
+        let start = if i == 0 { 0 } else { splitpoints[i - 1] };
+        let end = if i == npoints { lz77.size() } else { splitpoints[i] };
+        let final_block_i = if i == npoints && final_block > 0 { 1 } else { 0 };
+        AddLZ77BlockAutoType(options, final_block_i, in_data, lz77, start, end, 0, bp, out, outsize);
+    }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn BlocksplitAttempt(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let options = unsafe {
+        assert!(!options_ptr.is_null());
+        &*options_ptr
+    };
+
+    let mut totalcost = 0.0;
+    let mut lz77 = Lz77Store::new();
+
+    /* byte coordinates rather than lz77 index */
+    let mut splitpoints_uncompressed = Vec::with_capacity(options.blocksplittingmax as usize);
+
+    ZopfliBlockSplit(options_ptr, in_data, instart, inend, options.blocksplittingmax as usize, &mut splitpoints_uncompressed);
+    let npoints = splitpoints_uncompressed.len();
+    let mut splitpoints = Vec::with_capacity(npoints);
+
+    for i in 0..(npoints + 1) {
+        let start = if i == 0 { instart } else { splitpoints_uncompressed[i - 1] };
+        let end = if i == npoints { inend } else { splitpoints_uncompressed[i] };
+        let mut s = ZopfliBlockState::new(options_ptr, start, end, 1);
+
+        let store = ZopfliLZ77Optimal(&mut s, in_data, start, end, options.numiterations);
+        totalcost += calculate_block_size_auto_type(&store, 0, store.size());
+
+        // ZopfliAppendLZ77Store(&store, &lz77);
+        assert!(store.size() > 0);
+        for j in 0..store.size() {
+            lz77.lit_len_dist(store.litlens[j], store.dists[j], store.pos[j]);
+        }
+
+        if i < npoints {
+            splitpoints.push(lz77.size());
+        }
+    }
+
+    /* Second block splitting attempt */
+    if npoints > 1 {
+        let mut splitpoints2 = Vec::with_capacity(splitpoints_uncompressed.len());
+        let mut totalcost2 = 0.0;
+
+        blocksplit_lz77(options, &lz77, options.blocksplittingmax as usize, &mut splitpoints2);
+        let npoints2 = splitpoints2.len();
+
+        for i in 0..(npoints2 + 1) {
+            let start = if i == 0 { 0 } else { splitpoints2[i - 1] };
+            let end = if i == npoints2 { lz77.size() } else { splitpoints2[i] };
+            totalcost2 += calculate_block_size_auto_type(&lz77, start, end);
+        }
+
+        if totalcost2 < totalcost {
+            splitpoints = splitpoints2;
+        }
+    }
+
+    add_all_blocks(&splitpoints, &lz77, &options, final_block, in_data, bp, out, outsize);
 }

@@ -12,10 +12,10 @@ pub struct ZopfliOptions {
   compression cost. Good values: 10, 15 for small files, 5 for files over
   several MB in size or it will be too slow.
   */
-  numiterations: c_int,
+  pub numiterations: c_int,
   /*
   Maximum amount of blocks to split into (0 for unlimited, but this can give
   extreme results that hurt compression on some files). Default value: 15.
   */
-  blocksplittingmax: c_int,
+  pub blocksplittingmax: c_int,
 }

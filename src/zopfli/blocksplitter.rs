@@ -1,5 +1,3 @@
-use std::ptr;
-
 use libc::{size_t, c_double, c_uchar, c_int};
 
 use deflate::calculate_block_size_auto_type;
@@ -243,13 +241,9 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
     }
 }
 
-extern {
-    fn ZopfliAppendDataSizeT(value: size_t, data: *mut *mut size_t, size: *mut size_t);
-}
-
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliBlockSplit(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: *mut *mut size_t, npoints: *mut size_t) {
+pub extern fn ZopfliBlockSplit(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -262,10 +256,7 @@ pub extern fn ZopfliBlockSplit(options_ptr: *const ZopfliOptions, in_data: *cons
 
     let mut store = Lz77Store::new();
 
-    unsafe {
-        *npoints = 0;
-        *splitpoints = ptr::null_mut();
-    }
+    splitpoints.clear();
 
     /* Unintuitively, Using a simple LZ77 method here instead of ZopfliLZ77Optimal
     results in better blocks. */
@@ -280,16 +271,14 @@ pub extern fn ZopfliBlockSplit(options_ptr: *const ZopfliOptions, in_data: *cons
     if nlz77points > 0 {
         for i in 0..store.size() {
             let length = if store.dists[i] == 0 { 1 } else { store.litlens[i] };
-            if lz77splitpoints[unsafe { *npoints }] == i {
-                unsafe {
-                    ZopfliAppendDataSizeT(pos, splitpoints, npoints);
-                }
-                if unsafe { *npoints } == nlz77points {
+            if lz77splitpoints[splitpoints.len()] == i {
+                splitpoints.push(pos);
+                if splitpoints.len() == nlz77points {
                     break;
                 }
             }
             pos += length as size_t;
         }
     }
-    assert!(unsafe { *npoints } == nlz77points);
+    assert!(splitpoints.len() == nlz77points);
 }
