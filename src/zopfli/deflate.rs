@@ -819,14 +819,7 @@ pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &Zop
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn BlocksplitAttempt(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let mut totalcost = 0.0;
     let mut lz77 = Lz77Store::new();
 
@@ -840,7 +833,7 @@ pub extern fn BlocksplitAttempt(options_ptr: *const ZopfliOptions, final_block: 
     for i in 0..(npoints + 1) {
         let start = if i == 0 { instart } else { splitpoints_uncompressed[i - 1] };
         let end = if i == npoints { inend } else { splitpoints_uncompressed[i] };
-        let mut s = ZopfliBlockState::new(options_ptr, start, end, 1);
+        let mut s = ZopfliBlockState::new(options, start, end, 1);
 
         let store = ZopfliLZ77Optimal(&mut s, in_data, start, end, options.numiterations);
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
@@ -906,6 +899,6 @@ pub extern fn ZopfliDeflatePart(options_ptr: *const ZopfliOptions, btype: c_int,
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
         AddLZ77Block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out, outsize);
     } else {
-        BlocksplitAttempt(options, final_block, in_data, instart, inend, bp, out, outsize);
+        blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out, outsize);
     }
 }
