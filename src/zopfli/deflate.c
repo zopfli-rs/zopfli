@@ -23,7 +23,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "blocksplitter.h"
 #include "squeeze.h"
 
 /*

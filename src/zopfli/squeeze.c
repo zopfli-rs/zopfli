@@ -23,7 +23,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <math.h>
 #include <stdio.h>
 
-#include "blocksplitter.h"
 #include "deflate.h"
 #include "util.h"
 
