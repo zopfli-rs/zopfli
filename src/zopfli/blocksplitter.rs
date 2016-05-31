@@ -102,15 +102,17 @@ pub struct SplitCostContext<'a> {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-pub fn find_largest_splittable_block(lz77size: size_t, done: *const c_uchar, splitpoints: *const size_t, npoints: size_t, lstart: size_t, lend: size_t) -> (c_int, size_t, size_t) {
+pub fn find_largest_splittable_block(lz77size: size_t, done: *const c_uchar, splitpoints: &Vec<size_t>, lstart: size_t, lend: size_t) -> (c_int, size_t, size_t) {
     let mut longest = 0;
     let mut found = 0;
     let mut lstart = lstart;
     let mut lend = lend;
 
+    let npoints = splitpoints.len();
+
     for i in 0..(npoints + 1) {
-        let start = if i == 0 { 0 } else { unsafe { *splitpoints.offset(i as isize - 1) } };
-        let end = if i == npoints { lz77size - 1 } else { unsafe { *splitpoints.offset(i as isize) } };
+        let start = if i == 0 { 0 } else { splitpoints[i - 1] };
+        let end = if i == npoints { lz77size - 1 } else { splitpoints[i] };
         if unsafe { *done.offset(start as isize) } == 0 && end - start > longest {
             lstart = start;
             lend = end;
@@ -125,7 +127,8 @@ pub fn find_largest_splittable_block(lz77size: size_t, done: *const c_uchar, spl
 /// Prints the block split points as decimal and hex values in the terminal.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: *const size_t, nlz77points: size_t) {
+pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &Vec<size_t>) {
+    let nlz77points = lz77splitpoints.len();
     let mut splitpoints = Vec::with_capacity(nlz77points);
 
     /* The input is given as lz77 indices, but we want to see the uncompressed
@@ -138,7 +141,7 @@ pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: *const
             } else {
                 lz77.litlens[i]
             };
-            if unsafe { *lz77splitpoints.offset(splitpoints.len() as isize) } == i {
+            if lz77splitpoints[splitpoints.len()] == i {
                 splitpoints.push(pos);
                 if splitpoints.len() == nlz77points {
                     break;
@@ -166,6 +169,19 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
     };
     let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
     let lz77 = unsafe { &*lz77_still_pointer };
+
+    let mut splitpoints_vec = Vec::with_capacity(maxblocks);
+
+    blocksplit_lz77(options, lz77, maxblocks, &mut splitpoints_vec);
+
+    for point in splitpoints_vec {
+        unsafe {
+            AddSorted(point, splitpoints, npoints);
+        }
+    }
+}
+
+pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
 
     if lz77.size() < 10 {
         return;  /* This code fails on tiny files. */
@@ -202,11 +218,12 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
         if splitcost > origcost || llpos == lstart + 1 || llpos == lend {
             done[lstart] = 1;
         } else {
-            unsafe { AddSorted(llpos, splitpoints, npoints) };
+            splitpoints.push(llpos);
+            splitpoints.sort();
             numblocks += 1;
         }
 
-        let find_block_results = find_largest_splittable_block(lz77.size(), done.as_ptr(), unsafe { *splitpoints }, unsafe { *npoints }, lstart, lend);
+        let find_block_results = find_largest_splittable_block(lz77.size(), done.as_ptr(), splitpoints, lstart, lend);
         lstart = find_block_results.1;
         lend = find_block_results.2;
 
@@ -220,6 +237,6 @@ pub extern fn ZopfliBlockSplitLZ77(options_ptr: *const ZopfliOptions, lz77_ptr: 
     }
 
     if options.verbose > 0 {
-        print_block_split_points(lz77, unsafe { *splitpoints }, unsafe { *npoints });
+        print_block_split_points(lz77, splitpoints);
     }
 }
