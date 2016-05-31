@@ -58,11 +58,6 @@ typedef struct ZopfliLZ77Store {
   size_t* d_counts;
 } ZopfliLZ77Store;
 
-void ZopfliInitLZ77Store(ZopfliLZ77Store* store);
-void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
-void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
-void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store,
-                           ZopfliLZ77Store* target);
 /*
 Some state information for compressing a block.
 This is currently a bit under-used (with mainly only the longest match cache),
@@ -80,28 +75,5 @@ typedef struct ZopfliBlockState {
   size_t blockstart;
   size_t blockend;
 } ZopfliBlockState;
-
-void ZopfliInitBlockState(const ZopfliOptions* options,
-                          size_t blockstart, size_t blockend, int add_lmc,
-                          ZopfliBlockState* s);
-void ZopfliCleanBlockState(ZopfliBlockState* s);
-
-typedef struct LongestMatch {
-    unsigned short distance;
-    unsigned short length;
-    int from_cache;
-    size_t limit;
-} LongestMatch;
-
-/*
-Does LZ77 using an algorithm similar to gzip, with lazy matching, rather than
-with the slow but better "squeeze" implementation.
-The result is placed in the ZopfliLZ77Store.
-If instart is larger than 0, it uses values before instart as starting
-dictionary.
-*/
-void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
-                      size_t instart, size_t inend,
-                      ZopfliLZ77Store* store, ZopfliHash* h);
 
 #endif  /* ZOPFLI_LZ77_H_ */

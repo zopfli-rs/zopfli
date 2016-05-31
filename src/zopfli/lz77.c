@@ -24,24 +24,5 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-extern void ZopfliInitLZ77Store(ZopfliLZ77Store* store);
-
-extern void ZopfliCleanLZ77Store(ZopfliLZ77Store* store);
-
-extern void ZopfliCopyLZ77Store(const ZopfliLZ77Store* source, ZopfliLZ77Store* dest);
-extern void ZopfliAppendLZ77Store(const ZopfliLZ77Store* store, ZopfliLZ77Store* target);
-
-extern void ZopfliInitBlockState(const ZopfliOptions* options, size_t blockstart, size_t blockend, int add_lmc, ZopfliBlockState* s);
-
-void ZopfliCleanBlockState(ZopfliBlockState* s) {
-#ifdef ZOPFLI_LONGEST_MATCH_CACHE
-  if (s->lmc) {
-    ZopfliCleanCache(s->lmc);
-  }
-#endif
-}
-
 typedef struct lz77_store_S lz77_store_t;
 extern lz77_store_t * lz77_store_from_c(ZopfliLZ77Store *);
-
-extern void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in, size_t instart, size_t inend, ZopfliLZ77Store* store, ZopfliHash* h);

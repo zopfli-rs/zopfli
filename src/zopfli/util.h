@@ -114,13 +114,6 @@ the compression result.
 #define ZOPFLI_SHORTCUT_LONG_REPETITIONS
 
 /*
-Whether to use lazy matching in the greedy LZ77 implementation. This gives a
-better result of ZopfliLZ77Greedy, but the effect this has on the optimal LZ77
-varies from file to file.
-*/
-#define ZOPFLI_LAZY_MATCHING
-
-/*
 Appends value to dynamically allocated memory, doubling its allocation size
 whenever needed.
 

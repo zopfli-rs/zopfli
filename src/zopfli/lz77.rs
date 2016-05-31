@@ -124,6 +124,11 @@ impl Lz77Store {
         }
     }
 
+    /// Does LZ77 using an algorithm similar to gzip, with lazy matching, rather than
+    /// with the slow but better "squeeze" implementation.
+    /// The result is placed in the ZopfliLZ77Store.
+    /// If instart is larger than 0, it uses values before instart as starting
+    /// dictionary.
     pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t) {
         let mut leng: c_ushort;
         let mut dist: c_ushort;
@@ -328,40 +333,6 @@ pub fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store) {
     store.d_counts = lz77.d_counts.as_mut_ptr();
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliInitLZ77Store(store_ptr: *mut ZopfliLZ77Store) {
-    let store = unsafe {
-        assert!(!store_ptr.is_null());
-        &mut *store_ptr
-    };
-
-    store.size = 0;
-    store.litlens = ptr::null_mut();
-    store.dists = ptr::null_mut();
-    store.pos = ptr::null_mut();
-    store.ll_symbol = ptr::null_mut();
-    store.d_symbol = ptr::null_mut();
-    store.ll_counts = ptr::null_mut();
-    store.d_counts = ptr::null_mut();
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCleanLZ77Store(store_ptr: *mut ZopfliLZ77Store) {
-    let store = unsafe {
-        assert!(!store_ptr.is_null());
-        &mut *store_ptr
-    };
-
-    let rust_store = lz77_store_from_c(store_ptr);
-    unsafe {
-        (&mut *rust_store).reset();
-    }
-
-    lz77_store_result(rust_store, store);
-}
-
 /// Some state information for compressing a block.
 /// This is currently a bit under-used (with mainly only the longest match cache),
 /// but is kept for easy future expansion.
@@ -489,23 +460,6 @@ impl ZopfliBlockState {
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliInitBlockState(options: *const ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int, s_ptr: *mut ZopfliBlockState) {
-    let new_s = ZopfliBlockState::new(options, blockstart, blockend, add_lmc);
-
-    let s = unsafe {
-        assert!(!s_ptr.is_null());
-        &mut *s_ptr
-    };
-
-    s.options = new_s.options;
-    s.blockstart = new_s.blockstart;
-    s.blockend = new_s.blockend;
-    s.lmc = new_s.lmc;
-}
-
-#[repr(C)]
 pub struct LongestMatch {
     pub distance: c_ushort,
     pub length: c_ushort,
@@ -792,64 +746,4 @@ pub fn get_histogram(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (Vec<siz
             (ll, d)
         }
     }
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliLZ77Greedy(s_ptr: *mut ZopfliBlockState, in_data: *mut c_uchar, instart: size_t, inend: size_t, store_ptr: *mut ZopfliLZ77Store, _h_ptr: *mut ZopfliHash) {
-    let store = unsafe {
-        assert!(!store_ptr.is_null());
-        &mut *store_ptr
-    };
-
-    let s = unsafe {
-        assert!(!s_ptr.is_null());
-        &mut *s_ptr
-    };
-
-    let rust_store = lz77_store_from_c(store_ptr);
-
-    unsafe {
-        (&mut *rust_store).greedy(s, in_data, instart, inend);
-    }
-
-    lz77_store_result(rust_store, store);
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliAppendLZ77Store(store_ptr: *mut ZopfliLZ77Store, target_ptr: *mut ZopfliLZ77Store) {
-    let store = unsafe {
-        assert!(!store_ptr.is_null());
-        &mut *store_ptr
-    };
-    let target = unsafe {
-        assert!(!target_ptr.is_null());
-        &mut *target_ptr
-    };
-
-    let rust_target = lz77_store_from_c(target_ptr);
-
-    for i in 0..store.size {
-        unsafe {
-            (&mut *rust_target).lit_len_dist(
-                *store.litlens.offset(i as isize),
-                *store.dists.offset(i as isize),
-                *store.pos.offset(i as isize),
-            );
-        }
-    }
-    lz77_store_result(rust_target, target);
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCopyLZ77Store(store_ptr: *mut ZopfliLZ77Store, target_ptr: *mut ZopfliLZ77Store) {
-    let target = unsafe {
-        assert!(!target_ptr.is_null());
-        &mut *target_ptr
-    };
-
-    let rust_store = lz77_store_from_c(store_ptr);
-    lz77_store_result(rust_store, target);
 }
