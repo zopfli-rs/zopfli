@@ -27,6 +27,4 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include "squeeze.h"
 #include "util.h"
 
-extern double SplitCost(size_t i, void* context);
-
 extern void ZopfliBlockSplit(const ZopfliOptions* options, const unsigned char* in, size_t instart, size_t inend, size_t maxblocks, size_t** splitpoints, size_t* npoints);

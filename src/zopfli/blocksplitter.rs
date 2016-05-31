@@ -80,8 +80,7 @@ pub fn estimate_cost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double
 /// Gets the cost which is the sum of the cost of the left and the right section
 /// of the data.
 /// type: FindMinimumFun
-#[allow(non_snake_case)]
-pub fn SplitCost(i: size_t, c: &SplitCostContext) -> c_double {
+pub fn split_cost(i: size_t, c: &SplitCostContext) -> c_double {
     estimate_cost(c.lz77, c.start, i) + estimate_cost(c.lz77, i, c.end)
 }
 
@@ -183,7 +182,7 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
         };
 
         assert!(lstart < lend);
-        let find_minimum_result = find_minimum(SplitCost, &c, lstart + 1, lend);
+        let find_minimum_result = find_minimum(split_cost, &c, lstart + 1, lend);
         llpos = find_minimum_result.0;
         splitcost = find_minimum_result.1;
 
