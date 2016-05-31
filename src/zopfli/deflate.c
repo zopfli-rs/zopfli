@@ -71,10 +71,6 @@ void AddHuffmanBits(unsigned symbol, unsigned length,
   }
 }
 
-extern double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend, int btype);
-
-extern double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77, size_t lstart, size_t lend);
-
 /* Since an uncompressed block can be max 65535 in size, it actually adds
 multible blocks if needed. */
 /* Actually writes to bp, out, outsize

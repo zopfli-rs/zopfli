@@ -4,7 +4,7 @@ use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
-use lz77::{ZopfliLZ77Store, lz77_store_from_c, get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
+use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
 use squeeze::{lz77_optimal_fixed, ZopfliLZ77Optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 use tree::{lengths_to_symbols, zopfli_lengths_to_symbols, zopfli_calculate_bit_lengths};
@@ -617,15 +617,11 @@ pub extern fn AddLZ77Block(options_ptr: *const ZopfliOptions, btype: c_int, fina
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCalculateBlockSize(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
-
-    calculate_block_size(lz77, lstart, lend, btype)
-}
-
+/// Calculates block size in bits.
+/// litlens: lz77 lit/lengths
+/// dists: ll77 distances
+/// lstart: start of block
+/// lend: end of block (not inclusive)
 pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
 
     let mut ll_lengths = [0; ZOPFLI_NUM_LL];
@@ -799,15 +795,7 @@ pub extern fn AddLZ77BlockAutoType(options_ptr: *const ZopfliOptions, final_bloc
     }
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCalculateBlockSizeAutoType(lz77_ptr: *const ZopfliLZ77Store, lstart: size_t, lend: size_t) -> c_double {
-    let lz77_still_pointer = lz77_store_from_c(lz77_ptr);
-    let lz77 = unsafe { &*lz77_still_pointer };
-
-    calculate_block_size_auto_type(lz77, lstart, lend)
-}
-
+/// Calculates block size in bits, automatically using the best btype.
 pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
     /* Don't do the expensive fixed cost calculation for larger blocks that are

@@ -69,22 +69,6 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
                        unsigned char* bp, unsigned char** out,
                        size_t* outsize);
 
-/*
-Calculates block size in bits.
-litlens: lz77 lit/lengths
-dists: ll77 distances
-lstart: start of block
-lend: end of block (not inclusive)
-*/
-double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77,
-                                size_t lstart, size_t lend, int btype);
-
-/*
-Calculates block size in bits, automatically using the best btype.
-*/
-double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
-                                        size_t lstart, size_t lend);
-
 
 void AddBit(int bit, unsigned char* bp, unsigned char** out, size_t* outsize);
 void AddBits(unsigned symbol, unsigned length,
