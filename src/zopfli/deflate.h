@@ -25,8 +25,8 @@ Functions to compress according to the DEFLATE specification, using the
 "squeeze" LZ77 compression backend.
 */
 
-#include "lz77.h"
 #include "zopfli.h"
+#include "util.h"
 
 #ifdef __cplusplus
 extern "C" {
