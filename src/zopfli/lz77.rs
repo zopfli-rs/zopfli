@@ -7,33 +7,11 @@ use hash::ZopfliHash;
 use symbols::{get_dist_symbol, get_length_symbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
 
-/// Comment from C:
 /// Stores lit/length and dist pairs for LZ77.
 /// Parameter litlens: Contains the literal symbols or length values.
 /// Parameter dists: Contains the distances. A value is 0 to indicate that there is
 /// no dist and the corresponding litlens value is a literal instead of a length.
 /// Parameter size: The size of both the litlens and dists arrays.
-
-#[repr(C)]
-pub struct ZopfliLZ77Store {
-  pub litlens: *mut c_ushort,  /* Lit or len. */
-  pub dists: *mut c_ushort,  /* If 0: indicates literal in corresponding litlens,
-      if > 0: length in corresponding litlens, this is the distance. */
-  pub size: size_t,
-
-  pub pos: *mut size_t,  /* position in data where this LZ77 command begins */
-
-  ll_symbol: *mut c_ushort,
-  d_symbol: *mut c_ushort,
-
-  /* Cumulative histograms wrapping around per chunk. Each chunk has the amount
-  of distinct symbols as length, so using 1 value per LZ77 symbol, we have a
-  precise histogram at every N symbols, and the rest can be calculated by
-  looping through the actual symbols of this chunk. */
-  ll_counts: *mut size_t,
-  d_counts: *mut size_t,
-}
-
 #[derive(Debug, Clone)]
 pub struct Lz77Store {
    pub litlens: Vec<c_ushort>,
@@ -126,7 +104,7 @@ impl Lz77Store {
 
     /// Does LZ77 using an algorithm similar to gzip, with lazy matching, rather than
     /// with the slow but better "squeeze" implementation.
-    /// The result is placed in the ZopfliLZ77Store.
+    /// The result is placed in the Lz77Store.
     /// If instart is larger than 0, it uses values before instart as starting
     /// dictionary.
     pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t) {
@@ -274,63 +252,6 @@ impl Lz77Store {
             pos += length as size_t;
         }
     }
-}
-
-#[no_mangle]
-pub extern fn lz77_store_from_c(store: *const ZopfliLZ77Store) -> *mut Lz77Store {
-    Box::into_raw(Box::new(store.into()))
-}
-
-impl From<*const ZopfliLZ77Store> for Lz77Store {
-    fn from(ptr: *const ZopfliLZ77Store) -> Lz77Store {
-        let store = unsafe {
-            assert!(!ptr.is_null());
-            &*ptr
-        };
-
-        let len = store.size;
-        let ll_len = ZOPFLI_NUM_LL * (store.size / ZOPFLI_NUM_LL) + ZOPFLI_NUM_LL;
-        let d_len = ZOPFLI_NUM_D * (store.size / ZOPFLI_NUM_D) + ZOPFLI_NUM_D;
-
-        Lz77Store {
-            litlens: ptr_to_vec(store.litlens, len),
-            dists: ptr_to_vec(store.dists, len),
-
-            pos: ptr_to_vec(store.pos, len),
-
-            ll_symbol: ptr_to_vec(store.ll_symbol, len),
-            d_symbol: ptr_to_vec(store.d_symbol, len),
-
-            ll_counts: ptr_to_vec(store.ll_counts, ll_len),
-            d_counts: ptr_to_vec(store.d_counts, d_len),
-        }
-    }
-}
-
-fn ptr_to_vec<T: Clone>(ptr: *mut T, length: usize) -> Vec<T> {
-    if ptr.is_null() {
-        vec![]
-    } else {
-        unsafe { slice::from_raw_parts(ptr, length).to_vec() }
-    }
-}
-
-pub fn lz77_store_result(ptr: *mut Lz77Store, store: &mut ZopfliLZ77Store) {
-    let lz77 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
-
-    let len = lz77.litlens.len();
-
-    store.litlens = lz77.litlens.as_mut_ptr();
-    store.dists = lz77.dists.as_mut_ptr();
-    store.size = len;
-    store.pos = lz77.pos.as_mut_ptr();
-    store.ll_symbol = lz77.ll_symbol.as_mut_ptr();
-    store.d_symbol = lz77.d_symbol.as_mut_ptr();
-    store.ll_counts = lz77.ll_counts.as_mut_ptr();
-    store.d_counts = lz77.d_counts.as_mut_ptr();
 }
 
 /// Some state information for compressing a block.

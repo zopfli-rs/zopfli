@@ -32,33 +32,6 @@ compression.
 #include "zopfli.h"
 
 /*
-Stores lit/length and dist pairs for LZ77.
-Parameter litlens: Contains the literal symbols or length values.
-Parameter dists: Contains the distances. A value is 0 to indicate that there is
-no dist and the corresponding litlens value is a literal instead of a length.
-Parameter size: The size of both the litlens and dists arrays.
-
-*/
-typedef struct ZopfliLZ77Store {
-  unsigned short* litlens;  /* Lit or len. */
-  unsigned short* dists;  /* If 0: indicates literal in corresponding litlens,
-      if > 0: length in corresponding litlens, this is the distance. */
-  size_t size;
-
-  size_t* pos;  /* position in data where this LZ77 command begins */
-
-  unsigned short* ll_symbol;
-  unsigned short* d_symbol;
-
-  /* Cumulative histograms wrapping around per chunk. Each chunk has the amount
-  of distinct symbols as length, so using 1 value per LZ77 symbol, we have a
-  precise histogram at every N symbols, and the rest can be calculated by
-  looping through the actual symbols of this chunk. */
-  size_t* ll_counts;
-  size_t* d_counts;
-} ZopfliLZ77Store;
-
-/*
 Some state information for compressing a block.
 This is currently a bit under-used (with mainly only the longest match cache),
 but is kept for easy future expansion.

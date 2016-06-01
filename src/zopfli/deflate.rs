@@ -533,9 +533,9 @@ pub fn add_dynamic_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp:
 /// btype: the block type, must be 1 or 2
 /// final: whether to set the "final" bit on this block, must be the last block
 /// litlens: literal/length array of the LZ77 data, in the same format as in
-///     ZopfliLZ77Store.
+///     Lz77Store.
 /// dists: distance array of the LZ77 data, in the same format as in
-///     ZopfliLZ77Store.
+///     Lz77Store.
 /// lstart: where to start in the LZ77 data
 /// lend: where to end in the LZ77 data (not inclusive)
 /// expected_data_size: the uncompressed block size, used for assert, but you can

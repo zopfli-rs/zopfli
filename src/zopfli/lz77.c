@@ -25,4 +25,3 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdlib.h>
 
 typedef struct lz77_store_S lz77_store_t;
-extern lz77_store_t * lz77_store_from_c(ZopfliLZ77Store *);
