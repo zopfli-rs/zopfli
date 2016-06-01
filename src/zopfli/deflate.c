@@ -124,14 +124,14 @@ void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
   ZopfliDeflatePart(options, btype, final, in, 0, insize, bp, out, outsize);
 #else
   size_t i = 0;
-  do {
+  while (i < insize) {
     int masterfinal = (i + ZOPFLI_MASTER_BLOCK_SIZE >= insize);
     int final2 = final && masterfinal;
     size_t size = masterfinal ? insize - i : ZOPFLI_MASTER_BLOCK_SIZE;
     ZopfliDeflatePart(options, btype, final2,
                       in, i, i + size, bp, out, outsize);
     i += size;
-  } while (i < insize);
+  }
 #endif
   if (options->verbose) {
     fprintf(stderr,
