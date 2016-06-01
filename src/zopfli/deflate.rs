@@ -8,7 +8,7 @@ use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols, zopfli_lengths_to_symbols, zopfli_calculate_bit_lengths};
-use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
 use zopfli::ZopfliOptions;
 
 pub fn fixed_tree() -> ([c_uint; ZOPFLI_NUM_LL], [c_uint; ZOPFLI_NUM_D]) {
@@ -873,6 +873,9 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
 /// previous bytes are used as the initial dictionary for LZ77.
 /// This function will usually output multiple deflate blocks. If final is 1, then
 /// the final bit will be set on the last block.
+/// Like ZopfliDeflate, but allows to specify start and end byte with instart and
+/// inend. Only that part is compressed, but earlier bytes are still used for the
+/// back window.
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn ZopfliDeflatePart(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
@@ -894,5 +897,51 @@ pub extern fn ZopfliDeflatePart(options_ptr: *const ZopfliOptions, btype: c_int,
         add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out, outsize);
     } else {
         blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out, outsize);
+    }
+}
+
+/// Compresses according to the deflate specification and append the compressed
+/// result to the output.
+/// This function will usually output multiple deflate blocks. If final is 1, then
+/// the final bit will be set on the last block.
+///
+/// options: global program options
+/// btype: the deflate block type. Use 2 for best compression.
+///   -0: non compressed blocks (00)
+///   -1: blocks with fixed tree (01)
+///   -2: blocks with dynamic tree (10)
+/// final: whether this is the last section of the input, sets the final bit to the
+///   last deflate block.
+/// in: the input bytes
+/// insize: number of input bytes
+/// bp: bit pointer for the output array. This must initially be 0, and for
+///   consecutive calls must be reused (it can have values from 0-7). This is
+///   because deflate appends blocks as bit-based data, rather than on byte
+///   boundaries.
+/// out: pointer to the dynamic output array to which the result is appended. Must
+///   be freed after use.
+/// outsize: pointer to the dynamic output array size.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliDeflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, insize: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+    let options = unsafe {
+        assert!(!options_ptr.is_null());
+        &*options_ptr
+    };
+
+    let offset = unsafe { *outsize };
+    let mut i = 0;
+    while i < insize {
+        let masterfinal = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
+        let final2 = final_block != 0 && masterfinal;
+        let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
+        let final2_as_int = if final2 { 1 } else { 0 };
+        ZopfliDeflatePart(options_ptr, btype, final2_as_int, in_data, i, i + size, bp, out, outsize);
+        i += size;
+    }
+    if options.verbose != 0 {
+        unsafe {
+            println!("Original Size: {}, Deflate: {}, Compression: {}% Removed", insize, *outsize - offset, 100.0 * (insize - (*outsize - offset)) as c_double / insize as c_double);
+        }
     }
 }

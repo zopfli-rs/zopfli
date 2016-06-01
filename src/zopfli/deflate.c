@@ -115,28 +115,4 @@ void AddNonCompressedBlock(const ZopfliOptions* options, int final,
 
 extern void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final, const unsigned char* in, size_t instart, size_t inend, unsigned char* bp, unsigned char** out, size_t* outsize);
 
-/* Passthrough */
-void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
-                   const unsigned char* in, size_t insize,
-                   unsigned char* bp, unsigned char** out, size_t* outsize) {
- size_t offset = *outsize;
-#if ZOPFLI_MASTER_BLOCK_SIZE == 0
-  ZopfliDeflatePart(options, btype, final, in, 0, insize, bp, out, outsize);
-#else
-  size_t i = 0;
-  while (i < insize) {
-    int masterfinal = (i + ZOPFLI_MASTER_BLOCK_SIZE >= insize);
-    int final2 = final && masterfinal;
-    size_t size = masterfinal ? insize - i : ZOPFLI_MASTER_BLOCK_SIZE;
-    ZopfliDeflatePart(options, btype, final2,
-                      in, i, i + size, bp, out, outsize);
-    i += size;
-  }
-#endif
-  if (options->verbose) {
-    fprintf(stderr,
-            "Original Size: %lu, Deflate: %lu, Compression: %f%% Removed\n",
-            (unsigned long)insize, (unsigned long)(*outsize - offset),
-            100.0 * (double)(insize - (*outsize - offset)) / (double)insize);
-  }
-}
+extern void ZopfliDeflate(const ZopfliOptions* options, int btype, int final, const unsigned char* in, size_t insize, unsigned char* bp, unsigned char** out, size_t* outsize);
