@@ -84,12 +84,6 @@ Good value: e.g. 8192.
 #define ZOPFLI_MAX_CHAIN_HITS 8192
 
 /*
-Whether to use the longest match cache for ZopfliFindLongestMatch. This cache
-consumes a lot of memory but speeds it up. No effect on compression size.
-*/
-#define ZOPFLI_LONGEST_MATCH_CACHE
-
-/*
 Enable to remember amount of successive identical bytes in the hash chain for
 finding longest match
 required for ZOPFLI_HASH_SAME_HASH and ZOPFLI_SHORTCUT_LONG_REPETITIONS

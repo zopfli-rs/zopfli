@@ -113,10 +113,3 @@ impl ZopfliLongestMatchCache {
 pub fn init_cache(blocksize: size_t) -> *mut ZopfliLongestMatchCache {
     Box::into_raw(Box::new(ZopfliLongestMatchCache::new(blocksize)))
 }
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCleanCache(ptr: *mut ZopfliLongestMatchCache) {
-    if ptr.is_null() { return }
-    unsafe { Box::from_raw(ptr); }
-}
