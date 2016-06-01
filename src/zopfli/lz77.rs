@@ -257,7 +257,6 @@ impl Lz77Store {
 /// Some state information for compressing a block.
 /// This is currently a bit under-used (with mainly only the longest match cache),
 /// but is kept for easy future expansion.
-#[repr(C)]
 pub struct ZopfliBlockState {
     pub options: *const ZopfliOptions,
     /* Cache for length/distance pairs found so far. */
