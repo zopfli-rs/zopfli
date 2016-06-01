@@ -6,8 +6,9 @@ use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
 use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
-use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits, ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
+use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols, zopfli_lengths_to_symbols, zopfli_calculate_bit_lengths};
+use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D};
 use zopfli::ZopfliOptions;
 
 pub fn fixed_tree() -> ([c_uint; ZOPFLI_NUM_LL], [c_uint; ZOPFLI_NUM_D]) {

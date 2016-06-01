@@ -14,7 +14,8 @@ use libc::{c_void, c_uint, c_double, c_int, size_t, c_uchar, c_ushort, malloc, c
 use deflate::calculate_block_size;
 use hash::ZopfliHash;
 use lz77::{Lz77Store, ZopfliBlockState, find_longest_match};
-use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
+use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
+use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 

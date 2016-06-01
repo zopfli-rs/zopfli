@@ -1,6 +1,6 @@
 use libc::{c_ushort, c_uchar, size_t, c_uint};
 
-use symbols::{ZOPFLI_CACHE_LENGTH};
+use util::{ZOPFLI_CACHE_LENGTH};
 
 // Cache used by ZopfliFindLongestMatch to remember previously found length/dist
 // values.

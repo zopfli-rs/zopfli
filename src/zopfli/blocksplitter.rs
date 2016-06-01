@@ -2,7 +2,7 @@ use libc::{size_t, c_double, c_uchar, c_int};
 
 use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
-use symbols::{ZOPFLI_LARGE_FLOAT};
+use util::{ZOPFLI_LARGE_FLOAT};
 use zopfli::ZopfliOptions;
 
 /// Finds minimum of function f(i) where is is of type size_t, f(i) is of type

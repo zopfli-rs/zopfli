@@ -1,6 +1,6 @@
 use libc::{c_int, c_ushort, c_uchar, size_t};
 
-use symbols::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH};
+use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH};
 
 const HASH_SHIFT: c_int = 5;
 const HASH_MASK: c_int = 32767;
