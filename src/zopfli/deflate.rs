@@ -876,9 +876,7 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
 /// Like ZopfliDeflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliDeflatePart(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn deflate_part(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -936,7 +934,7 @@ pub extern fn ZopfliDeflate(options_ptr: *const ZopfliOptions, btype: c_int, fin
         let final2 = final_block != 0 && masterfinal;
         let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
         let final2_as_int = if final2 { 1 } else { 0 };
-        ZopfliDeflatePart(options_ptr, btype, final2_as_int, in_data, i, i + size, bp, out, outsize);
+        deflate_part(options_ptr, btype, final2_as_int, in_data, i, i + size, bp, out, outsize);
         i += size;
     }
     if options.verbose != 0 {
