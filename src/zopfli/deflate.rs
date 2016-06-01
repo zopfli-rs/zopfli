@@ -739,12 +739,7 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
     assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
 
-pub fn add_lz77_block_auto_type(options_ptr: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn add_lz77_block_auto_type(options: &ZopfliOptions, final_block: c_int, in_data: *const c_uchar, lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, 1);
     let dyncost = calculate_block_size(lz77, lstart, lend, 2);
@@ -876,12 +871,7 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
 /// Like ZopfliDeflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-pub fn deflate_part(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     /* If btype=2 is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
@@ -934,7 +924,7 @@ pub extern fn ZopfliDeflate(options_ptr: *const ZopfliOptions, btype: c_int, fin
         let final2 = final_block != 0 && masterfinal;
         let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
         let final2_as_int = if final2 { 1 } else { 0 };
-        deflate_part(options_ptr, btype, final2_as_int, in_data, i, i + size, bp, out, outsize);
+        deflate_part(options, btype, final2_as_int, in_data, i, i + size, bp, out, outsize);
         i += size;
     }
     if options.verbose != 0 {

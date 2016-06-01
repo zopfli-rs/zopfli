@@ -258,8 +258,8 @@ impl Lz77Store {
 /// Some state information for compressing a block.
 /// This is currently a bit under-used (with mainly only the longest match cache),
 /// but is kept for easy future expansion.
-pub struct ZopfliBlockState {
-    pub options: *const ZopfliOptions,
+pub struct ZopfliBlockState<'a> {
+    pub options: &'a ZopfliOptions,
     /* Cache for length/distance pairs found so far. */
     lmc: Option<ZopfliLongestMatchCache>,
     /* The start (inclusive) and end (not inclusive) of the current block. */
@@ -267,8 +267,8 @@ pub struct ZopfliBlockState {
     pub blockend: size_t,
 }
 
-impl ZopfliBlockState {
-    pub fn new(options: *const ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int) -> ZopfliBlockState {
+impl<'a> ZopfliBlockState<'a> {
+    pub fn new(options: &ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int) -> ZopfliBlockState {
         ZopfliBlockState {
             options: options,
             blockstart: blockstart,
