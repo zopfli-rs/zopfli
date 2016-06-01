@@ -1,4 +1,4 @@
-use libc::{size_t, c_double, c_uchar, c_int};
+use libc::{size_t, c_double, c_uchar};
 
 use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
@@ -101,26 +101,21 @@ pub struct SplitCostContext<'a> {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-pub fn find_largest_splittable_block(lz77size: size_t, done: *const c_uchar, splitpoints: &Vec<size_t>, lstart: size_t, lend: size_t) -> (c_int, size_t, size_t) {
+pub fn find_largest_splittable_block(lz77size: size_t, done: *const c_uchar, splitpoints: &Vec<size_t>) -> Option<(size_t, size_t)> {
     let mut longest = 0;
-    let mut found = 0;
-    let mut lstart = lstart;
-    let mut lend = lend;
-
+    let mut found = None;
     let npoints = splitpoints.len();
 
     for i in 0..(npoints + 1) {
         let start = if i == 0 { 0 } else { splitpoints[i - 1] };
         let end = if i == npoints { lz77size - 1 } else { splitpoints[i] };
         if unsafe { *done.offset(start as isize) } == 0 && end - start > longest {
-            lstart = start;
-            lend = end;
-            found = 1;
+            found = Some((start, end));
             longest = end - start;
         }
     }
 
-    (found, lstart, lend)
+    found
 }
 
 /// Prints the block split points as decimal and hex values in the terminal.
@@ -199,16 +194,15 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
             numblocks += 1;
         }
 
-        let find_block_results = find_largest_splittable_block(lz77.size(), done.as_ptr(), splitpoints, lstart, lend);
-        lstart = find_block_results.1;
-        lend = find_block_results.2;
-
-        if find_block_results.0 == 0 {
-            break;  /* No further split will probably reduce compression. */
-        }
-
-        if lend - lstart < 10 {
-            break;
+        match find_largest_splittable_block(lz77.size(), done.as_ptr(), splitpoints) {
+            None => break, /* No further split will probably reduce compression. */
+            Some((start, end)) => {
+                lstart = start;
+                lend = end;
+                if lend - lstart < 10 {
+                    break;
+                }
+            }
         }
     }
 
