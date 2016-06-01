@@ -170,22 +170,22 @@ pub fn calculate_block_symbol_size_small(ll_lengths: *const c_uint, d_lengths: *
 }
 
 /// Same as calculate_block_symbol_size, but with the histogram provided by the caller.
-pub fn calculate_block_symbol_size_given_counts(ll_counts: *const size_t, d_counts: *const size_t, ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
+pub fn calculate_block_symbol_size_given_counts(ll_counts: &Vec<size_t>, d_counts: &Vec<size_t>, ll_lengths: *const c_uint, d_lengths: *const c_uint, lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
 
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         return calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend);
     } else {
         for i in 0..256 {
-            result += unsafe { *ll_lengths.offset(i as isize) * *ll_counts.offset(i as isize) as c_uint };
+            result += unsafe { *ll_lengths.offset(i as isize) * ll_counts[i] as c_uint };
         }
         for i in 257..286 {
-            result += unsafe { *ll_lengths.offset(i as isize) * *ll_counts.offset(i as isize) as c_uint };
-            result += (get_length_symbol_extra_bits(i) * unsafe { *ll_counts.offset(i as isize) as c_int }) as c_uint;
+            result += unsafe { *ll_lengths.offset(i as isize) * ll_counts[i] as c_uint };
+            result += (get_length_symbol_extra_bits(i as c_int) * ll_counts[i] as c_int) as c_uint;
         }
         for i in 0..30 {
-            result += unsafe { *d_lengths.offset(i as isize) * *d_counts.offset(i as isize) as c_uint };
-            result += (get_dist_symbol_extra_bits(i) * unsafe { *d_counts.offset(i as isize) as c_int }) as c_uint;
+            result += unsafe { *d_lengths.offset(i as isize) * d_counts[i] as c_uint };
+            result += (get_dist_symbol_extra_bits(i as c_int) * d_counts[i] as c_int) as c_uint;
         }
         result += unsafe { *ll_lengths.offset(256) }; // end symbol
         result as size_t
@@ -198,7 +198,7 @@ pub fn calculate_block_symbol_size(ll_lengths: *const c_uint, d_lengths: *const 
         calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
         let (ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
-        calculate_block_symbol_size_given_counts(ll_counts.as_ptr(), d_counts.as_ptr(), ll_lengths, d_lengths, lz77, lstart, lend)
+        calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths, d_lengths, lz77, lstart, lend)
     }
 }
 
@@ -647,18 +647,12 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btyp
 /// bits, not including the 3-bit block header.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_counts_ptr: *mut size_t, d_counts_ptr: *mut size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
-    let ll_counts = unsafe { slice::from_raw_parts_mut(ll_counts_ptr, ZOPFLI_NUM_LL) };
-    let d_counts = unsafe { slice::from_raw_parts_mut(d_counts_ptr, ZOPFLI_NUM_D) };
-
-    let mut ll_counts2 = [0; ZOPFLI_NUM_LL];
-    let mut d_counts2 = [0; ZOPFLI_NUM_D];
-
-    ll_counts2.clone_from_slice(ll_counts);
-    d_counts2.clone_from_slice(d_counts);
+pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_counts: Vec<size_t>, d_counts: Vec<size_t>, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+    let mut ll_counts2 = ll_counts.clone();
+    let mut d_counts2 = d_counts.clone();
 
     let treesize = calculate_tree_size(ll_lengths, d_lengths);
-    let datasize = calculate_block_symbol_size_given_counts(ll_counts_ptr, d_counts_ptr, ll_lengths, d_lengths, lz77, lstart, lend);
+    let datasize = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths, d_lengths, lz77, lstart, lend);
 
     optimize_huffman_for_rle(&mut ll_counts2);
     optimize_huffman_for_rle(&mut d_counts2);
@@ -668,7 +662,7 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
     patch_distance_codes_for_buggy_decoders(&mut d_lengths2[..]);
 
     let treesize2 = calculate_tree_size(ll_lengths2.as_ptr(), d_lengths2.as_ptr());
-    let datasize2 = calculate_block_symbol_size_given_counts(ll_counts_ptr, d_counts_ptr, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77, lstart, lend);
+    let datasize2 = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77, lstart, lend);
 
     if treesize2 + datasize2 < treesize + datasize {
         for i in 0..ZOPFLI_NUM_LL {
@@ -693,7 +687,7 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
 /// 3-bit block header.
 pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
 
-    let (mut ll_counts, mut d_counts) = get_histogram(&lz77, lstart, lend);
+    let (mut ll_counts, d_counts) = get_histogram(&lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
     zopfli_calculate_bit_lengths(ll_counts.as_ptr(), ZOPFLI_NUM_LL, 15, ll_lengths);
@@ -702,7 +696,7 @@ pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_le
     let mut d_lengths_slice = unsafe { slice::from_raw_parts_mut(d_lengths, ZOPFLI_NUM_D) };
     patch_distance_codes_for_buggy_decoders(&mut d_lengths_slice);
 
-    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts.as_mut_ptr(), d_counts.as_mut_ptr(), ll_lengths, d_lengths)
+    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths)
 }
 
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
