@@ -2,7 +2,7 @@ use std::{slice, ptr, cmp};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
-use cache::{ZopfliLongestMatchCache, init_cache};
+use cache::{ZopfliLongestMatchCache};
 use hash::ZopfliHash;
 use symbols::{get_dist_symbol, get_length_symbol, ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use zopfli::ZopfliOptions;
@@ -260,7 +260,7 @@ impl Lz77Store {
 pub struct ZopfliBlockState {
     pub options: *const ZopfliOptions,
     /* Cache for length/distance pairs found so far. */
-    lmc: *mut ZopfliLongestMatchCache,
+    lmc: Option<ZopfliLongestMatchCache>,
     /* The start (inclusive) and end (not inclusive) of the current block. */
     pub blockstart: size_t,
     pub blockend: size_t,
@@ -273,9 +273,9 @@ impl ZopfliBlockState {
             blockstart: blockstart,
             blockend: blockend,
             lmc: if add_lmc > 0 {
-                init_cache(blockend - blockstart)
+                Some(ZopfliLongestMatchCache::new(blockend - blockstart))
             } else {
-                ptr::null_mut()
+                None
             },
         }
     }
@@ -292,89 +292,89 @@ impl ZopfliBlockState {
             limit: limit,
         };
 
-        if self.lmc.is_null() {
-            return longest_match;
-        }
+        match self.lmc {
+            None => return longest_match,
+            Some(ref lmc) => {
+                /* The LMC cache starts at the beginning of the block rather than the
+                 beginning of the whole array. */
+                let lmcpos = pos - self.blockstart;
 
-        /* The LMC cache starts at the beginning of the block rather than the
-         beginning of the whole array. */
-        let lmcpos = pos - self.blockstart;
+                /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
+                  that this cache value is not filled in yet. */
+                let length_lmcpos = lmc.length_at(lmcpos);
+                let dist_lmcpos = lmc.dist_at(lmcpos);
+                let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
+                let max_sublen = lmc.max_sublen(lmcpos);
+                let limit_ok_for_cache = cache_available &&
+                   (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as c_ushort ||
+                   (!sublen.is_null() && max_sublen >= limit as c_uint));
 
-        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
-          that this cache value is not filled in yet. */
-        let length_lmcpos = unsafe { (*self.lmc).length_at(lmcpos) };
-        let dist_lmcpos = unsafe { (*self.lmc).dist_at(lmcpos) };
-        let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
-        let max_sublen = unsafe { (*self.lmc).max_sublen(lmcpos) };
-        let limit_ok_for_cache = cache_available &&
-           (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as c_ushort ||
-           (!sublen.is_null() && max_sublen >= limit as c_uint));
-
-        if limit_ok_for_cache && cache_available {
-            if sublen.is_null() || length_lmcpos as c_uint <= max_sublen {
-                let mut length = length_lmcpos;
-                if length > limit as c_ushort {
-                    length = limit as c_ushort;
-                }
-                let distance;
-                if !sublen.is_null() {
-                    unsafe {
-                        (*self.lmc).fetch_sublen(lmcpos, length as usize, sublen);
-                        distance = *sublen.offset(length as isize);
-                    }
-
-                    if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as c_ushort {
-                        unsafe {
-                            assert!(*sublen.offset(length as isize) == dist_lmcpos);
+                if limit_ok_for_cache && cache_available {
+                    if sublen.is_null() || length_lmcpos as c_uint <= max_sublen {
+                        let mut length = length_lmcpos;
+                        if length > limit as c_ushort {
+                            length = limit as c_ushort;
                         }
-                    }
-                } else {
-                    distance = dist_lmcpos;
-                }
-                longest_match.distance = distance;
-                longest_match.length = length;
-                longest_match.from_cache = 1;
-                return longest_match;
-            }
-            /* Can't use much of the cache, since the "sublens" need to be calculated,
-            but at least we already know when to stop. */
-            limit = length_lmcpos as size_t;
-            longest_match.limit = limit;
-        }
+                        let distance;
+                        if !sublen.is_null() {
+                            lmc.fetch_sublen(lmcpos, length as usize, sublen);
+                            unsafe {
+                                distance = *sublen.offset(length as isize);
+                            }
 
-        longest_match
+                            if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as c_ushort {
+                                unsafe {
+                                    assert!(*sublen.offset(length as isize) == dist_lmcpos);
+                                }
+                            }
+                        } else {
+                            distance = dist_lmcpos;
+                        }
+                        longest_match.distance = distance;
+                        longest_match.length = length;
+                        longest_match.from_cache = 1;
+                        return longest_match;
+                    }
+                    /* Can't use much of the cache, since the "sublens" need to be calculated,
+                    but at least we already know when to stop. */
+                    limit = length_lmcpos as size_t;
+                    longest_match.limit = limit;
+                }
+
+                longest_match
+            }
+        }
     }
 
     /// Stores the found sublen, distance and length in the longest match cache, if
     /// possible.
-    pub fn store_in_longest_match_cache(&self, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
+    pub fn store_in_longest_match_cache(&mut self, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
         /* The LMC cache starts at the beginning of the block rather than the
         beginning of the whole array. */
         let lmcpos = pos - self.blockstart;
 
-        if self.lmc.is_null() {
-            return;
-        }
+        match self.lmc {
+            None => return,
+            Some(ref mut lmc) => {
+                /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
+                that this cache value is not filled in yet. */
+                let mut length_lmcpos = lmc.length_at(lmcpos);
+                let mut dist_lmcpos = lmc.dist_at(lmcpos);
 
-        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
-        that this cache value is not filled in yet. */
-        let mut length_lmcpos = unsafe { (*self.lmc).length_at(lmcpos) };
-        let mut dist_lmcpos = unsafe { (*self.lmc).dist_at(lmcpos) };
+                let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
 
-        let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
-
-        if limit == ZOPFLI_MAX_MATCH && !sublen.is_null() && !cache_available {
-            assert!(length_lmcpos == 1 && dist_lmcpos == 0);
-            if length < ZOPFLI_MIN_MATCH as c_ushort {
-                dist_lmcpos = 0;
-                length_lmcpos = 0;
-            } else {
-                dist_lmcpos = distance;
-                length_lmcpos = length;
-            }
-            assert!(!(length_lmcpos == 1 && dist_lmcpos == 0));
-            unsafe {
-                (*self.lmc).store_sublen(sublen, lmcpos, length as size_t);
+                if limit == ZOPFLI_MAX_MATCH && !sublen.is_null() && !cache_available {
+                    assert!(length_lmcpos == 1 && dist_lmcpos == 0);
+                    if length < ZOPFLI_MIN_MATCH as c_ushort {
+                        dist_lmcpos = 0;
+                        length_lmcpos = 0;
+                    } else {
+                        dist_lmcpos = distance;
+                        length_lmcpos = length;
+                    }
+                    assert!(!(length_lmcpos == 1 && dist_lmcpos == 0));
+                    lmc.store_sublen(sublen, lmcpos, length as size_t);
+                }
             }
         }
     }

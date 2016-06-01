@@ -109,7 +109,3 @@ impl ZopfliLongestMatchCache {
         }
     }
 }
-
-pub fn init_cache(blocksize: size_t) -> *mut ZopfliLongestMatchCache {
-    Box::into_raw(Box::new(ZopfliLongestMatchCache::new(blocksize)))
-}
