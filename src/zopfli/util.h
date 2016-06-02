@@ -28,6 +28,8 @@ basic deflate specification values and generic program options.
 #include <string.h>
 #include <stdlib.h>
 
+void ZopfliAppendDataUChar(unsigned char value, unsigned char** data, size_t* size);
+
 /*
 Appends value to dynamically allocated memory, doubling its allocation size
 whenever needed.

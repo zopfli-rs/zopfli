@@ -31,3 +31,7 @@ void ZopfliInitOptions(ZopfliOptions* options) {
   options->numiterations = 15;
   options->blocksplittingmax = 15;
 }
+
+void ZopfliAppendDataUChar(unsigned char value, unsigned char** data, size_t* size) {
+    ZOPFLI_APPEND_DATA(value, data, size);
+}

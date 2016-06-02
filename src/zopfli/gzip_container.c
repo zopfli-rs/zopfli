@@ -88,33 +88,33 @@ void ZopfliGzipCompress(const ZopfliOptions* options,
   unsigned long crcvalue = CRC(in, insize);
   unsigned char bp = 0;
 
-  ZOPFLI_APPEND_DATA(31, out, outsize);  /* ID1 */
-  ZOPFLI_APPEND_DATA(139, out, outsize);  /* ID2 */
-  ZOPFLI_APPEND_DATA(8, out, outsize);  /* CM */
-  ZOPFLI_APPEND_DATA(0, out, outsize);  /* FLG */
+  ZopfliAppendDataUChar(31, out, outsize);  /* ID1 */
+  ZopfliAppendDataUChar(139, out, outsize);  /* ID2 */
+  ZopfliAppendDataUChar(8, out, outsize);  /* CM */
+  ZopfliAppendDataUChar(0, out, outsize);  /* FLG */
   /* MTIME */
-  ZOPFLI_APPEND_DATA(0, out, outsize);
-  ZOPFLI_APPEND_DATA(0, out, outsize);
-  ZOPFLI_APPEND_DATA(0, out, outsize);
-  ZOPFLI_APPEND_DATA(0, out, outsize);
+  ZopfliAppendDataUChar(0, out, outsize);
+  ZopfliAppendDataUChar(0, out, outsize);
+  ZopfliAppendDataUChar(0, out, outsize);
+  ZopfliAppendDataUChar(0, out, outsize);
 
-  ZOPFLI_APPEND_DATA(2, out, outsize);  /* XFL, 2 indicates best compression. */
-  ZOPFLI_APPEND_DATA(3, out, outsize);  /* OS follows Unix conventions. */
+  ZopfliAppendDataUChar(2, out, outsize);  /* XFL, 2 indicates best compression. */
+  ZopfliAppendDataUChar(3, out, outsize);  /* OS follows Unix conventions. */
 
   ZopfliDeflate(options, 2 /* Dynamic block */, 1,
                 in, insize, &bp, out, outsize);
 
   /* CRC */
-  ZOPFLI_APPEND_DATA(crcvalue % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((crcvalue >> 8) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((crcvalue >> 16) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((crcvalue >> 24) % 256, out, outsize);
+  ZopfliAppendDataUChar(crcvalue % 256, out, outsize);
+  ZopfliAppendDataUChar((crcvalue >> 8) % 256, out, outsize);
+  ZopfliAppendDataUChar((crcvalue >> 16) % 256, out, outsize);
+  ZopfliAppendDataUChar((crcvalue >> 24) % 256, out, outsize);
 
   /* ISIZE */
-  ZOPFLI_APPEND_DATA(insize % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((insize >> 8) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((insize >> 16) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((insize >> 24) % 256, out, outsize);
+  ZopfliAppendDataUChar(insize % 256, out, outsize);
+  ZopfliAppendDataUChar((insize >> 8) % 256, out, outsize);
+  ZopfliAppendDataUChar((insize >> 16) % 256, out, outsize);
+  ZopfliAppendDataUChar((insize >> 24) % 256, out, outsize);
 
   if (options->verbose) {
     fprintf(stderr,
