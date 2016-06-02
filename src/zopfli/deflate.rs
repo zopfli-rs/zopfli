@@ -1,5 +1,3 @@
-use std::slice;
-
 use libc::{c_uint, c_int, size_t, c_uchar, c_double};
 
 use blocksplitter::{blocksplit, blocksplit_lz77};
@@ -578,7 +576,7 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
     } else {
         /* Dynamic block. */
         assert!(btype == 2);
-        get_dynamic_lengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
+        get_dynamic_lengths(lz77, lstart, lend, &mut ll_lengths, &mut d_lengths);
 
         let detect_tree_size = unsafe { *outsize };
         add_dynamic_tree(ll_lengths.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
@@ -637,7 +635,7 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btyp
         d_lengths = fixed_tree.1;
         result += calculate_block_symbol_size(ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend) as c_double;
     } else {
-        result += get_dynamic_lengths(lz77, lstart, lend, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
+        result += get_dynamic_lengths(lz77, lstart, lend, &mut ll_lengths, &mut d_lengths);
     }
     result
 }
@@ -685,18 +683,17 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
 /// symbols to have smallest output size. This are not necessarily the ideal Huffman
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
-pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_lengths: &mut [c_uint], d_lengths: &mut [c_uint]) -> c_double {
 
     let (mut ll_counts, d_counts) = get_histogram(&lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
-    zopfli_calculate_bit_lengths(ll_counts.as_ptr(), ZOPFLI_NUM_LL, 15, ll_lengths);
-    zopfli_calculate_bit_lengths(d_counts.as_ptr(), ZOPFLI_NUM_D, 15, d_lengths);
+    zopfli_calculate_bit_lengths(ll_counts.as_ptr(), ZOPFLI_NUM_LL, 15, ll_lengths.as_mut_ptr());
+    zopfli_calculate_bit_lengths(d_counts.as_ptr(), ZOPFLI_NUM_D, 15, d_lengths.as_mut_ptr());
 
-    let mut d_lengths_slice = unsafe { slice::from_raw_parts_mut(d_lengths, ZOPFLI_NUM_D) };
-    patch_distance_codes_for_buggy_decoders(&mut d_lengths_slice);
+    patch_distance_codes_for_buggy_decoders(d_lengths);
 
-    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths)
+    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr())
 }
 
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
