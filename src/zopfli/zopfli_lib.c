@@ -20,7 +20,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include "zopfli.h"
 
 #include "deflate.h"
-#include "gzip_container.h"
 #include "zlib_container.h"
 
 #include <assert.h>

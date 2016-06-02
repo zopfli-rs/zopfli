@@ -6,8 +6,7 @@ CXXFLAGS = -W -Wall -Wextra -ansi -pedantic -O2
 
 ZOPFLI_RUST_DEBUG := target/debug/libzopfli.a
 ZOPFLI_RUST_RELEASE := target/release/libzopfli.a
-ZOPFLILIB_SRC = src/zopfli/deflate.c src/zopfli/gzip_container.c\
-                src/zopfli/hash.c\
+ZOPFLILIB_SRC = src/zopfli/deflate.c src/zopfli/hash.c\
                 src/zopfli/util.c\
                 src/zopfli/zlib_container.c src/zopfli/zopfli_lib.c
 ZOPFLILIB_OBJ := $(patsubst src/zopfli/%.c,%.o,$(ZOPFLILIB_SRC))

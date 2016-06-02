@@ -1,6 +1,7 @@
 use libc::{c_int, c_uchar, size_t};
 
 use deflate::ZopfliDeflate;
+use gzip::ZopfliGzipCompress;
 
 /// Options used throughout the program.
 #[repr(C)]
@@ -31,7 +32,6 @@ pub enum ZopfliFormat {
 
 #[link(name = "zopfli")]
 extern {
-    fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t);
     fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t);
 }
 
@@ -39,7 +39,7 @@ extern {
 #[allow(non_snake_case)]
 pub extern fn ZopfliCompress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t) {
     match output_type {
-        ZopfliFormat::ZOPFLI_FORMAT_GZIP => unsafe { ZopfliGzipCompress(options_ptr, in_data, insize, out, outsize) },
+        ZopfliFormat::ZOPFLI_FORMAT_GZIP => ZopfliGzipCompress(options_ptr, in_data, insize, out, outsize),
         ZopfliFormat::ZOPFLI_FORMAT_ZLIB => unsafe { ZopfliZlibCompress(options_ptr, in_data, insize, out, outsize) },
         ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
             let mut bp = 0;
