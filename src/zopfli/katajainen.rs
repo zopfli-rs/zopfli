@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::{mem};
 
-use libc::{size_t, c_int};
+use libc::{size_t, c_int, c_uint};
 
 // Bounded package merge algorithm, based on the paper
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
@@ -53,7 +53,9 @@ struct List {
     next_leaf_index: size_t,
 }
 
-pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<size_t> {
+/// Calculates the bitlengths for the Huffman tree, based on the counts of each
+/// symbol.
+pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<c_uint> {
     let mut leaves = vec![];
 
     // Count used symbols and place them in the leaves.

@@ -5,19 +5,19 @@ use katajainen::length_limited_code_lengths;
 use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
-use tree::{lengths_to_symbols, zopfli_lengths_to_symbols, zopfli_calculate_bit_lengths};
+use tree::{lengths_to_symbols};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
 use zopfli::ZopfliOptions;
 
-pub fn fixed_tree() -> ([c_uint; ZOPFLI_NUM_LL], [c_uint; ZOPFLI_NUM_D]) {
-    let mut ll = [8; ZOPFLI_NUM_LL];
+pub fn fixed_tree() -> (Vec<c_uint>, Vec<c_uint>) {
+    let mut ll = vec![8; ZOPFLI_NUM_LL];
     for i in 144..256 {
         ll[i] = 9;
     }
     for i in 256..280 {
         ll[i] = 7;
     }
-    let d = [5; ZOPFLI_NUM_D];
+    let d = vec![5; ZOPFLI_NUM_D];
     (ll, d)
 }
 
@@ -316,7 +316,7 @@ pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint
     result_size += 14;  /* hlit, hdist, hclen bits */
     result_size += (hclen + 4) * 3;  /* clcl bits */
     for i in 0..19 {
-        result_size += clcl[i] * clcounts[i];
+        result_size += clcl[i] as size_t * clcounts[i];
     }
     /* Extra bits. */
     result_size += clcounts[16] * 2;
@@ -480,14 +480,14 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
         AddBits(hclen as c_uint, 4, bp, out, outsize);
 
         for i in 0..(hclen + 4) {
-            AddBits(clcl[order[i]] as c_uint, 3, bp, out, outsize);
+            AddBits(clcl[order[i]], 3, bp, out, outsize);
         }
 
         for i in 0..rle.len() {
             let rle_i = rle[i] as usize;
             let rle_bits_i = rle_bits[i] as c_uint;
             let sym = clsymbols[rle_i];
-            AddHuffmanBits(sym, clcl[rle_i] as c_uint, bp, out, outsize);
+            AddHuffmanBits(sym, clcl[rle_i], bp, out, outsize);
             /* Extra bits. */
             if rle_i == 16 {
                 AddBits(rle_bits_i, 2, bp, out, outsize);
@@ -502,7 +502,7 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
     result_size += 14;  /* hlit, hdist, hclen bits */
     result_size += (hclen + 4) * 3;  /* clcl bits */
     for i in 0..19 {
-        result_size += clcl[i] * clcounts[i];
+        result_size += clcl[i] as size_t * clcounts[i];
     }
     /* Extra bits. */
     result_size += clcounts[16] * 2;
@@ -543,10 +543,6 @@ pub fn add_dynamic_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp:
 /// out: dynamic output array to append to
 /// outsize: dynamic output array size
 pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
-    let mut ll_lengths = [0; ZOPFLI_NUM_LL];
-    let mut d_lengths = [0; ZOPFLI_NUM_D];
-    let mut ll_symbols = [0; ZOPFLI_NUM_LL];
-    let mut d_symbols = [0; ZOPFLI_NUM_D];
     let compressed_size;
     let mut uncompressed_size: size_t = 0;
 
@@ -568,25 +564,24 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
         AddBit((btype & 2) >> 1, bp, out, outsize);
     }
 
-    if btype == 1 {
+    let (ll_lengths, d_lengths) = if btype == 1 {
         /* Fixed block. */
-        let fixed_tree = fixed_tree();
-        ll_lengths = fixed_tree.0;
-        d_lengths = fixed_tree.1;
+        fixed_tree()
     } else {
         /* Dynamic block. */
         assert!(btype == 2);
-        get_dynamic_lengths(lz77, lstart, lend, &mut ll_lengths, &mut d_lengths);
+        let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
         let detect_tree_size = unsafe { *outsize };
         add_dynamic_tree(ll_lengths.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
         if options.verbose > 0 {
             println!("treesize: {}", unsafe { *outsize } - detect_tree_size);
         }
-    }
+        (ll_lengths, d_lengths)
+    };
 
-    zopfli_lengths_to_symbols(ll_lengths.as_ptr(), ZOPFLI_NUM_LL, 15, ll_symbols.as_mut_ptr());
-    zopfli_lengths_to_symbols(d_lengths.as_ptr(), ZOPFLI_NUM_D, 15, d_symbols.as_mut_ptr());
+    let ll_symbols = lengths_to_symbols(&ll_lengths, 15);
+    let d_symbols = lengths_to_symbols(&d_lengths, 15);
 
     let detect_block_size = unsafe { *outsize };
     add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bp, out, outsize);
@@ -615,12 +610,6 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
 /// lstart: start of block
 /// lend: end of block (not inclusive)
 pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
-
-    let mut ll_lengths = [0; ZOPFLI_NUM_LL];
-    let mut d_lengths = [0; ZOPFLI_NUM_D];
-
-    let mut result: c_double = 3.0; /* bfinal and btype bits */
-
     if btype == 0 {
         let length = get_byte_range(lz77, lstart, lend);
         let rem = length % 65535;
@@ -628,16 +617,18 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btyp
         /* An uncompressed block must actually be split into multiple blocks if it's
            larger than 65535 bytes long. Eeach block header is 5 bytes: 3 bits,
            padding, LEN and NLEN (potential less padding for first one ignored). */
-        return (blocks * 5 * 8 + length * 8) as c_double;
+        (blocks * 5 * 8 + length * 8) as c_double
     } else if btype == 1 {
         let fixed_tree = fixed_tree();
-        ll_lengths = fixed_tree.0;
-        d_lengths = fixed_tree.1;
+        let ll_lengths = fixed_tree.0;
+        let d_lengths = fixed_tree.1;
+
+        let mut result: c_double = 3.0; /* bfinal and btype bits */
         result += calculate_block_symbol_size(ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend) as c_double;
+        result
     } else {
-        result += get_dynamic_lengths(lz77, lstart, lend, &mut ll_lengths, &mut d_lengths);
+        get_dynamic_lengths(lz77, lstart, lend).0 + 3.0
     }
-    result
 }
 
 /// Tries out OptimizeHuffmanForRle for this block, if the result is smaller,
@@ -655,8 +646,8 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
     optimize_huffman_for_rle(&mut ll_counts2);
     optimize_huffman_for_rle(&mut d_counts2);
 
-    let ll_lengths2: Vec<c_uint> = length_limited_code_lengths(&ll_counts2, 15).iter().map(|&len| len as c_uint).collect();
-    let mut d_lengths2: Vec<c_uint> = length_limited_code_lengths(&d_counts2, 15).iter().map(|&len| len as c_uint).collect();
+    let ll_lengths2 = length_limited_code_lengths(&ll_counts2, 15);
+    let mut d_lengths2 = length_limited_code_lengths(&d_counts2, 15);
     patch_distance_codes_for_buggy_decoders(&mut d_lengths2[..]);
 
     let treesize2 = calculate_tree_size(ll_lengths2.as_ptr(), d_lengths2.as_ptr());
@@ -683,17 +674,18 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
 /// symbols to have smallest output size. This are not necessarily the ideal Huffman
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
-pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_lengths: &mut [c_uint], d_lengths: &mut [c_uint]) -> c_double {
+pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (c_double, Vec<c_uint>, Vec<c_uint>) {
 
     let (mut ll_counts, d_counts) = get_histogram(&lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
-    zopfli_calculate_bit_lengths(ll_counts.as_ptr(), ZOPFLI_NUM_LL, 15, ll_lengths.as_mut_ptr());
-    zopfli_calculate_bit_lengths(d_counts.as_ptr(), ZOPFLI_NUM_D, 15, d_lengths.as_mut_ptr());
+    let mut ll_lengths = length_limited_code_lengths(&ll_counts, 15);
+    let mut d_lengths = length_limited_code_lengths(&d_counts, 15);
 
-    patch_distance_codes_for_buggy_decoders(d_lengths);
+    patch_distance_codes_for_buggy_decoders(&mut d_lengths[..]);
 
-    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr())
+    let result = try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
+    (result, ll_lengths, d_lengths)
 }
 
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
