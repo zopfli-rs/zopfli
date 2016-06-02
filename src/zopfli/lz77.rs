@@ -1,4 +1,4 @@
-use std::{slice, ptr, cmp};
+use std::{ptr, cmp};
 
 use libc::{size_t, c_ushort, c_uchar, c_int, c_uint};
 
@@ -108,7 +108,7 @@ impl Lz77Store {
     /// The result is placed in the Lz77Store.
     /// If instart is larger than 0, it uses values before instart as starting
     /// dictionary.
-    pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: *const c_uchar, instart: size_t, inend: size_t) {
+    pub fn greedy(&mut self, s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t) {
         let mut leng: c_ushort;
         let mut dist: c_ushort;
         let mut lengthscore: c_int;
@@ -132,7 +132,7 @@ impl Lz77Store {
 
         let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
 
-        let arr = unsafe { slice::from_raw_parts(in_data, inend) };
+        let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);
 
         for i in windowstart..instart {
@@ -202,7 +202,7 @@ impl Lz77Store {
         }
     }
 
-    pub fn follow_path(&mut self, in_data: *const c_uchar, instart: size_t, inend: size_t, path: Vec<c_ushort>, s: &mut ZopfliBlockState) {
+    pub fn follow_path(&mut self, in_data: &[u8], instart: size_t, inend: size_t, path: Vec<c_ushort>, s: &mut ZopfliBlockState) {
         let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
             instart - ZOPFLI_WINDOW_SIZE
         } else {
@@ -215,7 +215,7 @@ impl Lz77Store {
 
         let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
 
-        let arr = unsafe { slice::from_raw_parts(in_data, inend) };
+        let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);
 
         for i in windowstart..instart {

@@ -92,41 +92,7 @@ static void SaveFile(const char* filename,
   fclose(file);
 }
 
-/*
-outfilename: filename to write output to, or 0 to write to stdout instead
-*/
-/* DECLARES OUT AND OUTSIZE */
-static void CompressFile(const ZopfliOptions* options,
-                         ZopfliFormat output_type,
-                         const char* infilename,
-                         const char* outfilename) {
-  unsigned char* in;
-  size_t insize;
-  unsigned char* out = 0;
-  size_t outsize = 0;
-  if (!LoadFile(infilename, &in, &insize)) {
-    fprintf(stderr, "Invalid filename: %s\n", infilename);
-    return;
-  }
-
-  ZopfliCompress(options, output_type, in, insize, &out, &outsize);
-
-  if (outfilename) {
-    SaveFile(outfilename, out, outsize);
-  } else {
-    size_t i;
-#if _WIN32
-    /* Windows workaround for stdout output. */
-    _setmode(_fileno(stdout), _O_BINARY);
-#endif
-    for (i = 0; i < outsize; i++) {
-      printf("%c", out[i]);
-    }
-  }
-
-  free(out);
-  free(in);
-}
+extern void CompressFile(const ZopfliOptions* options, ZopfliFormat output_type, const char* infilename, const char* outfilename);
 
 /*
 Add two strings together. Size does not matter. Result must be freed.

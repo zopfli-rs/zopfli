@@ -1,4 +1,3 @@
-use std::slice;
 use std::io;
 
 use adler32::adler32;
@@ -14,7 +13,7 @@ extern {
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t) {
+pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -23,9 +22,7 @@ pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *co
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 
-    let input_bytes = unsafe { slice::from_raw_parts(in_data, insize) };
-
-    let checksum = adler32(io::Cursor::new(&input_bytes)).expect("Error with adler32");
+    let checksum = adler32(io::Cursor::new(&in_data)).expect("Error with adler32");
     let cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
     let fdict = 0;
@@ -38,7 +35,7 @@ pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *co
         ZopfliAppendDataUChar((cmfflg % 256) as c_uchar, out, outsize);
     }
 
-    ZopfliDeflate(options, 2 /* dynamic block */, 1 /* final */, in_data, insize, bp_ptr, out, outsize);
+    ZopfliDeflate(options, 2 /* dynamic block */, 1 /* final */, in_data, bp_ptr, out, outsize);
 
     unsafe {
         ZopfliAppendDataUChar(((checksum >> 24) % 256) as c_uchar, out, outsize);
@@ -48,6 +45,7 @@ pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *co
     }
 
     if options.verbose != 0 {
+        let insize = in_data.len();
         unsafe {
             println!("Original Size: {}, Zlib: {}, Compression: {}% Removed", insize, *outsize, 100.0 * (insize - *outsize) as c_double / insize as c_double);
         }

@@ -1,5 +1,3 @@
-use std::slice;
-
 use crc::crc32;
 use libc::{c_uchar, c_double, size_t};
 
@@ -14,7 +12,7 @@ extern {
 /// Compresses the data according to the gzip specification, RFC 1952.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t) {
+pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -38,11 +36,9 @@ pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: *co
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 
-    ZopfliDeflate(options_ptr, 2 /* Dynamic block */, 1, in_data, insize, bp_ptr, out, outsize);
+    ZopfliDeflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out, outsize);
 
-    let input_bytes = unsafe { slice::from_raw_parts(in_data, insize) };
-
-    let crc = crc32::checksum_ieee(&input_bytes);
+    let crc = crc32::checksum_ieee(in_data);
 
     unsafe {
         ZopfliAppendDataUChar((crc >> 0) as u8, out, outsize);
@@ -51,7 +47,7 @@ pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: *co
         ZopfliAppendDataUChar((crc >> 24) as u8, out, outsize);
     }
 
-    let input_size = input_bytes.len() as u32;
+    let input_size = in_data.len() as u32;
     unsafe {
         ZopfliAppendDataUChar((input_size >> 0) as u8, out, outsize);
         ZopfliAppendDataUChar((input_size >> 8) as u8, out, outsize);
@@ -60,6 +56,7 @@ pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: *co
     }
 
     if options.verbose != 0 {
+        let insize = in_data.len();
         unsafe {
             println!("Original Size: {}, Gzip: {}, Compression: {}% Removed", insize, *outsize, 100.0 * (insize - *outsize) as c_double / insize as c_double);
         }

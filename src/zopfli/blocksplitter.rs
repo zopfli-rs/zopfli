@@ -223,7 +223,7 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
 ///   The coordinates are indices in the input array.
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
-pub fn blocksplit(options: &ZopfliOptions, in_data: *const c_uchar, instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
+pub fn blocksplit(options: &ZopfliOptions, in_data: &[u8], instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
     let mut pos;
     let mut s = ZopfliBlockState::new(options, instart, inend, 0);
 
