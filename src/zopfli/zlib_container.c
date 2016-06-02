@@ -59,16 +59,16 @@ void ZopfliZlibCompress(const ZopfliOptions* options,
   unsigned fcheck = 31 - cmfflg % 31;
   cmfflg += fcheck;
 
-  ZOPFLI_APPEND_DATA(cmfflg / 256, out, outsize);
-  ZOPFLI_APPEND_DATA(cmfflg % 256, out, outsize);
+  ZopfliAppendDataUChar(cmfflg / 256, out, outsize);
+  ZopfliAppendDataUChar(cmfflg % 256, out, outsize);
 
   ZopfliDeflate(options, 2 /* dynamic block */, 1 /* final */,
                 in, insize, &bitpointer, out, outsize);
 
-  ZOPFLI_APPEND_DATA((checksum >> 24) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((checksum >> 16) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA((checksum >> 8) % 256, out, outsize);
-  ZOPFLI_APPEND_DATA(checksum % 256, out, outsize);
+  ZopfliAppendDataUChar((checksum >> 24) % 256, out, outsize);
+  ZopfliAppendDataUChar((checksum >> 16) % 256, out, outsize);
+  ZopfliAppendDataUChar((checksum >> 8) % 256, out, outsize);
+  ZopfliAppendDataUChar(checksum % 256, out, outsize);
 
   if (options->verbose) {
     fprintf(stderr,
