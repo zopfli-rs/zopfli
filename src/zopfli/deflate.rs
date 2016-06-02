@@ -202,7 +202,7 @@ pub fn calculate_block_symbol_size(ll_lengths: *const c_uint, d_lengths: *const 
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes; only returns the size
 /// and runs faster.
-pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: bool, use_17: bool, use_18: bool) -> size_t {
+pub fn encode_tree_no_output(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, use_17: bool, use_18: bool) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -214,10 +214,10 @@ pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint
     let mut result_size = 0;
 
     /* Trim zeros. */
-    while hlit > 0 && unsafe { *ll_lengths.offset(257 + hlit - 1) } == 0 {
+    while hlit > 0 && ll_lengths[257 + hlit - 1] == 0 {
         hlit -= 1;
     }
-    while hdist > 0 && unsafe { *d_lengths.offset(1 + hdist - 1) } == 0 {
+    while hdist > 0 && d_lengths[1 + hdist - 1] == 0 {
         hdist -= 1;
     }
     let hlit2 = hlit + 257;
@@ -229,27 +229,27 @@ pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint
     while i < lld_total {
         /* This is an encoding of a huffman tree, so now the length is a symbol */
         let symbol = if i < hlit2 {
-            unsafe { *ll_lengths.offset(i) }
+            ll_lengths[i]
         } else {
-            unsafe { *d_lengths.offset(i - hlit2) }
+            d_lengths[i - hlit2]
         } as c_uchar;
 
         let mut count = 1;
         if use_16 || (symbol == 0 && (use_17 || use_18)) {
             let mut j = i + 1;
             let mut symbol_calc = if j < hlit2 {
-                unsafe { *ll_lengths.offset(j) }
+                ll_lengths[j]
             } else {
-                unsafe { *d_lengths.offset(j - hlit2) }
+                d_lengths[j - hlit2]
             } as c_uchar;
 
             while j < lld_total && symbol == symbol_calc {
                 count += 1;
                 j += 1;
                 symbol_calc = if j < hlit2 {
-                    unsafe { *ll_lengths.offset(j) }
+                    ll_lengths[j]
                 } else {
-                    unsafe { *d_lengths.offset(j - hlit2) }
+                    d_lengths[j - hlit2]
                 } as c_uchar;
             }
         }
@@ -298,7 +298,7 @@ pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint
         }
 
         /* No or insufficient repetition */
-        clcounts[symbol as usize] += count as usize;
+        clcounts[symbol as usize] += count;
         while count > 0 {
             count -= 1;
         }
@@ -327,7 +327,7 @@ pub fn encode_tree_no_output(ll_lengths: *const c_uint, d_lengths: *const c_uint
 }
 
 /// Gives the exact size of the tree, in bits, as it will be encoded in DEFLATE.
-pub fn calculate_tree_size(ll_lengths: *const c_uint, d_lengths: *const c_uint) -> size_t {
+pub fn calculate_tree_size(ll_lengths: &[c_uint], d_lengths: &[c_uint]) -> size_t {
     let mut result = 0;
     for i in 0..8 {
         let size = encode_tree_no_output(ll_lengths, d_lengths, i & 1 > 0, i & 2 > 0, i & 4 > 0);
@@ -347,7 +347,7 @@ extern {
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
-pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: bool, use_17: bool, use_18: bool, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) -> size_t {
+pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, use_17: bool, use_18: bool, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -363,10 +363,10 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
     let mut rle_bits = vec![];
 
     /* Trim zeros. */
-    while hlit > 0 && unsafe { *ll_lengths.offset(257 + hlit - 1) } == 0 {
+    while hlit > 0 && ll_lengths[257 + hlit - 1] == 0 {
         hlit -= 1;
     }
-    while hdist > 0 && unsafe { *d_lengths.offset(1 + hdist - 1) } == 0 {
+    while hdist > 0 && d_lengths[1 + hdist - 1] == 0 {
         hdist -= 1;
     }
     let hlit2 = hlit + 257;
@@ -378,27 +378,27 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
     while i < lld_total {
         /* This is an encoding of a huffman tree, so now the length is a symbol */
         let symbol = if i < hlit2 {
-            unsafe { *ll_lengths.offset(i) }
+            ll_lengths[i]
         } else {
-            unsafe { *d_lengths.offset(i - hlit2) }
+            d_lengths[i - hlit2]
         } as c_uchar;
 
         let mut count = 1;
         if use_16 || (symbol == 0 && (use_17 || use_18 )) {
             let mut j = i + 1;
             let mut symbol_calc = if j < hlit2 {
-                unsafe { *ll_lengths.offset(j) }
+                ll_lengths[j]
             } else {
-                unsafe { *d_lengths.offset(j - hlit2) }
+                d_lengths[j - hlit2]
             } as c_uchar;
 
             while j < lld_total && symbol == symbol_calc {
                 count += 1;
                 j += 1;
                 symbol_calc = if j < hlit2 {
-                    unsafe { *ll_lengths.offset(j) }
+                    ll_lengths[j]
                 } else {
-                    unsafe { *d_lengths.offset(j - hlit2) }
+                    d_lengths[j - hlit2]
                 } as c_uchar;
             }
         }
@@ -456,7 +456,7 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
         }
 
         /* No or insufficient repetition */
-        clcounts[symbol as usize] += count as usize;
+        clcounts[symbol as usize] += count;
         while count > 0 {
             rle.push(symbol);
             rle_bits.push(0);
@@ -512,7 +512,7 @@ pub fn encode_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, use_16: 
     result_size
 }
 
-pub fn add_dynamic_tree(ll_lengths: *const c_uint, d_lengths: *const c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let mut best = 0;
     let mut bestsize = 0;
 
@@ -573,7 +573,7 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
         let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
         let detect_tree_size = unsafe { *outsize };
-        add_dynamic_tree(ll_lengths.as_ptr(), d_lengths.as_ptr(), bp, out, outsize);
+        add_dynamic_tree(&ll_lengths, &d_lengths, bp, out, outsize);
         if options.verbose > 0 {
             println!("treesize: {}", unsafe { *outsize } - detect_tree_size);
         }
@@ -640,7 +640,7 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
     let mut ll_counts2 = ll_counts.clone();
     let mut d_counts2 = d_counts.clone();
 
-    let treesize = calculate_tree_size(ll_lengths.as_ptr(), d_lengths.as_ptr());
+    let treesize = calculate_tree_size(&ll_lengths, &d_lengths);
     let datasize = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend);
 
     optimize_huffman_for_rle(&mut ll_counts2);
@@ -650,7 +650,7 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
     let mut d_lengths2 = length_limited_code_lengths(&d_counts2, 15);
     patch_distance_codes_for_buggy_decoders(&mut d_lengths2[..]);
 
-    let treesize2 = calculate_tree_size(ll_lengths2.as_ptr(), d_lengths2.as_ptr());
+    let treesize2 = calculate_tree_size(&ll_lengths2, &d_lengths2);
     let datasize2 = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77, lstart, lend);
 
     if treesize2 + datasize2 < treesize + datasize {
