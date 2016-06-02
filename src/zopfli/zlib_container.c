@@ -26,7 +26,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 
 /* Calculates the adler32 checksum of the data */
-static unsigned adler32(const unsigned char* data, size_t size)
+unsigned adler32(const unsigned char* data, size_t size)
 {
   static const unsigned sums_overflow = 5550;
   unsigned s1 = 1;
@@ -47,33 +47,4 @@ static unsigned adler32(const unsigned char* data, size_t size)
   return (s2 << 16) | s1;
 }
 
-void ZopfliZlibCompress(const ZopfliOptions* options,
-                        const unsigned char* in, size_t insize,
-                        unsigned char** out, size_t* outsize) {
-  unsigned char bitpointer = 0;
-  unsigned checksum = adler32(in, (unsigned)insize);
-  unsigned cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
-  unsigned flevel = 3;
-  unsigned fdict = 0;
-  unsigned cmfflg = 256 * cmf + fdict * 32 + flevel * 64;
-  unsigned fcheck = 31 - cmfflg % 31;
-  cmfflg += fcheck;
-
-  ZopfliAppendDataUChar(cmfflg / 256, out, outsize);
-  ZopfliAppendDataUChar(cmfflg % 256, out, outsize);
-
-  ZopfliDeflate(options, 2 /* dynamic block */, 1 /* final */,
-                in, insize, &bitpointer, out, outsize);
-
-  ZopfliAppendDataUChar((checksum >> 24) % 256, out, outsize);
-  ZopfliAppendDataUChar((checksum >> 16) % 256, out, outsize);
-  ZopfliAppendDataUChar((checksum >> 8) % 256, out, outsize);
-  ZopfliAppendDataUChar(checksum % 256, out, outsize);
-
-  if (options->verbose) {
-    fprintf(stderr,
-            "Original Size: %d, Zlib: %d, Compression: %f%% Removed\n",
-            (int)insize, (int)*outsize,
-            100.0 * (double)(insize - *outsize) / (double)insize);
-  }
-}
+extern void ZopfliZlibCompress(const ZopfliOptions* options, const unsigned char* in, size_t insize, unsigned char** out, size_t* outsize);

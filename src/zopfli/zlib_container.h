@@ -30,6 +30,8 @@ Functions to compress according to the Zlib specification.
 extern "C" {
 #endif
 
+unsigned adler32(const unsigned char* data, size_t size);
+
 /*
 Compresses according to the zlib specification and append the compressed
 result to the output.

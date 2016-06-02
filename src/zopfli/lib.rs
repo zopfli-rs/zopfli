@@ -14,4 +14,5 @@ pub mod squeeze;
 pub mod symbols;
 pub mod tree;
 pub mod util;
+pub mod zlib;
 pub mod zopfli;
