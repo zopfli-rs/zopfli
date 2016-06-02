@@ -80,46 +80,4 @@ static unsigned long CRC(const unsigned char* data, size_t size) {
   return result ^ 0xffffffffu;
 }
 
-/* Compresses the data according to the gzip specification, RFC 1952. */
-/* Passthrough AND writes bp/out/outsize */
-void ZopfliGzipCompress(const ZopfliOptions* options,
-                        const unsigned char* in, size_t insize,
-                        unsigned char** out, size_t* outsize) {
-  unsigned long crcvalue = CRC(in, insize);
-  unsigned char bp = 0;
-
-  ZopfliAppendDataUChar(31, out, outsize);  /* ID1 */
-  ZopfliAppendDataUChar(139, out, outsize);  /* ID2 */
-  ZopfliAppendDataUChar(8, out, outsize);  /* CM */
-  ZopfliAppendDataUChar(0, out, outsize);  /* FLG */
-  /* MTIME */
-  ZopfliAppendDataUChar(0, out, outsize);
-  ZopfliAppendDataUChar(0, out, outsize);
-  ZopfliAppendDataUChar(0, out, outsize);
-  ZopfliAppendDataUChar(0, out, outsize);
-
-  ZopfliAppendDataUChar(2, out, outsize);  /* XFL, 2 indicates best compression. */
-  ZopfliAppendDataUChar(3, out, outsize);  /* OS follows Unix conventions. */
-
-  ZopfliDeflate(options, 2 /* Dynamic block */, 1,
-                in, insize, &bp, out, outsize);
-
-  /* CRC */
-  ZopfliAppendDataUChar(crcvalue % 256, out, outsize);
-  ZopfliAppendDataUChar((crcvalue >> 8) % 256, out, outsize);
-  ZopfliAppendDataUChar((crcvalue >> 16) % 256, out, outsize);
-  ZopfliAppendDataUChar((crcvalue >> 24) % 256, out, outsize);
-
-  /* ISIZE */
-  ZopfliAppendDataUChar(insize % 256, out, outsize);
-  ZopfliAppendDataUChar((insize >> 8) % 256, out, outsize);
-  ZopfliAppendDataUChar((insize >> 16) % 256, out, outsize);
-  ZopfliAppendDataUChar((insize >> 24) % 256, out, outsize);
-
-  if (options->verbose) {
-    fprintf(stderr,
-            "Original Size: %d, Gzip: %d, Compression: %f%% Removed\n",
-            (int)insize, (int)*outsize,
-            100.0 * (double)(insize - *outsize) / (double)insize);
-  }
-}
+void ZopfliGzipCompress(const ZopfliOptions* options, const unsigned char* in, size_t insize, unsigned char** out, size_t* outsize);

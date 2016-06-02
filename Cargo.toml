@@ -15,6 +15,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 libc = "*"
+crc = "*"
 
 [profile.release]
 debug = true
