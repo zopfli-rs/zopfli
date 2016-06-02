@@ -2,6 +2,7 @@
 
 extern crate libc;
 extern crate crc;
+extern crate adler32;
 
 pub mod blocksplitter;
 pub mod cache;

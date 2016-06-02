@@ -2,9 +2,15 @@
 name = "zopfli"
 version = "0.1.0"
 dependencies = [
+ "adler32 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "crc 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "adler32"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "crc"

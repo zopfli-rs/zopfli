@@ -1,3 +1,7 @@
+use std::slice;
+use std::io;
+
+use adler32::adler32;
 use libc::{c_uchar, size_t, c_uint, c_double};
 
 use deflate::ZopfliDeflate;
@@ -5,7 +9,6 @@ use zopfli::ZopfliOptions;
 
 #[link(name = "zopfli")]
 extern {
-    fn adler32(data: *const c_uchar, size: size_t) -> c_uint;
     fn ZopfliAppendDataUChar(value: c_uchar, data: *const *const c_uchar, size: *const size_t);
 }
 
@@ -20,7 +23,9 @@ pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *co
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 
-    let checksum = unsafe { adler32(in_data, insize) };
+    let input_bytes = unsafe { slice::from_raw_parts(in_data, insize) };
+
+    let checksum = adler32(io::Cursor::new(&input_bytes)).expect("Error with adler32");
     let cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
     let fdict = 0;
