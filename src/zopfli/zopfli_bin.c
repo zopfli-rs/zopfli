@@ -30,7 +30,6 @@ decompressor.
 #include <string.h>
 
 #include "deflate.h"
-#include "zlib_container.h"
 
 /* Windows workaround for stdout output. */
 #if _WIN32
