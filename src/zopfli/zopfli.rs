@@ -1,4 +1,6 @@
-use libc::c_int;
+use libc::{c_int, c_uchar, size_t};
+
+use deflate::ZopfliDeflate;
 
 /// Options used throughout the program.
 #[repr(C)]
@@ -18,4 +20,31 @@ pub struct ZopfliOptions {
   extreme results that hurt compression on some files). Default value: 15.
   */
   pub blocksplittingmax: c_int,
+}
+
+#[repr(C)]
+pub enum ZopfliFormat {
+  ZOPFLI_FORMAT_GZIP,
+  ZOPFLI_FORMAT_ZLIB,
+  ZOPFLI_FORMAT_DEFLATE
+}
+
+#[link(name = "zopfli")]
+extern {
+    fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t);
+    fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t);
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn ZopfliCompress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: *const c_uchar, insize: size_t, out: *const *const c_uchar, outsize: *const size_t) {
+    match output_type {
+        ZopfliFormat::ZOPFLI_FORMAT_GZIP => unsafe { ZopfliGzipCompress(options_ptr, in_data, insize, out, outsize) },
+        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => unsafe { ZopfliZlibCompress(options_ptr, in_data, insize, out, outsize) },
+        ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
+            let mut bp = 0;
+            let bp_ptr: *mut c_uchar = &mut bp;
+            ZopfliDeflate(options_ptr, 2 /* Dynamic block */, 1, in_data, insize, bp_ptr, out, outsize);
+        }
+    }
 }
