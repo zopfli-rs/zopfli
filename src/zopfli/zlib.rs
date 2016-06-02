@@ -3,7 +3,7 @@ use std::io;
 use adler32::adler32;
 use libc::{c_uchar, size_t, c_uint, c_double};
 
-use deflate::ZopfliDeflate;
+use deflate::deflate;
 use zopfli::ZopfliOptions;
 
 #[link(name = "zopfli")]
@@ -11,9 +11,7 @@ extern {
     fn ZopfliAppendDataUChar(value: c_uchar, data: *const *const c_uchar, size: *const size_t);
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
+pub fn zlib_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -35,7 +33,7 @@ pub extern fn ZopfliZlibCompress(options_ptr: *const ZopfliOptions, in_data: &[u
         ZopfliAppendDataUChar((cmfflg % 256) as c_uchar, out, outsize);
     }
 
-    ZopfliDeflate(options, 2 /* dynamic block */, 1 /* final */, in_data, bp_ptr, out, outsize);
+    deflate(options, 2 /* dynamic block */, 1 /* final */, in_data, bp_ptr, out, outsize);
 
     unsafe {
         ZopfliAppendDataUChar(((checksum >> 24) % 256) as c_uchar, out, outsize);

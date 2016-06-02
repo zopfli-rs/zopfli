@@ -112,5 +112,3 @@ void AddNonCompressedBlock(const ZopfliOptions* options, int final,
     pos += blocksize;
   }
 }
-
-extern void ZopfliDeflate(const ZopfliOptions* options, int btype, int final, const unsigned char* in, size_t insize, unsigned char* bp, unsigned char** out, size_t* outsize);

@@ -855,14 +855,14 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
 }
 
 
-/// Deflate a part, to allow ZopfliDeflate() to use multiple master blocks if
+/// Deflate a part, to allow deflate() to use multiple master blocks if
 /// needed.
 /// It is possible to call this function multiple times in a row, shifting
 /// instart and inend to next bytes of the data. If instart is larger than 0, then
 /// previous bytes are used as the initial dictionary for LZ77.
 /// This function will usually output multiple deflate blocks. If final is 1, then
 /// the final bit will be set on the last block.
-/// Like ZopfliDeflate, but allows to specify start and end byte with instart and
+/// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
 pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
@@ -903,9 +903,7 @@ pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, i
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliDeflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn deflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr

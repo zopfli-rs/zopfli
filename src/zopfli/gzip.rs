@@ -1,7 +1,7 @@
 use crc::crc32;
 use libc::{c_uchar, c_double, size_t};
 
-use deflate::ZopfliDeflate;
+use deflate::deflate;
 use zopfli::ZopfliOptions;
 
 #[link(name = "zopfli")]
@@ -10,9 +10,7 @@ extern {
 }
 
 /// Compresses the data according to the gzip specification, RFC 1952.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
+pub fn gzip_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -36,7 +34,7 @@ pub extern fn ZopfliGzipCompress(options_ptr: *const ZopfliOptions, in_data: &[u
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 
-    ZopfliDeflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out, outsize);
+    deflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out, outsize);
 
     let crc = crc32::checksum_ieee(in_data);
 

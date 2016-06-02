@@ -5,9 +5,9 @@ use std::{ptr, slice};
 
 use libc::{c_int, c_uchar, size_t, c_char};
 
-use deflate::ZopfliDeflate;
-use gzip::ZopfliGzipCompress;
-use zlib::ZopfliZlibCompress;
+use deflate::deflate;
+use gzip::gzip_compress;
+use zlib::zlib_compress;
 
 /// Options used throughout the program.
 #[repr(C)]
@@ -36,16 +36,14 @@ pub enum ZopfliFormat {
   ZOPFLI_FORMAT_DEFLATE
 }
 
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCompress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
+pub fn compress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
     match output_type {
-        ZopfliFormat::ZOPFLI_FORMAT_GZIP => ZopfliGzipCompress(options_ptr, in_data, out, outsize),
-        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => ZopfliZlibCompress(options_ptr, in_data, out, outsize),
+        ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options_ptr, in_data, out, outsize),
+        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options_ptr, in_data, out, outsize),
         ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
             let mut bp = 0;
             let bp_ptr: *mut c_uchar = &mut bp;
-            ZopfliDeflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out, outsize);
+            deflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out, outsize);
         }
     }
 }
@@ -78,7 +76,7 @@ pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: Zopfl
     let mut outsize = 0;
     let outsize_ptr: *mut size_t = &mut outsize;
 
-    ZopfliCompress(options_ptr, output_type, &in_data, &out, outsize_ptr);
+    compress(options_ptr, output_type, &in_data, &out, outsize_ptr);
 
     let out_slice = unsafe { slice::from_raw_parts(out, outsize) };
 
