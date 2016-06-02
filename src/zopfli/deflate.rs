@@ -636,12 +636,12 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btyp
 /// bits, not including the 3-bit block header.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_counts: Vec<size_t>, d_counts: Vec<size_t>, ll_lengths: *mut c_uint, d_lengths: *mut c_uint) -> c_double {
+pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, lend: size_t, ll_counts: Vec<size_t>, d_counts: Vec<size_t>, ll_lengths: Vec<c_uint>, d_lengths: Vec<c_uint>) -> (c_double, Vec<c_uint>, Vec<c_uint>) {
     let mut ll_counts2 = ll_counts.clone();
     let mut d_counts2 = d_counts.clone();
 
-    let treesize = calculate_tree_size(ll_lengths, d_lengths);
-    let datasize = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths, d_lengths, lz77, lstart, lend);
+    let treesize = calculate_tree_size(ll_lengths.as_ptr(), d_lengths.as_ptr());
+    let datasize = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths.as_ptr(), d_lengths.as_ptr(), lz77, lstart, lend);
 
     optimize_huffman_for_rle(&mut ll_counts2);
     optimize_huffman_for_rle(&mut d_counts2);
@@ -654,19 +654,10 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
     let datasize2 = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths2.as_ptr(), d_lengths2.as_ptr(), lz77, lstart, lend);
 
     if treesize2 + datasize2 < treesize + datasize {
-        for i in 0..ZOPFLI_NUM_LL {
-            unsafe {
-                *ll_lengths.offset(i as isize) = ll_lengths2[i];
-            }
-        }
-        for i in 0..ZOPFLI_NUM_D {
-            unsafe {
-                *d_lengths.offset(i as isize) = d_lengths2[i];
-            }
-        }
-        return (treesize2 + datasize2) as c_double;
+        (((treesize2 + datasize2) as c_double), ll_lengths2, d_lengths2)
+    } else {
+        ((treesize + datasize) as c_double, ll_lengths, d_lengths)
     }
-    (treesize + datasize) as c_double
 }
 
 /// Calculates the bit lengths for the symbols for dynamic blocks. Chooses bit
@@ -679,13 +670,12 @@ pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (c
     let (mut ll_counts, d_counts) = get_histogram(&lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
-    let mut ll_lengths = length_limited_code_lengths(&ll_counts, 15);
+    let ll_lengths = length_limited_code_lengths(&ll_counts, 15);
     let mut d_lengths = length_limited_code_lengths(&d_counts, 15);
 
     patch_distance_codes_for_buggy_decoders(&mut d_lengths[..]);
 
-    let result = try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths.as_mut_ptr(), d_lengths.as_mut_ptr());
-    (result, ll_lengths, d_lengths)
+    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths)
 }
 
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
