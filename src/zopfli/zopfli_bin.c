@@ -29,7 +29,7 @@ decompressor.
 #include <stdlib.h>
 #include <string.h>
 
-#include "deflate.h"
+#include "zopfli.h"
 
 /* Windows workaround for stdout output. */
 #if _WIN32
