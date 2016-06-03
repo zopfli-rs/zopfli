@@ -16,6 +16,6 @@ fn main() {
     };
 
     for filename in env::args().skip(1) {
-        zopfli::CompressFile(&options, &output_type, &filename, &format!("{}{}", filename, extension));
+        zopfli::compress_file(&options, &output_type, &filename, &format!("{}{}", filename, extension));
     }
 }

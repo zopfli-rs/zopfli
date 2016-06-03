@@ -76,9 +76,7 @@ pub fn compress(options: &Options, output_type: &ZopfliFormat, in_data: &[u8], o
 }
 
 /// outfilename: filename to write output to, or 0 to write to stdout instead
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn CompressFile(options: &Options, output_type: &ZopfliFormat, infilename: &str, outfilename: &str) {
+pub fn compress_file(options: &Options, output_type: &ZopfliFormat, infilename: &str, outfilename: &str) {
 
     let mut file = match File::open(infilename) {
         Err(why) => panic!("couldn't open {}: {}", infilename, why),
