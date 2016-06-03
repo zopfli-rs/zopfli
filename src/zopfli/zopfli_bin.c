@@ -36,62 +36,6 @@ decompressor.
 #include <fcntl.h>
 #endif
 
-/*
-Loads a file into a memory array. Returns 1 on success, 0 if file doesn't exist
-or couldn't be opened.
-*/
-/* MISNOMER/FALSE COGNATE - THIS IS NOT "OUT" */
-static int LoadFile(const char* filename,
-                    unsigned char** out, size_t* outsize) {
-  FILE* file;
-
-  *out = 0;
-  *outsize = 0;
-  file = fopen(filename, "rb");
-  if (!file) return 0;
-
-  fseek(file , 0 , SEEK_END);
-  *outsize = ftell(file);
-  if(*outsize > 2147483647) {
-    fprintf(stderr,"Files larger than 2GB are not supported.\n");
-    exit(EXIT_FAILURE);
-  }
-  rewind(file);
-
-  *out = (unsigned char*)malloc(*outsize);
-
-  if (*outsize && (*out)) {
-    size_t testsize = fread(*out, 1, *outsize, file);
-    if (testsize != *outsize) {
-      /* It could be a directory */
-      free(*out);
-      *out = 0;
-      *outsize = 0;
-      fclose(file);
-      return 0;
-    }
-  }
-
-  assert(!(*outsize) || out);  /* If size is not zero, out must be allocated. */
-  fclose(file);
-  return 1;
-}
-
-/*
-Saves a file from a memory array, overwriting the file if it existed.
-*/
-static void SaveFile(const char* filename,
-                     const unsigned char* in, size_t insize) {
-  FILE* file = fopen(filename, "wb" );
-  if (file == NULL) {
-      fprintf(stderr,"Error: Cannot write to output file, terminating.\n");
-      exit (EXIT_FAILURE);
-  }
-  assert(file);
-  fwrite((char*)in, 1, insize, file);
-  fclose(file);
-}
-
 extern void CompressFile(const ZopfliOptions* options, ZopfliFormat output_type, const char* infilename, const char* outfilename);
 
 /*
