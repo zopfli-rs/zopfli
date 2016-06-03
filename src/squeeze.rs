@@ -257,6 +257,9 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
+    if instart == inend {
+        return (0.0, length_array);
+    }
     let mut leng;
     let mut longest_match;
     let sublen = unsafe { malloc(mem::size_of::<c_ushort>() * 259) as *mut c_ushort };
@@ -268,11 +271,8 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
 
     let mincost = get_cost_model_min_cost(costmodel, costcontext);
 
-    if instart == inend {
-        return (0.0, length_array);
-    }
-
     h.reset(ZOPFLI_WINDOW_SIZE);
+
     let arr = &in_data[..inend];
     h.warmup(arr, windowstart, inend);
     for i in windowstart..instart {
