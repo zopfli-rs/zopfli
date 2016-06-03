@@ -5,7 +5,6 @@ use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH};
 const HASH_SHIFT: c_int = 5;
 const HASH_MASK: c_int = 32767;
 
-#[repr(C)]
 pub struct ZopfliHash {
     head: Vec<c_int>,  /* Hash value to index of its most recent occurrence. */
     prev: Vec<c_ushort>,  /* Index to index of prev. occurrence of same hash. */
@@ -147,17 +146,4 @@ impl ZopfliHash {
             self.val2
         }
     }
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliInitHash(window_size: size_t) -> *mut ZopfliHash {
-    Box::into_raw(Box::new(ZopfliHash::new(window_size)))
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn ZopfliCleanHash(ptr: *mut ZopfliHash) {
-    if ptr.is_null() { return }
-    unsafe { Box::from_raw(ptr); }
 }

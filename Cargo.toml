@@ -9,10 +9,6 @@ homepage = "https://github.com/carols10cents/zopfli-1"
 repository = "https://github.com/carols10cents/zopfli-1"
 readme = "README.md"
 
-[lib]
-path = "src/zopfli/lib.rs"
-crate-type = ["staticlib"]
-
 [dependencies]
 libc = "*"
 crc = "*"

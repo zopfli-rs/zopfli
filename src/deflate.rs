@@ -7,7 +7,7 @@ use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
-use zopfli::ZopfliOptions;
+use ZopfliOptions;
 
 pub fn fixed_tree() -> (Vec<c_uint>, Vec<c_uint>) {
     let mut ll = vec![8; ZOPFLI_NUM_LL];

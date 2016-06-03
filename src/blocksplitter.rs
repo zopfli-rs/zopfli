@@ -3,7 +3,7 @@ use libc::{size_t, c_double, c_uchar};
 use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
 use util::{ZOPFLI_LARGE_FLOAT};
-use zopfli::ZopfliOptions;
+use ZopfliOptions;
 
 /// Finds minimum of function f(i) where is is of type size_t, f(i) is of type
 /// double, i is in range start-end (excluding end).

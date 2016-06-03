@@ -2,7 +2,7 @@ use crc::crc32;
 use libc::{c_uchar, c_double};
 
 use deflate::deflate;
-use zopfli::ZopfliOptions;
+use ZopfliOptions;
 
 /// Compresses the data according to the gzip specification, RFC 1952.
 pub fn gzip_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: &mut Vec<u8>) {

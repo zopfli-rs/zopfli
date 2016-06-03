@@ -4,7 +4,7 @@ use adler32::adler32;
 use libc::{c_uchar, c_uint, c_double};
 
 use deflate::deflate;
-use zopfli::ZopfliOptions;
+use ZopfliOptions;
 
 pub fn zlib_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: &mut Vec<u8>) {
     let options = unsafe {

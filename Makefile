@@ -6,9 +6,7 @@ CXXFLAGS = -W -Wall -Wextra -ansi -pedantic -O2
 
 ZOPFLI_RUST_DEBUG := target/debug/libzopfli.a
 ZOPFLI_RUST_RELEASE := target/release/libzopfli.a
-ZOPFLILIB_SRC = src/zopfli/util.c src/zopfli/hash.c
 ZOPFLILIB_OBJ := $(patsubst src/zopfli/%.c,%.o,$(ZOPFLILIB_SRC))
-ZOPFLIBIN_SRC := src/zopfli/zopfli_bin.c
 
 .PHONY: zopfli
 
@@ -22,11 +20,11 @@ target/release/libzopfli.a:
 
 # Zopfli binary
 zopfli: $(ZOPFLI_RUST_RELEASE)
-	$(CC) $(ZOPFLI_RUST_RELEASE) $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) -o zopfli
+	ln -sf target/release/zopfli zopfli
 
 # Zopfli debug binary
 zopflidebug: $(ZOPFLI_RUST_DEBUG)
-	$(CC) $(ZOPFLI_RUST_DEBUG) $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) -o zopfli
+	ln -sf target/debug/zopfli zopfli
 
 # Zopfli shared library
 libzopfli:

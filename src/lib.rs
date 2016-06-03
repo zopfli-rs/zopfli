@@ -1,8 +1,26 @@
+#![deny(trivial_casts, trivial_numeric_casts)]
+
+extern crate libc;
+extern crate crc;
+extern crate adler32;
+
+pub mod blocksplitter;
+pub mod cache;
+pub mod deflate;
+pub mod gzip;
+pub mod hash;
+pub mod katajainen;
+pub mod lz77;
+pub mod squeeze;
+pub mod symbols;
+pub mod tree;
+pub mod util;
+pub mod zlib;
+
 use std::io::prelude::*;
 use std::fs::File;
-use std::ffi::CStr;
 
-use libc::{c_int, c_uchar, c_char};
+use libc::{c_int, c_uchar};
 
 use deflate::deflate;
 use gzip::gzip_compress;
@@ -28,6 +46,17 @@ pub struct ZopfliOptions {
   pub blocksplittingmax: c_int,
 }
 
+impl ZopfliOptions {
+    pub fn new() -> ZopfliOptions {
+        ZopfliOptions {
+            verbose: 0,
+            verbose_more: 0,
+            numiterations: 15,
+            blocksplittingmax: 15,
+        }
+    }
+}
+
 #[repr(C)]
 pub enum ZopfliFormat {
   ZOPFLI_FORMAT_GZIP,
@@ -35,8 +64,8 @@ pub enum ZopfliFormat {
   ZOPFLI_FORMAT_DEFLATE
 }
 
-pub fn compress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: &[u8], out: &mut Vec<u8>) {
-    match output_type {
+pub fn compress(options_ptr: *const ZopfliOptions, output_type: &ZopfliFormat, in_data: &[u8], out: &mut Vec<u8>) {
+    match *output_type {
         ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options_ptr, in_data, out),
         ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options_ptr, in_data, out),
         ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
@@ -50,21 +79,10 @@ pub fn compress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in
 /// outfilename: filename to write output to, or 0 to write to stdout instead
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, infilename: *const c_char, outfilename: *const c_char) {
+pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: &ZopfliFormat, infilename: &str, outfilename: &str) {
 
-    let infilename_str = unsafe {
-        assert!(!infilename.is_null());
-        CStr::from_ptr(infilename).to_str().expect("Invalid input filename string")
-    };
-
-    // TODO: Allow specifying output to STDOUT
-    let outfilename_str = unsafe {
-        assert!(!outfilename.is_null());
-        CStr::from_ptr(outfilename).to_str().expect("Invalid output filename string")
-    };
-
-    let mut file = match File::open(infilename_str) {
-        Err(why) => panic!("couldn't open {}: {}", infilename_str, why),
+    let mut file = match File::open(infilename) {
+        Err(why) => panic!("couldn't open {}: {}", infilename, why),
         Ok(file) => file,
     };
 
@@ -75,7 +93,7 @@ pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: Zopfl
 
     compress(options_ptr, output_type, &in_data, &mut out);
 
-    let mut buffer = File::create(outfilename_str).expect("couldn't create output file");
+    let mut buffer = File::create(outfilename).expect("couldn't create output file");
 
     buffer.write_all(&out).expect("couldn't write to output file");
 }
