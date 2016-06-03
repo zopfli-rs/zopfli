@@ -905,3 +905,17 @@ pub fn deflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_i
         }
     }
 }
+
+/// bp = bitpointer, always in range [0, 7].
+/// The outsize is number of necessary bytes to encode the bits.
+/// Given the value of bp and the amount of bytes, the amount of bits represented
+/// is not simply bytesize * 8 + bp because even representing one bit requires a
+/// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
+pub fn add_bit(bit: c_int, bp: *mut c_uchar, out: &mut Vec<u8>) {
+    if unsafe { *bp } == 0 {
+        out.push(0);
+    }
+    let outsize = out.len();
+    out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
+    unsafe { *bp = (*bp + 1) & 7};
+}
