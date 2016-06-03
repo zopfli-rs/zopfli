@@ -22,7 +22,7 @@ const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 /// Cost model which should exactly match fixed tree.
 /// type: CostModelFun
 #[allow(non_snake_case)]
-pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<SymbolStats>) -> c_double {
+pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> c_double {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -48,7 +48,7 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<SymbolStats>) 
 /// Cost model based on symbol statistics.
 /// type: CostModelFun
 #[allow(non_snake_case)]
-pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<SymbolStats>) -> c_double {
+pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolStats>) -> c_double {
     let stats = stats_option.expect("GetCostStat expects Some(SymbolStats)");
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
@@ -209,7 +209,7 @@ pub fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &Symbo
 
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
-pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<SymbolStats>) -> c_double, costcontext: Option<SymbolStats>) -> c_double {
+pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>) -> c_double {
     let mut bestlength: c_int = 0; // length that has lowest cost in the cost model
     let mut bestdist: c_int = 0; // distance that has lowest cost in the cost model
 
@@ -254,7 +254,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<SymbolStats>
 /// length_array: output array of size (inend - instart) which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the costmodel, needed to get to the end.
-pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<SymbolStats>) -> c_double, costcontext: Option<SymbolStats>, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
+pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -398,7 +398,7 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
 /// store: place to output the LZ77 data
 /// returns the cost that was, according to the costmodel, needed to get to the end.
 ///     This is not the actual cost.
-pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<SymbolStats>) -> c_double, costcontext: Option<SymbolStats>, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
+pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
     let path = trace_backwards(inend - instart, length_array);
     store.follow_path(in_data, instart, inend, path, s);
@@ -454,7 +454,7 @@ pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, i
     run. */
     for i in 0..numiterations {
         currentstore.reset();
-        lz77_optimal_run(s, in_data, instart, inend, GetCostStat, Some(stats), &mut currentstore, &mut h, &mut costs);
+        lz77_optimal_run(s, in_data, instart, inend, GetCostStat, Some(&stats), &mut currentstore, &mut h, &mut costs);
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
 
         if s.options.verbose_more || (s.options.verbose && cost < bestcost) {
