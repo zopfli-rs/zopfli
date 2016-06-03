@@ -7,9 +7,9 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
-use std::{mem, ptr, cmp};
+use std::{mem, cmp};
 
-use libc::{c_void, c_uint, c_double, c_int, size_t, c_ushort, malloc, c_float};
+use libc::{c_uint, c_double, c_int, size_t, c_ushort, malloc, c_float};
 
 use deflate::calculate_block_size;
 use hash::ZopfliHash;
@@ -22,7 +22,7 @@ const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 /// Cost model which should exactly match fixed tree.
 /// type: CostModelFun
 #[allow(non_snake_case)]
-pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: *const c_void) -> c_double {
+pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<SymbolStats>) -> c_double {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -48,11 +48,8 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: *const c_void) -> c_d
 /// Cost model based on symbol statistics.
 /// type: CostModelFun
 #[allow(non_snake_case)]
-pub fn GetCostStat(litlen: c_uint, dist: c_uint, context: *const c_void) -> c_double {
-    let stats = unsafe {
-        assert!(!context.is_null());
-        &*(context as *const SymbolStats)
-    };
+pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<SymbolStats>) -> c_double {
+    let stats = stats_option.expect("GetCostStat expects Some(SymbolStats)");
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
     } else {
@@ -211,7 +208,7 @@ pub fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &Symbo
 
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
-pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void) -> c_double {
+pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<SymbolStats>) -> c_double, costcontext: Option<SymbolStats>) -> c_double {
     let mut bestlength: c_int = 0; // length that has lowest cost in the cost model
     let mut bestdist: c_int = 0; // distance that has lowest cost in the cost model
 
@@ -256,8 +253,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, *const c_void) -> c
 /// length_array: output array of size (inend - instart) which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the costmodel, needed to get to the end.
-// TODO: upstream is now reusing an already allocated hash; we're ignoring it
-pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
+pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<SymbolStats>) -> c_double, costcontext: Option<SymbolStats>, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -401,7 +397,7 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
 /// store: place to output the LZ77 data
 /// returns the cost that was, according to the costmodel, needed to get to the end.
 ///     This is not the actual cost.
-pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, *const c_void) -> c_double, costcontext: *const c_void, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
+pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<SymbolStats>) -> c_double, costcontext: Option<SymbolStats>, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
     let path = trace_backwards(inend - instart, length_array);
     store.follow_path(in_data, instart, inend, path, s);
@@ -422,7 +418,7 @@ pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: siz
     s.blockend = inend;
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
     let mut costs = Vec::with_capacity(inend - instart - 1);
-    lz77_optimal_run(s, in_data, instart, inend, GetCostFixed, ptr::null(), store, &mut h, &mut costs);
+    lz77_optimal_run(s, in_data, instart, inend, GetCostFixed, None, store, &mut h, &mut costs);
 }
 
 /// Calculates lit/len and dist pairs for given data.
@@ -457,8 +453,7 @@ pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, i
     run. */
     for i in 0..numiterations {
         currentstore.reset();
-        let stats_ptr: *const SymbolStats = &stats;
-        lz77_optimal_run(s, in_data, instart, inend, GetCostStat, stats_ptr as *const c_void, &mut currentstore, &mut h, &mut costs);
+        lz77_optimal_run(s, in_data, instart, inend, GetCostStat, Some(stats), &mut currentstore, &mut h, &mut costs);
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), 2);
 
         if s.options.verbose_more != 0 || (s.options.verbose != 0 && cost < bestcost) {
