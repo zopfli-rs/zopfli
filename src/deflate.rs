@@ -48,7 +48,7 @@ pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
 
     // 2) Let's mark all population counts that already can be encoded
     // with an rle code.
-    let mut good_for_rle = vec![0; length];
+    let mut good_for_rle = vec![false; length];
 
     // Let's not spoil any of the existing good rle codes.
     // Mark any seq of 0's that is longer than 5 as a good_for_rle.
@@ -59,7 +59,7 @@ pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
         if i == length || counts[i] != symbol {
             if (symbol == 0 && stride >= 5) || (symbol != 0 && stride >= 7) {
                 for k in 0..stride {
-                    good_for_rle[i - k - 1] = 1;
+                    good_for_rle[i - k - 1] = true;
                 }
             }
             stride = 1;
@@ -77,7 +77,7 @@ pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
     let mut sum = 0;
     for i in 0..(length + 1) {
         // Heuristic for selecting the stride ranges to collapse.
-        if i == length || good_for_rle[i] != 0 || (counts[i] as i32 - limit as i32).abs() >= 4 {
+        if i == length || good_for_rle[i] || (counts[i] as i32 - limit as i32).abs() >= 4 {
             if stride >= 4 || (stride >= 3 && sum == 0) {
                 // The stride must end, collapse what we have, if we have enough (4).
                 let mut count = (sum + stride / 2) / stride;
