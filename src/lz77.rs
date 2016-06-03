@@ -415,13 +415,6 @@ pub fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end
 pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
     let mut limit = limit;
 
-    let hpos = pos & ZOPFLI_WINDOW_MASK;
-    let mut bestdist = 0;
-    let mut bestlength = 1;
-    let mut which_hash = 1;
-    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
-    let mut dist;  /* Not unsigned short on purpose. */
-
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
     if longest_match.from_cache == 1 {
@@ -448,6 +441,29 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
     if pos + limit > size {
         limit = size - pos;
     }
+
+    let (bestdist, bestlength) = find_longest_match_loop(h, array, pos, size, limit, sublen);
+
+    s.store_in_longest_match_cache(pos, limit, sublen, bestdist as c_ushort, bestlength as c_ushort);
+
+    assert!(bestlength <= limit);
+
+    assert!(pos + bestlength <= size);
+    longest_match.distance = bestdist as c_ushort;
+    longest_match.length = bestlength as c_ushort;
+    longest_match.from_cache = 0;
+    longest_match.limit = limit;
+    longest_match
+}
+
+pub fn find_longest_match_loop(h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> (i32, size_t) {
+    let hpos = pos & ZOPFLI_WINDOW_MASK;
+    let mut which_hash = 1;
+
+    let mut bestlength = 1;
+    let mut bestdist = 0;
+    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
+
     let arrayend = pos + limit;
     let arrayend_safe = arrayend - 8;
 
@@ -458,7 +474,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
 
     assert!(pp as size_t == hpos);
 
-    dist = if (p as c_int) < pp {
+    let mut dist = if (p as c_int) < pp {
         pp - (p as c_int)
     } else {
         (ZOPFLI_WINDOW_SIZE - (p as size_t)) as c_int + pp
@@ -541,17 +557,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
             break;
         }
     }
-
-    s.store_in_longest_match_cache(pos, limit, sublen, bestdist as c_ushort, bestlength as c_ushort);
-
-    assert!(bestlength <= limit);
-
-    assert!(pos + bestlength <= size);
-    longest_match.distance = bestdist as c_ushort;
-    longest_match.length = bestlength as c_ushort;
-    longest_match.from_cache = 0;
-    longest_match.limit = limit;
-    longest_match
+    (bestdist, bestlength)
 }
 
 /// Gets a score of the length given the distance. Typically, the score of the
