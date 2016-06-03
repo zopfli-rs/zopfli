@@ -22,7 +22,7 @@ use std::fs::File;
 
 use libc::{c_int, c_uchar};
 
-use deflate::deflate;
+use deflate::{deflate, BlockType};
 use gzip::gzip_compress;
 use zlib::zlib_compress;
 
@@ -69,7 +69,7 @@ pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &m
         Format::Deflate => {
             let mut bp = 0;
             let bp_ptr: *mut c_uchar = &mut bp;
-            deflate(options, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
+            deflate(options, BlockType::Dynamic, 1, in_data, bp_ptr, out);
         }
     }
 }

@@ -9,6 +9,13 @@ use tree::{lengths_to_symbols};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
 use Options;
 
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum BlockType {
+    Uncompressed,
+    Fixed,
+    Dynamic,
+}
+
 pub fn fixed_tree() -> (Vec<c_uint>, Vec<c_uint>) {
     let mut ll = vec![8; ZOPFLI_NUM_LL];
     for i in 144..256 {
@@ -519,7 +526,7 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_
 
 /// Adds a deflate block with the given LZ77 data to the output.
 /// options: global program options
-/// btype: the block type, must be 1 or 2
+/// btype: the block type, must be Fixed or Dynamic
 /// final: whether to set the "final" bit on this block, must be the last block
 /// litlens: literal/length array of the LZ77 data, in the same format as in
 ///     Lz77Store.
@@ -532,11 +539,11 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_
 /// bp: output bit pointer
 /// out: dynamic output array to append to
 /// outsize: dynamic output array size
-pub fn add_lz77_block(options: &Options, btype: c_int, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_lz77_block(options: &Options, btype: BlockType, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let compressed_size;
     let mut uncompressed_size: size_t = 0;
 
-    if btype == 0 {
+    if btype == BlockType::Uncompressed {
         let length = get_byte_range(lz77, lstart, lend);
         let pos = if lstart == lend {
             0
@@ -549,23 +556,26 @@ pub fn add_lz77_block(options: &Options, btype: c_int, final_block: c_int, in_da
     }
 
     add_bit(final_block, bp, out);
-    add_bit(btype & 1, bp, out);
-    add_bit((btype & 2) >> 1, bp, out);
 
-    let (ll_lengths, d_lengths) = if btype == 1 {
-        /* Fixed block. */
-        fixed_tree()
-    } else {
-        /* Dynamic block. */
-        assert!(btype == 2);
-        let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
+    let (ll_lengths, d_lengths) = match btype {
+        BlockType::Uncompressed => unreachable!(),
+        BlockType::Fixed => {
+            add_bit(1, bp, out);
+            add_bit(0, bp, out);
+            fixed_tree()
+        },
+        BlockType::Dynamic => {
+            add_bit(0, bp, out);
+            add_bit(1, bp, out);
+            let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
-        let detect_tree_size = out.len();
-        add_dynamic_tree(&ll_lengths, &d_lengths, bp, out);
-        if options.verbose > 0 {
-            println!("treesize: {}", out.len() - detect_tree_size);
+            let detect_tree_size = out.len();
+            add_dynamic_tree(&ll_lengths, &d_lengths, bp, out);
+            if options.verbose > 0 {
+                println!("treesize: {}", out.len() - detect_tree_size);
+            }
+            (ll_lengths, d_lengths)
         }
-        (ll_lengths, d_lengths)
     };
 
     let ll_symbols = lengths_to_symbols(&ll_lengths, 15);
@@ -595,25 +605,29 @@ pub fn add_lz77_block(options: &Options, btype: c_int, final_block: c_int, in_da
 /// dists: ll77 distances
 /// lstart: start of block
 /// lend: end of block (not inclusive)
-pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btype: c_int) -> c_double {
-    if btype == 0 {
-        let length = get_byte_range(lz77, lstart, lend);
-        let rem = length % 65535;
-        let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
-        /* An uncompressed block must actually be split into multiple blocks if it's
-           larger than 65535 bytes long. Eeach block header is 5 bytes: 3 bits,
-           padding, LEN and NLEN (potential less padding for first one ignored). */
-        (blocks * 5 * 8 + length * 8) as c_double
-    } else if btype == 1 {
-        let fixed_tree = fixed_tree();
-        let ll_lengths = fixed_tree.0;
-        let d_lengths = fixed_tree.1;
+pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btype: BlockType) -> c_double {
+    match btype {
+        BlockType::Uncompressed => {
+            let length = get_byte_range(lz77, lstart, lend);
+            let rem = length % 65535;
+            let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
+            /* An uncompressed block must actually be split into multiple blocks if it's
+               larger than 65535 bytes long. Eeach block header is 5 bytes: 3 bits,
+               padding, LEN and NLEN (potential less padding for first one ignored). */
+            (blocks * 5 * 8 + length * 8) as c_double
+        },
+        BlockType::Fixed => {
+            let fixed_tree = fixed_tree();
+            let ll_lengths = fixed_tree.0;
+            let d_lengths = fixed_tree.1;
 
-        let mut result: c_double = 3.0; /* bfinal and btype bits */
-        result += calculate_block_symbol_size(&ll_lengths, &d_lengths, lz77, lstart, lend) as c_double;
-        result
-    } else {
-        get_dynamic_lengths(lz77, lstart, lend).0 + 3.0
+            let mut result: c_double = 3.0; /* bfinal and btype bits */
+            result += calculate_block_symbol_size(&ll_lengths, &d_lengths, lz77, lstart, lend) as c_double;
+            result
+        },
+        BlockType::Dynamic => {
+            get_dynamic_lengths(lz77, lstart, lend).0 + 3.0
+        },
     }
 }
 
@@ -695,9 +709,9 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
 }
 
 pub fn add_lz77_block_auto_type(options: &Options, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
-    let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
-    let mut fixedcost = calculate_block_size(lz77, lstart, lend, 1);
-    let dyncost = calculate_block_size(lz77, lstart, lend, 2);
+    let uncompressedcost = calculate_block_size(lz77, lstart, lend, BlockType::Uncompressed);
+    let mut fixedcost = calculate_block_size(lz77, lstart, lend, BlockType::Fixed);
+    let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
 
     /* Whether to perform the expensive calculation of creating an optimal block
     with fixed huffman tree to check if smaller. Only do this for small blocks or
@@ -719,29 +733,29 @@ pub fn add_lz77_block_auto_type(options: &Options, final_block: c_int, in_data: 
 
         let mut s = ZopfliBlockState::new(options, instart, inend, 1);
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut fixedstore);
-        fixedcost = calculate_block_size(&fixedstore, 0, fixedstore.size(), 1);
+        fixedcost = calculate_block_size(&fixedstore, 0, fixedstore.size(), BlockType::Fixed);
     }
 
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
-        add_lz77_block(options, 0, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
+        add_lz77_block(options, BlockType::Uncompressed, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
     } else if fixedcost < dyncost {
         if expensivefixed {
-            add_lz77_block(options, 1, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out);
+            add_lz77_block(options, BlockType::Fixed, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out);
         } else {
-            add_lz77_block(options, 1, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
+            add_lz77_block(options, BlockType::Fixed, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
         }
     } else {
-        add_lz77_block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
+        add_lz77_block(options, BlockType::Dynamic, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
     }
 }
 
 /// Calculates block size in bits, automatically using the best btype.
 pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
-    let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
+    let uncompressedcost = calculate_block_size(lz77, lstart, lend, BlockType::Uncompressed);
     /* Don't do the expensive fixed cost calculation for larger blocks that are
      unlikely to use it. */
-    let fixedcost = if lz77.size() > 1000 { uncompressedcost } else { calculate_block_size(lz77, lstart, lend, 1) };
-    let dyncost = calculate_block_size(lz77, lstart, lend, 2);
+    let fixedcost = if lz77.size() > 1000 { uncompressedcost } else { calculate_block_size(lz77, lstart, lend, BlockType::Fixed) };
+    let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
         uncompressedcost
     } else if fixedcost < dyncost {
@@ -824,20 +838,24 @@ pub fn blocksplit_attempt(options: &Options, final_block: c_int, in_data: &[u8],
 /// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-pub fn deflate_part(options: &Options, btype: c_int, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
-    /* If btype=2 is specified, it tries all block types. If a lesser btype is
+pub fn deflate_part(options: &Options, btype: BlockType, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+    /* If btype=Dynamic is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
-    if btype == 0 {
-        add_non_compressed_block(options, final_block, in_data, instart, inend, bp, out);
-    } else if btype == 1 {
-        let mut store = Lz77Store::new();
-        let mut s = ZopfliBlockState::new(options, instart, inend, 1);
+    match btype {
+        BlockType::Uncompressed => {
+            add_non_compressed_block(options, final_block, in_data, instart, inend, bp, out);
+        },
+        BlockType::Fixed => {
+            let mut store = Lz77Store::new();
+            let mut s = ZopfliBlockState::new(options, instart, inend, 1);
 
-        lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
-        add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
-    } else {
-        blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out);
+            lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
+            add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
+        },
+        BlockType::Dynamic => {
+            blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out);
+        },
     }
 }
 
@@ -847,10 +865,10 @@ pub fn deflate_part(options: &Options, btype: c_int, final_block: c_int, in_data
 /// the final bit will be set on the last block.
 ///
 /// options: global program options
-/// btype: the deflate block type. Use 2 for best compression.
-///   -0: non compressed blocks (00)
-///   -1: blocks with fixed tree (01)
-///   -2: blocks with dynamic tree (10)
+/// btype: the deflate block type. Use Dynamic for best compression.
+///   -Uncompressed: non compressed blocks (00)
+///   -Fixed: blocks with fixed tree (01)
+///   -Dynamic: blocks with dynamic tree (10)
 /// final: whether this is the last section of the input, sets the final bit to the
 ///   last deflate block.
 /// in: the input bytes
@@ -862,7 +880,7 @@ pub fn deflate_part(options: &Options, btype: c_int, final_block: c_int, in_data
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options_ptr: *const Options, btype: c_int, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr

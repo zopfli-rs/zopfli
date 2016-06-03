@@ -3,7 +3,7 @@ use std::io;
 use adler32::adler32;
 use libc::{c_uchar, c_uint, c_double};
 
-use deflate::deflate;
+use deflate::{deflate, BlockType};
 use Options;
 
 pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
@@ -21,7 +21,7 @@ pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push((cmfflg / 256) as c_uchar);
     out.push((cmfflg % 256) as c_uchar);
 
-    deflate(options, 2 /* dynamic block */, 1 /* final */, in_data, bp_ptr, out);
+    deflate(options, BlockType::Dynamic, 1 /* final */, in_data, bp_ptr, out);
 
     out.push(((checksum >> 24) % 256) as c_uchar);
     out.push(((checksum >> 16) % 256) as c_uchar);

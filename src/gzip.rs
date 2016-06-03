@@ -1,7 +1,7 @@
 use crc::crc32;
 use libc::{c_uchar, c_double};
 
-use deflate::deflate;
+use deflate::{deflate, BlockType};
 use Options;
 
 /// Compresses the data according to the gzip specification, RFC 1952.
@@ -22,7 +22,7 @@ pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 
-    deflate(options, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
+    deflate(options, BlockType::Dynamic, 1, in_data, bp_ptr, out);
 
     let crc = crc32::checksum_ieee(in_data);
 
