@@ -1,8 +1,9 @@
+use std::f64;
+
 use libc::{size_t, c_double, c_uchar};
 
 use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
-use util::{ZOPFLI_LARGE_FLOAT};
 use Options;
 
 /// Finds minimum of function f(i) where is is of type size_t, f(i) is of type
@@ -12,7 +13,7 @@ pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, co
     let mut start = start;
     let mut end = end;
     if end - start < 1024 {
-        let mut best = ZOPFLI_LARGE_FLOAT;
+        let mut best = f64::MAX;
         let mut result = start;
         for i in start..end {
             let v = f(i, context);
@@ -29,7 +30,7 @@ pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, co
         let mut vp = vec![0.0; num];
         let mut besti;
         let mut best;
-        let mut lastbest = ZOPFLI_LARGE_FLOAT;
+        let mut lastbest = f64::MAX;
         let mut pos = start;
 
         loop {

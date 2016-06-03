@@ -1,4 +1,4 @@
-use libc::{size_t, c_double};
+use libc::size_t;
 
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: size_t = 288;
@@ -33,9 +33,6 @@ pub const ZOPFLI_CACHE_LENGTH: size_t = 8;
 /// faster on some specific files.
 /// Good value: e.g. 8192.
 pub const ZOPFLI_MAX_CHAIN_HITS: size_t = 8192;
-
-/// Used to initialize costs for example
-pub const ZOPFLI_LARGE_FLOAT: c_double = 1E30;
 
 /// A block structure of huge, non-smart, blocks to divide the input into, to allow
 /// operating on huge files without exceeding memory, such as the 1GB wiki9 corpus.

@@ -7,7 +7,7 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
-use std::{mem, cmp};
+use std::{mem, cmp, f64, f32};
 
 use libc::{c_uint, c_double, c_int, size_t, c_ushort, malloc, c_float};
 
@@ -15,7 +15,7 @@ use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
 use lz77::{Lz77Store, ZopfliBlockState, find_longest_match};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
-use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_LARGE_FLOAT, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
+use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
@@ -222,7 +222,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<SymbolStats>
         769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
     ];
 
-    let mut mincost: c_double = ZOPFLI_LARGE_FLOAT;
+    let mut mincost = f64::MAX;
     for i in 3..259 {
         let c = costmodel(i, 1, costcontext);
         if c < mincost {
@@ -231,7 +231,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<SymbolStats>
         }
     }
 
-    mincost = ZOPFLI_LARGE_FLOAT;
+    mincost = f64::MAX;
     for i in 0..30 {
         let c = costmodel(3, dsymbols[i] as c_uint, costcontext);
         if c < mincost {
@@ -282,7 +282,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
     costs.resize(blocksize + 1, 0.0);
 
     for i in 1..(blocksize + 1) {
-        costs[i] = ZOPFLI_LARGE_FLOAT as c_float;
+        costs[i] = f32::MAX;
     }
     costs[0] = 0.0; /* Because it's the start. */
     length_array[0] = 0;
@@ -401,7 +401,7 @@ pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
     let path = trace_backwards(inend - instart, length_array);
     store.follow_path(in_data, instart, inend, path, s);
-    assert!(cost < ZOPFLI_LARGE_FLOAT);
+    assert!(cost < f64::MAX);
 }
 
 
@@ -436,7 +436,7 @@ pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, i
     let mut stats = SymbolStats::new();
     let mut beststats = SymbolStats::new();
 
-    let mut bestcost = ZOPFLI_LARGE_FLOAT;
+    let mut bestcost = f64::MAX;
     let mut lastcost = 0.0;
     /* Try randomizing the costs a bit once the size stabilizes. */
     let mut ran_state = RanState::new();
