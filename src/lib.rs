@@ -27,8 +27,7 @@ use gzip::gzip_compress;
 use zlib::zlib_compress;
 
 /// Options used throughout the program.
-#[repr(C)]
-pub struct ZopfliOptions {
+pub struct Options {
   /* Whether to print output */
   pub verbose: c_int,
   /* Whether to print more detailed output */
@@ -46,9 +45,9 @@ pub struct ZopfliOptions {
   pub blocksplittingmax: c_int,
 }
 
-impl ZopfliOptions {
-    pub fn new() -> ZopfliOptions {
-        ZopfliOptions {
+impl Options {
+    pub fn new() -> Options {
+        Options {
             verbose: 0,
             verbose_more: 0,
             numiterations: 15,
@@ -64,14 +63,14 @@ pub enum ZopfliFormat {
   ZOPFLI_FORMAT_DEFLATE
 }
 
-pub fn compress(options_ptr: *const ZopfliOptions, output_type: &ZopfliFormat, in_data: &[u8], out: &mut Vec<u8>) {
+pub fn compress(options: &Options, output_type: &ZopfliFormat, in_data: &[u8], out: &mut Vec<u8>) {
     match *output_type {
-        ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options_ptr, in_data, out),
-        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options_ptr, in_data, out),
+        ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options, in_data, out),
+        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options, in_data, out),
         ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
             let mut bp = 0;
             let bp_ptr: *mut c_uchar = &mut bp;
-            deflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
+            deflate(options, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
         }
     }
 }
@@ -79,7 +78,7 @@ pub fn compress(options_ptr: *const ZopfliOptions, output_type: &ZopfliFormat, i
 /// outfilename: filename to write output to, or 0 to write to stdout instead
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: &ZopfliFormat, infilename: &str, outfilename: &str) {
+pub extern fn CompressFile(options: &Options, output_type: &ZopfliFormat, infilename: &str, outfilename: &str) {
 
     let mut file = match File::open(infilename) {
         Err(why) => panic!("couldn't open {}: {}", infilename, why),
@@ -91,7 +90,7 @@ pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: &Zopf
 
     let mut out = vec![];
 
-    compress(options_ptr, output_type, &in_data, &mut out);
+    compress(options, output_type, &in_data, &mut out);
 
     let mut buffer = File::create(outfilename).expect("couldn't create output file");
 

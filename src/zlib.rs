@@ -4,14 +4,9 @@ use adler32::adler32;
 use libc::{c_uchar, c_uint, c_double};
 
 use deflate::deflate;
-use ZopfliOptions;
+use Options;
 
-pub fn zlib_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: &mut Vec<u8>) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 

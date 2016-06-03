@@ -6,7 +6,7 @@ use cache::{ZopfliLongestMatchCache};
 use hash::ZopfliHash;
 use symbols::{get_dist_symbol, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
-use ZopfliOptions;
+use Options;
 
 /// Stores lit/length and dist pairs for LZ77.
 /// Parameter litlens: Contains the literal symbols or length values.
@@ -259,7 +259,7 @@ impl Lz77Store {
 /// This is currently a bit under-used (with mainly only the longest match cache),
 /// but is kept for easy future expansion.
 pub struct ZopfliBlockState<'a> {
-    pub options: &'a ZopfliOptions,
+    pub options: &'a Options,
     /* Cache for length/distance pairs found so far. */
     lmc: Option<ZopfliLongestMatchCache>,
     /* The start (inclusive) and end (not inclusive) of the current block. */
@@ -268,7 +268,7 @@ pub struct ZopfliBlockState<'a> {
 }
 
 impl<'a> ZopfliBlockState<'a> {
-    pub fn new(options: &ZopfliOptions, blockstart: size_t, blockend: size_t, add_lmc: c_int) -> ZopfliBlockState {
+    pub fn new(options: &Options, blockstart: size_t, blockend: size_t, add_lmc: c_int) -> ZopfliBlockState {
         ZopfliBlockState {
             options: options,
             blockstart: blockstart,

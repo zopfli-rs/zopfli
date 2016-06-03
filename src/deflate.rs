@@ -7,7 +7,7 @@ use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
-use ZopfliOptions;
+use Options;
 
 pub fn fixed_tree() -> (Vec<c_uint>, Vec<c_uint>) {
     let mut ll = vec![8; ZOPFLI_NUM_LL];
@@ -532,7 +532,7 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_
 /// bp: output bit pointer
 /// out: dynamic output array to append to
 /// outsize: dynamic output array size
-pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_lz77_block(options: &Options, btype: c_int, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let compressed_size;
     let mut uncompressed_size: size_t = 0;
 
@@ -694,7 +694,7 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
     assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
 
-pub fn add_lz77_block_auto_type(options: &ZopfliOptions, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_lz77_block_auto_type(options: &Options, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, 1);
     let dyncost = calculate_block_size(lz77, lstart, lend, 2);
@@ -751,7 +751,7 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: si
     }
 }
 
-pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &ZopfliOptions, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &Options, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let npoints = splitpoints.len();
     for i in 0..(npoints + 1) {
         let start = if i == 0 { 0 } else { splitpoints[i - 1] };
@@ -761,7 +761,7 @@ pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &Zop
     }
 }
 
-pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn blocksplit_attempt(options: &Options, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut totalcost = 0.0;
     let mut lz77 = Lz77Store::new();
 
@@ -824,7 +824,7 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
 /// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn deflate_part(options: &Options, btype: c_int, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     /* If btype=2 is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
@@ -862,7 +862,7 @@ pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, i
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn deflate(options_ptr: *const Options, btype: c_int, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -929,7 +929,7 @@ pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &
 
 /// Since an uncompressed block can be max 65535 in size, it actually adds
 /// multible blocks if needed.
-pub fn add_non_compressed_block(_options: &ZopfliOptions, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_non_compressed_block(_options: &Options, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut pos = instart;
     loop {
         let mut blocksize = 65535;

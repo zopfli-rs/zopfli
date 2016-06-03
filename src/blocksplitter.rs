@@ -3,7 +3,7 @@ use libc::{size_t, c_double, c_uchar};
 use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
 use util::{ZOPFLI_LARGE_FLOAT};
-use ZopfliOptions;
+use Options;
 
 /// Finds minimum of function f(i) where is is of type size_t, f(i) is of type
 /// double, i is in range start-end (excluding end).
@@ -152,7 +152,7 @@ pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &Vec<s
 /// Does blocksplitting on LZ77 data.
 /// The output splitpoints are indices in the LZ77 data.
 /// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
-pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
+pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
 
     if lz77.size() < 10 {
         return;  /* This code fails on tiny files. */
@@ -223,7 +223,7 @@ pub fn blocksplit_lz77(options: &ZopfliOptions, lz77: &Lz77Store, maxblocks: siz
 ///   The coordinates are indices in the input array.
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
-pub fn blocksplit(options: &ZopfliOptions, in_data: &[u8], instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
+pub fn blocksplit(options: &Options, in_data: &[u8], instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
     let mut pos;
     let mut s = ZopfliBlockState::new(options, instart, inend, 0);
 

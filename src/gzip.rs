@@ -2,15 +2,10 @@ use crc::crc32;
 use libc::{c_uchar, c_double};
 
 use deflate::deflate;
-use ZopfliOptions;
+use Options;
 
 /// Compresses the data according to the gzip specification, RFC 1952.
-pub fn gzip_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: &mut Vec<u8>) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push(31);  /* ID1 */
     out.push(139);  /* ID2 */
     out.push(8);  /* CM */
@@ -27,7 +22,7 @@ pub fn gzip_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: &mu
     let mut bp = 0;
     let bp_ptr: *mut c_uchar = &mut bp;
 
-    deflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
+    deflate(options, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
 
     let crc = crc32::checksum_ieee(in_data);
 
