@@ -1,9 +1,8 @@
 use std::io::prelude::*;
 use std::fs::File;
 use std::ffi::CStr;
-use std::{ptr, slice};
 
-use libc::{c_int, c_uchar, size_t, c_char};
+use libc::{c_int, c_uchar, c_char};
 
 use deflate::deflate;
 use gzip::gzip_compress;
@@ -36,14 +35,14 @@ pub enum ZopfliFormat {
   ZOPFLI_FORMAT_DEFLATE
 }
 
-pub fn compress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
+pub fn compress(options_ptr: *const ZopfliOptions, output_type: ZopfliFormat, in_data: &[u8], out: &mut Vec<u8>) {
     match output_type {
-        ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options_ptr, in_data, out, outsize),
-        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options_ptr, in_data, out, outsize),
+        ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options_ptr, in_data, out),
+        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options_ptr, in_data, out),
         ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
             let mut bp = 0;
             let bp_ptr: *mut c_uchar = &mut bp;
-            deflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out, outsize);
+            deflate(options_ptr, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
         }
     }
 }
@@ -72,15 +71,11 @@ pub extern fn CompressFile(options_ptr: *const ZopfliOptions, output_type: Zopfl
     let mut in_data = vec![];
     file.read_to_end(&mut in_data).expect("couldn't read the input file");
 
-    let out = ptr::null();
-    let mut outsize = 0;
-    let outsize_ptr: *mut size_t = &mut outsize;
+    let mut out = vec![];
 
-    compress(options_ptr, output_type, &in_data, &out, outsize_ptr);
-
-    let out_slice = unsafe { slice::from_raw_parts(out, outsize) };
+    compress(options_ptr, output_type, &in_data, &mut out);
 
     let mut buffer = File::create(outfilename_str).expect("couldn't create output file");
 
-    buffer.write_all(out_slice).expect("couldn't write to output file");
+    buffer.write_all(&out).expect("couldn't write to output file");
 }

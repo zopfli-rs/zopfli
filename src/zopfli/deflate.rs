@@ -338,16 +338,8 @@ pub fn calculate_tree_size(ll_lengths: &[c_uint], d_lengths: &[c_uint]) -> size_
     result
 }
 
-#[link(name = "zopfli")]
-extern {
-    fn AddBit(bit: c_int, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
-    fn AddBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
-    fn AddHuffmanBits(symbol: c_uint, length: c_uint, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
-    fn AddNonCompressedBlock(options: *const ZopfliOptions, final_block: c_int, in_data: *const c_uchar, instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t);
-}
-
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
-pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, use_17: bool, use_18: bool, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) -> size_t {
+pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, use_17: bool, use_18: bool, bp: *mut c_uchar, out: &mut Vec<u8>) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -474,28 +466,26 @@ pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, us
         hclen -= 1;
     }
 
-    unsafe {
-        AddBits(hlit as c_uint, 5, bp, out, outsize);
-        AddBits(hdist as c_uint, 5, bp, out, outsize);
-        AddBits(hclen as c_uint, 4, bp, out, outsize);
+    add_bits(hlit as c_uint, 5, bp, out);
+    add_bits(hdist as c_uint, 5, bp, out);
+    add_bits(hclen as c_uint, 4, bp, out);
 
-        for i in 0..(hclen + 4) {
-            AddBits(clcl[order[i]], 3, bp, out, outsize);
-        }
+    for i in 0..(hclen + 4) {
+        add_bits(clcl[order[i]], 3, bp, out);
+    }
 
-        for i in 0..rle.len() {
-            let rle_i = rle[i] as usize;
-            let rle_bits_i = rle_bits[i] as c_uint;
-            let sym = clsymbols[rle_i];
-            AddHuffmanBits(sym, clcl[rle_i], bp, out, outsize);
-            /* Extra bits. */
-            if rle_i == 16 {
-                AddBits(rle_bits_i, 2, bp, out, outsize);
-            } else if rle_i == 17 {
-                AddBits(rle_bits_i, 3, bp, out, outsize);
-            } else if rle_i == 18 {
-                AddBits(rle_bits_i, 7, bp, out, outsize);
-            }
+    for i in 0..rle.len() {
+        let rle_i = rle[i] as usize;
+        let rle_bits_i = rle_bits[i] as c_uint;
+        let sym = clsymbols[rle_i];
+        add_huffman_bits(sym, clcl[rle_i], bp, out);
+        /* Extra bits. */
+        if rle_i == 16 {
+            add_bits(rle_bits_i, 2, bp, out);
+        } else if rle_i == 17 {
+            add_bits(rle_bits_i, 3, bp, out);
+        } else if rle_i == 18 {
+            add_bits(rle_bits_i, 7, bp, out);
         }
     }
 
@@ -512,7 +502,7 @@ pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, us
     result_size
 }
 
-pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut best = 0;
     let mut bestsize = 0;
 
@@ -524,7 +514,7 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *const 
         }
     }
 
-    encode_tree(ll_lengths, d_lengths, best & 1 > 0, best & 2 > 0, best & 4 > 0, bp, out, outsize);
+    encode_tree(ll_lengths, d_lengths, best & 1 > 0, best & 2 > 0, best & 4 > 0, bp, out);
 }
 
 /// Adds a deflate block with the given LZ77 data to the output.
@@ -542,7 +532,7 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *const 
 /// bp: output bit pointer
 /// out: dynamic output array to append to
 /// outsize: dynamic output array size
-pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let compressed_size;
     let mut uncompressed_size: size_t = 0;
 
@@ -554,15 +544,13 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
             lz77.pos[lstart]
         };
         let end = pos + length;
-        unsafe { AddNonCompressedBlock(options, final_block, in_data.as_ptr(), pos, end, bp, out, outsize) };
+        add_non_compressed_block(options, final_block, in_data, pos, end, bp, out);
         return;
     }
 
-    unsafe {
-        AddBit(final_block, bp, out, outsize);
-        AddBit(btype & 1, bp, out, outsize);
-        AddBit((btype & 2) >> 1, bp, out, outsize);
-    }
+    add_bit(final_block, bp, out);
+    add_bit(btype & 1, bp, out);
+    add_bit((btype & 2) >> 1, bp, out);
 
     let (ll_lengths, d_lengths) = if btype == 1 {
         /* Fixed block. */
@@ -572,10 +560,10 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
         assert!(btype == 2);
         let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
-        let detect_tree_size = unsafe { *outsize };
-        add_dynamic_tree(&ll_lengths, &d_lengths, bp, out, outsize);
+        let detect_tree_size = out.len();
+        add_dynamic_tree(&ll_lengths, &d_lengths, bp, out);
         if options.verbose > 0 {
-            println!("treesize: {}", unsafe { *outsize } - detect_tree_size);
+            println!("treesize: {}", out.len() - detect_tree_size);
         }
         (ll_lengths, d_lengths)
     };
@@ -583,13 +571,11 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
     let ll_symbols = lengths_to_symbols(&ll_lengths, 15);
     let d_symbols = lengths_to_symbols(&d_lengths, 15);
 
-    let detect_block_size = unsafe { *outsize };
-    add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bp, out, outsize);
+    let detect_block_size = out.len();
+    add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bp, out);
 
     /* End symbol. */
-    unsafe {
-        AddHuffmanBits(ll_symbols[256], ll_lengths[256], bp, out, outsize);
-    }
+    add_huffman_bits(ll_symbols[256], ll_lengths[256], bp, out);
 
     for i in lstart..lend {
         uncompressed_size += if lz77.dists[i] == 0 {
@@ -598,7 +584,7 @@ pub fn add_lz77_block(options: &ZopfliOptions, btype: c_int, final_block: c_int,
             lz77.litlens[i] as size_t
         };
     }
-    compressed_size = unsafe { *outsize } - detect_block_size;
+    compressed_size = out.len() - detect_block_size;
     if options.verbose > 0 {
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
@@ -681,7 +667,7 @@ pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (c
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
 /// end code 256. expected_data_size is the uncompressed block size, used for
 /// assert, but you can set it to 0 to not do the assertion.
-pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut testlength: size_t = 0;
 
     for i in lstart..lend {
@@ -690,9 +676,7 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
         if dist == 0 {
             assert!(litlen < 256);
             assert!(ll_lengths[litlen as usize] > 0);
-            unsafe {
-                AddHuffmanBits(ll_symbols[litlen as usize], ll_lengths[litlen as usize], bp, out, outsize);
-            }
+            add_huffman_bits(ll_symbols[litlen as usize], ll_lengths[litlen as usize], bp, out);
             testlength += 1;
         } else {
             let lls: c_uint = get_length_symbol(litlen as c_int) as c_uint;
@@ -700,19 +684,17 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
             assert!(litlen >= 3 && litlen <= 288);
             assert!(ll_lengths[lls as usize] > 0);
             assert!(d_lengths[ds as usize] > 0);
-            unsafe {
-                AddHuffmanBits(ll_symbols[lls as usize], ll_lengths[lls as usize], bp, out, outsize);
-                AddBits(get_length_extra_bits_value(litlen as c_int) as c_uint, get_length_extra_bits(litlen as c_int) as c_uint, bp, out, outsize);
-                AddHuffmanBits(d_symbols[ds as usize], d_lengths[ds as usize], bp, out, outsize);
-                AddBits(get_dist_extra_bits_value(dist as c_int) as c_uint, get_dist_extra_bits(dist as c_int) as c_uint, bp, out, outsize);
-            }
+            add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize], bp, out);
+            add_bits(get_length_extra_bits_value(litlen as c_int) as c_uint, get_length_extra_bits(litlen as c_int) as c_uint, bp, out);
+            add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize], bp, out);
+            add_bits(get_dist_extra_bits_value(dist as c_int) as c_uint, get_dist_extra_bits(dist as c_int) as c_uint, bp, out);
             testlength += litlen as size_t;
         }
     }
     assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
 
-pub fn add_lz77_block_auto_type(options: &ZopfliOptions, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_lz77_block_auto_type(options: &ZopfliOptions, final_block: c_int, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, 0);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, 1);
     let dyncost = calculate_block_size(lz77, lstart, lend, 2);
@@ -724,12 +706,10 @@ pub fn add_lz77_block_auto_type(options: &ZopfliOptions, final_block: c_int, in_
 
     let mut fixedstore = Lz77Store::new();
     if lstart == lend {
-        unsafe {
-            /* Smallest empty block is represented by fixed block */
-            AddBits(final_block as c_uint, 1, bp, out, outsize);
-            AddBits(1, 2, bp, out, outsize);  /* btype 01 */
-            AddBits(0, 7, bp, out, outsize);  /* end symbol has code 0000000 */
-        }
+        /* Smallest empty block is represented by fixed block */
+        add_bits(final_block as c_uint, 1, bp, out);
+        add_bits(1, 2, bp, out);  /* btype 01 */
+        add_bits(0, 7, bp, out);  /* end symbol has code 0000000 */
         return;
     }
     if expensivefixed {
@@ -743,15 +723,15 @@ pub fn add_lz77_block_auto_type(options: &ZopfliOptions, final_block: c_int, in_
     }
 
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
-        add_lz77_block(options, 0, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+        add_lz77_block(options, 0, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
     } else if fixedcost < dyncost {
         if expensivefixed {
-            add_lz77_block(options, 1, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out, outsize);
+            add_lz77_block(options, 1, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out);
         } else {
-            add_lz77_block(options, 1, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+            add_lz77_block(options, 1, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
         }
     } else {
-        add_lz77_block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out, outsize);
+        add_lz77_block(options, 2, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
     }
 }
 
@@ -771,17 +751,17 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: si
     }
 }
 
-pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &ZopfliOptions, final_block: c_int, in_data: &[u8], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &ZopfliOptions, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let npoints = splitpoints.len();
     for i in 0..(npoints + 1) {
         let start = if i == 0 { 0 } else { splitpoints[i - 1] };
         let end = if i == npoints { lz77.size() } else { splitpoints[i] };
         let final_block_i = if i == npoints && final_block > 0 { 1 } else { 0 };
-        add_lz77_block_auto_type(options, final_block_i, in_data, lz77, start, end, 0, bp, out, outsize);
+        add_lz77_block_auto_type(options, final_block_i, in_data, lz77, start, end, 0, bp, out);
     }
 }
 
-pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut totalcost = 0.0;
     let mut lz77 = Lz77Store::new();
 
@@ -830,7 +810,7 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
         }
     }
 
-    add_all_blocks(&splitpoints, &lz77, &options, final_block, in_data, bp, out, outsize);
+    add_all_blocks(&splitpoints, &lz77, &options, final_block, in_data, bp, out);
 }
 
 
@@ -844,20 +824,20 @@ pub fn blocksplit_attempt(options: &ZopfliOptions, final_block: c_int, in_data: 
 /// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     /* If btype=2 is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
     if btype == 0 {
-        unsafe { AddNonCompressedBlock(options, final_block, in_data.as_ptr(), instart, inend, bp, out, outsize) };
+        add_non_compressed_block(options, final_block, in_data, instart, inend, bp, out);
     } else if btype == 1 {
         let mut store = Lz77Store::new();
         let mut s = ZopfliBlockState::new(options, instart, inend, 1);
 
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
-        add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out, outsize);
+        add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
     } else {
-        blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out, outsize);
+        blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out);
     }
 }
 
@@ -882,13 +862,13 @@ pub fn deflate_part(options: &ZopfliOptions, btype: c_int, final_block: c_int, i
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], bp: *const c_uchar, out: *const *const c_uchar, outsize: *const size_t) {
+pub fn deflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_int, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
     };
 
-    let offset = unsafe { *outsize };
+    let offset = out.len();
     let mut i = 0;
     let insize = in_data.len();
     while i < insize {
@@ -896,13 +876,12 @@ pub fn deflate(options_ptr: *const ZopfliOptions, btype: c_int, final_block: c_i
         let final2 = final_block != 0 && masterfinal;
         let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
         let final2_as_int = if final2 { 1 } else { 0 };
-        deflate_part(options, btype, final2_as_int, in_data, i, i + size, bp, out, outsize);
+        deflate_part(options, btype, final2_as_int, in_data, i, i + size, bp, out);
         i += size;
     }
     if options.verbose != 0 {
-        unsafe {
-            println!("Original Size: {}, Deflate: {}, Compression: {}% Removed", insize, *outsize - offset, 100.0 * (insize - (*outsize - offset)) as c_double / insize as c_double);
-        }
+        let outsize = out.len();
+        println!("Original Size: {}, Deflate: {}, Compression: {}% Removed", insize, outsize - offset, 100.0 * (insize - (outsize - offset)) as c_double / insize as c_double);
     }
 }
 
@@ -933,7 +912,7 @@ pub fn add_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<
     }
 }
 
-/// Adds bits, like AddBits, but the order is inverted. The deflate specification
+/// Adds bits, like add_bits, but the order is inverted. The deflate specification
 /// uses both orders in one standard.
 pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<u8>) {
     /* TODO(lode): make more efficient (add more bits at once). */

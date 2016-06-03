@@ -1,17 +1,12 @@
 use std::io;
 
 use adler32::adler32;
-use libc::{c_uchar, size_t, c_uint, c_double};
+use libc::{c_uchar, c_uint, c_double};
 
 use deflate::deflate;
 use zopfli::ZopfliOptions;
 
-#[link(name = "zopfli")]
-extern {
-    fn ZopfliAppendDataUChar(value: c_uchar, data: *const *const c_uchar, size: *const size_t);
-}
-
-pub fn zlib_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *const *const c_uchar, outsize: *const size_t) {
+pub fn zlib_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: &mut Vec<u8>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -28,24 +23,19 @@ pub fn zlib_compress(options_ptr: *const ZopfliOptions, in_data: &[u8], out: *co
     let fcheck = 31 - cmfflg % 31;
     cmfflg += fcheck;
 
-    unsafe {
-        ZopfliAppendDataUChar((cmfflg / 256) as c_uchar, out, outsize);
-        ZopfliAppendDataUChar((cmfflg % 256) as c_uchar, out, outsize);
-    }
+    out.push((cmfflg / 256) as c_uchar);
+    out.push((cmfflg % 256) as c_uchar);
 
-    deflate(options, 2 /* dynamic block */, 1 /* final */, in_data, bp_ptr, out, outsize);
+    deflate(options, 2 /* dynamic block */, 1 /* final */, in_data, bp_ptr, out);
 
-    unsafe {
-        ZopfliAppendDataUChar(((checksum >> 24) % 256) as c_uchar, out, outsize);
-        ZopfliAppendDataUChar(((checksum >> 16) % 256) as c_uchar, out, outsize);
-        ZopfliAppendDataUChar(((checksum >> 8) % 256) as c_uchar, out, outsize);
-        ZopfliAppendDataUChar((checksum % 256) as c_uchar, out, outsize);
-    }
+    out.push(((checksum >> 24) % 256) as c_uchar);
+    out.push(((checksum >> 16) % 256) as c_uchar);
+    out.push(((checksum >> 8) % 256) as c_uchar);
+    out.push((checksum % 256) as c_uchar);
 
     if options.verbose != 0 {
         let insize = in_data.len();
-        unsafe {
-            println!("Original Size: {}, Zlib: {}, Compression: {}% Removed", insize, *outsize, 100.0 * (insize - *outsize) as c_double / insize as c_double);
-        }
+        let outsize = out.len();
+        println!("Original Size: {}, Zlib: {}, Compression: {}% Removed", insize, outsize, 100.0 * (insize - outsize) as c_double / insize as c_double);
     }
 }
