@@ -571,7 +571,7 @@ pub fn add_lz77_block(options: &Options, btype: BlockType, final_block: c_int, i
 
             let detect_tree_size = out.len();
             add_dynamic_tree(&ll_lengths, &d_lengths, bp, out);
-            if options.verbose > 0 {
+            if options.verbose {
                 println!("treesize: {}", out.len() - detect_tree_size);
             }
             (ll_lengths, d_lengths)
@@ -595,7 +595,7 @@ pub fn add_lz77_block(options: &Options, btype: BlockType, final_block: c_int, i
         };
     }
     compressed_size = out.len() - detect_block_size;
-    if options.verbose > 0 {
+    if options.verbose {
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
 }
@@ -897,7 +897,7 @@ pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: c_int
         deflate_part(options, btype, final2_as_int, in_data, i, i + size, bp, out);
         i += size;
     }
-    if options.verbose != 0 {
+    if options.verbose {
         let outsize = out.len();
         println!("Original Size: {}, Deflate: {}, Compression: {}% Removed", insize, outsize - offset, 100.0 * (insize - (outsize - offset)) as c_double / insize as c_double);
     }

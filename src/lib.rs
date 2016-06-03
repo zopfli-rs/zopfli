@@ -29,9 +29,9 @@ use zlib::zlib_compress;
 /// Options used throughout the program.
 pub struct Options {
   /* Whether to print output */
-  pub verbose: c_int,
+  pub verbose: bool,
   /* Whether to print more detailed output */
-  pub verbose_more: c_int,
+  pub verbose_more: bool,
   /*
   Maximum amount of times to rerun forward and backward pass to optimize LZ77
   compression cost. Good values: 10, 15 for small files, 5 for files over
@@ -48,8 +48,8 @@ pub struct Options {
 impl Options {
     pub fn new() -> Options {
         Options {
-            verbose: 0,
-            verbose_more: 0,
+            verbose: false,
+            verbose_more: false,
             numiterations: 15,
             blocksplittingmax: 15,
         }

@@ -206,7 +206,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: size_t, s
         }
     }
 
-    if options.verbose > 0 {
+    if options.verbose {
         print_block_split_points(lz77, splitpoints);
     }
 }

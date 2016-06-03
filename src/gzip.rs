@@ -37,7 +37,7 @@ pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push((input_size >> 16) as u8);
     out.push((input_size >> 24) as u8);
 
-    if options.verbose != 0 {
+    if options.verbose {
         let insize = in_data.len();
         let outsize = out.len();
         println!("Original Size: {}, Gzip: {}, Compression: {}% Removed", insize, outsize, 100.0 * (insize - outsize) as c_double / insize as c_double);

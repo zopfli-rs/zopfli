@@ -28,7 +28,7 @@ pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push(((checksum >> 8) % 256) as c_uchar);
     out.push((checksum % 256) as c_uchar);
 
-    if options.verbose != 0 {
+    if options.verbose {
         let insize = in_data.len();
         let outsize = out.len();
         println!("Original Size: {}, Zlib: {}, Compression: {}% Removed", insize, outsize, 100.0 * (insize - outsize) as c_double / insize as c_double);
