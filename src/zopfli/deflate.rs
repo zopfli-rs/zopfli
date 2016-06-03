@@ -932,3 +932,18 @@ pub fn add_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<
         unsafe { *bp = (*bp + 1) & 7};
     }
 }
+
+/// Adds bits, like AddBits, but the order is inverted. The deflate specification
+/// uses both orders in one standard.
+pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<u8>) {
+    /* TODO(lode): make more efficient (add more bits at once). */
+    for i in 0..length {
+        let bit = (symbol >> (length - i - 1)) & 1;
+        if unsafe { *bp } == 0 {
+            out.push(0);
+        }
+        let outsize = out.len();
+        out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
+        unsafe { *bp = (*bp + 1) & 7};
+    }
+}
