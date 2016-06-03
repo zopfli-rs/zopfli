@@ -56,18 +56,17 @@ impl Options {
     }
 }
 
-#[repr(C)]
-pub enum ZopfliFormat {
-  ZOPFLI_FORMAT_GZIP,
-  ZOPFLI_FORMAT_ZLIB,
-  ZOPFLI_FORMAT_DEFLATE
+pub enum Format {
+    Gzip,
+    Zlib,
+    Deflate,
 }
 
-pub fn compress(options: &Options, output_type: &ZopfliFormat, in_data: &[u8], out: &mut Vec<u8>) {
+pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut Vec<u8>) {
     match *output_type {
-        ZopfliFormat::ZOPFLI_FORMAT_GZIP => gzip_compress(options, in_data, out),
-        ZopfliFormat::ZOPFLI_FORMAT_ZLIB => zlib_compress(options, in_data, out),
-        ZopfliFormat::ZOPFLI_FORMAT_DEFLATE => {
+        Format::Gzip => gzip_compress(options, in_data, out),
+        Format::Zlib => zlib_compress(options, in_data, out),
+        Format::Deflate => {
             let mut bp = 0;
             let bp_ptr: *mut c_uchar = &mut bp;
             deflate(options, 2 /* Dynamic block */, 1, in_data, bp_ptr, out);
@@ -76,7 +75,7 @@ pub fn compress(options: &Options, output_type: &ZopfliFormat, in_data: &[u8], o
 }
 
 /// outfilename: filename to write output to, or 0 to write to stdout instead
-pub fn compress_file(options: &Options, output_type: &ZopfliFormat, infilename: &str, outfilename: &str) {
+pub fn compress_file(options: &Options, output_type: &Format, infilename: &str, outfilename: &str) {
 
     let mut file = match File::open(infilename) {
         Err(why) => panic!("couldn't open {}: {}", infilename, why),
