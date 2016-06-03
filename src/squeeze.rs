@@ -31,8 +31,8 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<SymbolStats>) 
         }
     } else {
         let dbits = get_dist_extra_bits(dist as c_int);
-        let lbits = get_length_extra_bits(litlen as c_int);
-        let lsym = get_length_symbol(litlen as c_int);
+        let lbits = get_length_extra_bits(litlen as usize);
+        let lsym = get_length_symbol(litlen as usize);
         let mut cost = 0;
         if lsym <= 279 {
             cost += 7;
@@ -53,8 +53,8 @@ pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<SymbolStat
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
     } else {
-        let lsym = get_length_symbol(litlen as c_int) as usize;
-        let lbits = get_length_extra_bits(litlen as c_int) as c_double;
+        let lsym = get_length_symbol(litlen as usize) as usize;
+        let lbits = get_length_extra_bits(litlen as usize) as c_double;
         let dsym = get_dist_symbol(dist as c_int) as usize;
         let dbits = get_dist_extra_bits(dist as c_int) as c_double;
         lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
@@ -175,10 +175,11 @@ impl SymbolStats {
     /// Appends the symbol statistics from the store.
     pub fn get_statistics(&mut self, store: &Lz77Store) {
         for i in 0..store.dists.len() {
+            let store_litlens_usize = store.litlens[i] as usize;
             if store.dists[i] == 0 {
-                self.litlens[store.litlens[i] as usize] += 1;
+                self.litlens[store_litlens_usize] += 1;
             } else {
-                self.litlens[get_length_symbol(store.litlens[i] as c_int) as usize] +=1 ;
+                self.litlens[get_length_symbol(store_litlens_usize) as usize] +=1 ;
                 self.dists[get_dist_symbol(store.dists[i] as c_int) as usize] += 1;
             }
         }

@@ -38,8 +38,8 @@ const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
 
 /// Gets the symbol for the given length, cfr. the DEFLATE spec.
 /// Returns symbol in range [257-285] (inclusive).
-pub fn get_length_symbol(length: c_int) -> c_int {
-    LENGTH_SYMBOL_TABLE[length as usize]
+pub fn get_length_symbol(length: usize) -> c_int {
+    LENGTH_SYMBOL_TABLE[length]
 }
 
 /// Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec.
@@ -140,8 +140,8 @@ const LENGTH_EXTRA_BITS: [c_int; 259] = [
 ];
 
 /// Gets the amount of extra bits for the given length, cfr. the DEFLATE spec.
-pub fn get_length_extra_bits(l: c_int) -> c_int {
-    LENGTH_EXTRA_BITS[l as usize]
+pub fn get_length_extra_bits(l: usize) -> c_int {
+    LENGTH_EXTRA_BITS[l]
 }
 
 /// Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec.
@@ -213,7 +213,6 @@ const LENGTH_EXTRA_BITS_VALUE: [c_int; 259] = [
 pub fn get_length_extra_bits_value(l: c_int) -> c_int {
     LENGTH_EXTRA_BITS_VALUE[l as usize]
 }
-
 
 const LENGTH_SYMBOL_EXTRA_BITS_TABLE: [c_int; 29] = [
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,

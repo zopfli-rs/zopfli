@@ -162,7 +162,7 @@ pub fn calculate_block_symbol_size_small(ll_lengths: &[c_uint], d_lengths: &[c_u
         if dists_i == 0 {
             result += ll_lengths[litlens_i as usize];
         } else {
-            let ll_symbol = get_length_symbol(litlens_i as c_int);
+            let ll_symbol = get_length_symbol(litlens_i as usize);
             let d_symbol = get_dist_symbol(dists_i as c_int);
             result += ll_lengths[ll_symbol as usize];
             result += d_lengths[d_symbol as usize];
@@ -686,23 +686,23 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
 
     for i in lstart..lend {
         let dist: c_uint = lz77.dists[i] as c_uint;
-        let litlen: c_uint = lz77.litlens[i] as c_uint;
+        let litlen = lz77.litlens[i] as usize;
         if dist == 0 {
             assert!(litlen < 256);
-            assert!(ll_lengths[litlen as usize] > 0);
-            add_huffman_bits(ll_symbols[litlen as usize], ll_lengths[litlen as usize], bp, out);
+            assert!(ll_lengths[litlen] > 0);
+            add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen], bp, out);
             testlength += 1;
         } else {
-            let lls: c_uint = get_length_symbol(litlen as c_int) as c_uint;
+            let lls: c_uint = get_length_symbol(litlen) as c_uint;
             let ds: c_uint = get_dist_symbol(dist as c_int) as c_uint;
             assert!(litlen >= 3 && litlen <= 288);
             assert!(ll_lengths[lls as usize] > 0);
             assert!(d_lengths[ds as usize] > 0);
             add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize], bp, out);
-            add_bits(get_length_extra_bits_value(litlen as c_int) as c_uint, get_length_extra_bits(litlen as c_int) as c_uint, bp, out);
+            add_bits(get_length_extra_bits_value(litlen as c_int) as c_uint, get_length_extra_bits(litlen) as c_uint, bp, out);
             add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize], bp, out);
             add_bits(get_dist_extra_bits_value(dist as c_int) as c_uint, get_dist_extra_bits(dist as c_int) as c_uint, bp, out);
-            testlength += litlen as size_t;
+            testlength += litlen;
         }
     }
     assert!(expected_data_size == 0 || testlength == expected_data_size);

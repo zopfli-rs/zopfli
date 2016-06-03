@@ -96,9 +96,10 @@ impl Lz77Store {
             self.d_symbol.push(0);
             self.ll_counts[llstart + length as usize] += 1;
         } else {
-            self.ll_symbol.push(get_length_symbol(length as c_int) as c_ushort);
+            let len_sym = get_length_symbol(length as usize);
+            self.ll_symbol.push(len_sym as c_ushort);
             self.d_symbol.push(get_dist_symbol(dist as c_int) as c_ushort);
-            self.ll_counts[llstart + get_length_symbol(length as c_int) as usize] += 1;
+            self.ll_counts[llstart + len_sym as usize] += 1;
             self.d_counts[dstart + get_dist_symbol(dist as c_int) as usize] += 1;
         }
     }
