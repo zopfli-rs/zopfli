@@ -947,3 +947,41 @@ pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &
         unsafe { *bp = (*bp + 1) & 7};
     }
 }
+
+/// Since an uncompressed block can be max 65535 in size, it actually adds
+/// multible blocks if needed.
+pub fn add_non_compressed_block(_options: &ZopfliOptions, final_block: c_int, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+    let mut pos = instart;
+    loop {
+        let mut blocksize = 65535;
+
+        if pos + blocksize > inend {
+            blocksize = inend - pos;
+        }
+        let currentfinal = if pos + blocksize >= inend { 1 } else { 0 };
+
+        let nlen = !blocksize;
+
+        add_bit(final_block & currentfinal, bp, out);
+        /* BTYPE 00 */
+        add_bit(0, bp, out);
+        add_bit(0, bp, out);
+
+        /* Any bits of input up to the next byte boundary are ignored. */
+        unsafe { *bp = 0; }
+
+        out.push((blocksize % 256) as u8);
+        out.push(((blocksize / 256) % 256) as u8);
+        out.push((nlen % 256) as u8);
+        out.push(((nlen / 256) % 256) as u8);
+
+        for i in 0..blocksize {
+            out.push(in_data[pos + i]);
+        }
+
+        if currentfinal != 0 {
+            break;
+        }
+        pos += blocksize;
+    }
+}
