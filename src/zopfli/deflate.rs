@@ -919,3 +919,16 @@ pub fn add_bit(bit: c_int, bp: *mut c_uchar, out: &mut Vec<u8>) {
     out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
     unsafe { *bp = (*bp + 1) & 7};
 }
+
+pub fn add_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<u8>) {
+    /* TODO(lode): make more efficient (add more bits at once). */
+    for i in 0..length {
+        let bit = (symbol >> i) & 1;
+        if unsafe { *bp } == 0 {
+            out.push(0);
+        }
+        let outsize = out.len();
+        out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
+        unsafe { *bp = (*bp + 1) & 7};
+    }
+}
