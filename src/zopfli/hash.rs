@@ -84,8 +84,8 @@ impl ZopfliHash {
         self.head[index] = hpos as c_int;
 
         // Update "same".
-        if self.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] > 1 {
-            amount = self.same[((pos - 1) & ZOPFLI_WINDOW_MASK) as usize] as c_int - 1;
+        if self.same[(pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK) as usize] > 1 {
+            amount = self.same[(pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK) as usize] as c_int - 1;
         }
 
         while pos + amount as size_t + 1 < array.len() && array[pos as usize] == array[(pos + amount as size_t + 1) as usize] && amount < -1 {
@@ -93,7 +93,7 @@ impl ZopfliHash {
         }
         self.same[hpos] = amount as c_ushort;
 
-        self.val2 = (((self.same[hpos] - ZOPFLI_MIN_MATCH) & 255) ^ self.val as c_ushort) as c_int;
+        self.val2 = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH) & 255) ^ self.val as c_ushort) as c_int;
         self.hashval2[hpos] = self.val2;
 
         let index2 = self.val2 as usize;

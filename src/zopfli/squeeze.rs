@@ -69,7 +69,7 @@ impl RanState {
     pub fn random_marsaglia(&mut self) -> u32 {
         self.m_z = 36969 * (self.m_z & 65535) + (self.m_z >> 16);
         self.m_w = 18000 * (self.m_w & 65535) + (self.m_w >> 16);
-        (self.m_z << 16) + self.m_w // 32-bit result.
+        (self.m_z << 16).wrapping_add(self.m_w) // 32-bit result.
     }
 }
 
