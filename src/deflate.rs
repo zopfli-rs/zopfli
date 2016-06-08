@@ -657,7 +657,7 @@ pub extern fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: size_t, len
 /// 3-bit block header.
 pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (c_double, Vec<c_uint>, Vec<c_uint>) {
 
-    let (mut ll_counts, d_counts) = get_histogram(&lz77, lstart, lend);
+    let (mut ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
     let ll_lengths = length_limited_code_lengths(&ll_counts, 15);
@@ -823,7 +823,7 @@ pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], 
         }
     }
 
-    add_all_blocks(&splitpoints, &lz77, &options, final_block, in_data, bp, out);
+    add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bp, out);
 }
 
 
