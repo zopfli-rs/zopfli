@@ -6,9 +6,9 @@ use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
 use Options;
 
-/// Finds minimum of function f(i) where is is of type size_t, f(i) is of type
-/// double, i is in range start-end (excluding end).
-/// Outputs the minimum value in *smallest and returns the index of this value.
+/// Finds minimum of function `f(i)` where `i` is of type `size_t`, `f(i)` is of type
+/// `c_double`, `i` is in range `start-end` (excluding `end`).
+/// Returns the index to the minimum and the minimum value.
 pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, context: &SplitCostContext, start: size_t, end: size_t) -> (size_t, c_double) {
     let mut start = start;
     let mut end = end;
@@ -80,7 +80,6 @@ pub fn estimate_cost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double
 
 /// Gets the cost which is the sum of the cost of the left and the right section
 /// of the data.
-/// type: FindMinimumFun
 pub fn split_cost(i: size_t, c: &SplitCostContext) -> c_double {
     estimate_cost(c.lz77, c.start, i) + estimate_cost(c.lz77, i, c.end)
 }

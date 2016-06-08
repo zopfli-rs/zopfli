@@ -20,7 +20,6 @@ use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, 
 const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
-/// type: CostModelFun
 #[allow(non_snake_case)]
 pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> c_double {
     let result = if dist == 0 {
@@ -46,7 +45,6 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>)
 }
 
 /// Cost model based on symbol statistics.
-/// type: CostModelFun
 #[allow(non_snake_case)]
 pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolStats>) -> c_double {
     let stats = stats_option.expect("GetCostStat expects Some(SymbolStats)");
@@ -245,15 +243,15 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<&SymbolStats
 
 /// Performs the forward pass for "squeeze". Gets the most optimal length to reach
 /// every byte from a previous byte, using cost calculations.
-/// s: the ZopfliBlockState
-/// in: the input data array
-/// instart: where to start
-/// inend: where to stop (not inclusive)
-/// costmodel: function to calculate the cost of some lit/len/dist pair.
-/// costcontext: abstract context for the costmodel function
-/// length_array: output array of size (inend - instart) which will receive the best
+/// `s`: the `ZopfliBlockState`
+/// `in_data`: the input data array
+/// `instart`: where to start
+/// `inend`: where to stop (not inclusive)
+/// `costmodel`: function to calculate the cost of some lit/len/dist pair.
+/// `costcontext`: abstract context for the costmodel function
+/// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
-/// returns the cost that was, according to the costmodel, needed to get to the end.
+/// returns the cost that was, according to the `costmodel`, needed to get to the end.
 pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
@@ -354,7 +352,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
 
 
 /// Calculates the optimal path of lz77 lengths to use, from the calculated
-/// length_array. The length_array must contain the optimal length to reach that
+/// `length_array`. The `length_array` must contain the optimal length to reach that
 /// byte. The path will be filled with the lengths to use, so its data size will be
 /// the amount of lz77 symbols.
 pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushort> {
@@ -386,17 +384,17 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
     path
 }
 
-/// Does a single run for lz77_optimal. For good compression, repeated runs
+/// Does a single run for `lz77_optimal`. For good compression, repeated runs
 /// with updated statistics should be performed.
-/// s: the block state
-/// in: the input data array
-/// instart: where to start
-/// inend: where to stop (not inclusive)
-/// length_array: array of size (inend - instart) used to store lengths
-/// costmodel: function to use as the cost model for this squeeze run
-/// costcontext: abstract context for the costmodel function
-/// store: place to output the LZ77 data
-/// returns the cost that was, according to the costmodel, needed to get to the end.
+/// `s`: the block state
+/// `in_data`: the input data array
+/// `instart`: where to start
+/// `inend`: where to stop (not inclusive)
+/// `length_array`: array of size `(inend - instart)` used to store lengths
+/// `costmodel`: function to use as the cost model for this squeeze run
+/// `costcontext`: abstract context for the `costmodel` function
+/// `store`: place to output the LZ77 data
+/// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
 pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
@@ -406,13 +404,13 @@ pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
 }
 
 
-/// Does the same as lz77_optimal, but optimized for the fixed tree of the
+/// Does the same as `lz77_optimal`, but optimized for the fixed tree of the
 /// deflate standard.
 /// The fixed tree never gives the best compression. But this gives the best
 /// possible LZ77 encoding possible with the fixed tree.
 /// This does not create or output any fixed tree, only LZ77 data optimized for
 /// using with a fixed tree.
-/// If instart is larger than 0, it uses values before instart as starting
+/// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
 pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, store: &mut Lz77Store) {
     s.blockstart = instart;
@@ -423,7 +421,7 @@ pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: siz
 }
 
 /// Calculates lit/len and dist pairs for given data.
-/// If instart is larger than 0, it uses values before instart as starting
+/// If `instart` is larger than 0, it uses values before `instart` as starting
 /// dictionary.
 pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, numiterations: c_int) -> Lz77Store {
 

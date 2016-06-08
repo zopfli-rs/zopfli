@@ -149,7 +149,7 @@ pub fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut[c_uint]) {
     }
 }
 
-/// Same as calculate_block_symbol_size, but for block size smaller than histogram
+/// Same as `calculate_block_symbol_size`, but for block size smaller than histogram
 /// size.
 pub fn calculate_block_symbol_size_small(ll_lengths: &[c_uint], d_lengths: &[c_uint], lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
@@ -174,7 +174,7 @@ pub fn calculate_block_symbol_size_small(ll_lengths: &[c_uint], d_lengths: &[c_u
     result as size_t
 }
 
-/// Same as calculate_block_symbol_size, but with the histogram provided by the caller.
+/// Same as `calculate_block_symbol_size`, but with the histogram provided by the caller.
 pub fn calculate_block_symbol_size_given_counts(ll_counts: &Vec<size_t>, d_counts: &Vec<size_t>, ll_lengths: &[c_uint], d_lengths: &[c_uint], lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
 
@@ -525,20 +525,19 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_
 }
 
 /// Adds a deflate block with the given LZ77 data to the output.
-/// options: global program options
-/// btype: the block type, must be Fixed or Dynamic
-/// final: whether to set the "final" bit on this block, must be the last block
-/// litlens: literal/length array of the LZ77 data, in the same format as in
-///     Lz77Store.
-/// dists: distance array of the LZ77 data, in the same format as in
-///     Lz77Store.
-/// lstart: where to start in the LZ77 data
-/// lend: where to end in the LZ77 data (not inclusive)
-/// expected_data_size: the uncompressed block size, used for assert, but you can
-///   set it to 0 to not do the assertion.
-/// bp: output bit pointer
-/// out: dynamic output array to append to
-/// outsize: dynamic output array size
+/// `options`: global program options
+/// `btype`: the block type, must be `Fixed` or `Dynamic`
+/// `final`: whether to set the "final" bit on this block, must be the last block
+/// `litlens`: literal/length array of the LZ77 data, in the same format as in
+///     `Lz77Store`.
+/// `dists`: distance array of the LZ77 data, in the same format as in
+///     `Lz77Store`.
+/// `lstart`: where to start in the LZ77 data
+/// `lend`: where to end in the LZ77 data (not inclusive)
+/// `expected_data_size`: the uncompressed block size, used for assert, but you can
+///   set it to `0` to not do the assertion.
+/// `bp`: output bit pointer
+/// `out`: dynamic output array to append to
 pub fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
     let compressed_size;
     let mut uncompressed_size: size_t = 0;
@@ -631,7 +630,7 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: size_t, lend: size_t, btyp
     }
 }
 
-/// Tries out OptimizeHuffmanForRle for this block, if the result is smaller,
+/// Tries out `OptimizeHuffmanForRle` for this block, if the result is smaller,
 /// uses it, otherwise keeps the original. Returns size of encoded tree and data in
 /// bits, not including the 3-bit block header.
 #[no_mangle]
@@ -679,8 +678,8 @@ pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (c
 }
 
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
-/// end code 256. expected_data_size is the uncompressed block size, used for
-/// assert, but you can set it to 0 to not do the assertion.
+/// end code 256. `expected_data_size` is the uncompressed block size, used for
+/// assert, but you can set it to `0` to not do the assertion.
 pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut testlength: size_t = 0;
 
@@ -929,7 +928,7 @@ pub fn add_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<
     }
 }
 
-/// Adds bits, like add_bits, but the order is inverted. The deflate specification
+/// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
 /// uses both orders in one standard.
 pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<u8>) {
     /* TODO(lode): make more efficient (add more bits at once). */

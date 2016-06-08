@@ -385,12 +385,12 @@ pub struct LongestMatch {
     limit: size_t,
 }
 
-/// Finds how long the match of scan and match is. Can be used to find how many
-/// bytes starting from scan, and from match, are equal. Returns the last byte
-/// after scan, which is still equal to the corresponding byte after match.
-/// scan is the position to compare match is the earlier position to compare.
-/// end is the last possible byte, beyond which to stop looking.
-/// safe_end is a few (8) bytes before end, for comparing multiple bytes at once.
+/// Finds how long the match of `scan` and `match` is. Can be used to find how many
+/// bytes starting from `scan`, and from `match`, are equal. Returns the last byte
+/// after `scan`, which is still equal to the corresponding byte after `match`.
+/// `scan` is the position to compare; `match` is the earlier position to compare.
+/// `end` is the last possible byte, beyond which to stop looking.
+/// `safe_end` is a few (8) bytes before end, for comparing multiple bytes at once.
 pub fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end: usize, _safe_end: usize) -> usize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
