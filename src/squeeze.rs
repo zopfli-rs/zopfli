@@ -137,10 +137,7 @@ impl SymbolStats {
         fn calculate_and_store_entropy(count: &[size_t], bitlengths: &mut [c_double]) {
             let n = count.len();
 
-            let mut sum = 0;
-            for i in 0..n {
-                sum += count[i];
-            }
+            let sum = count.iter().sum();
 
             let log2sum = (if sum == 0 { n } else { sum } as c_double).ln() * K_INV_LOG2;
 
@@ -231,10 +228,10 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<&SymbolStats
     }
 
     mincost = f64::MAX;
-    for i in 0..30 {
-        let c = costmodel(3, dsymbols[i] as c_uint, costcontext);
+    for &dsym in dsymbols.iter().take(30) {
+        let c = costmodel(3, dsym as c_uint, costcontext);
         if c < mincost {
-            bestdist = dsymbols[i];
+            bestdist = dsym;
             mincost = c;
         }
     }
@@ -280,8 +277,8 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
 
     costs.resize(blocksize + 1, 0.0);
 
-    for i in 1..(blocksize + 1) {
-        costs[i] = f32::MAX;
+    for cost in costs.iter_mut().take(blocksize + 1).skip(1) {
+        *cost = f32::MAX;
     }
     costs[0] = 0.0; /* Because it's the start. */
     length_array[0] = 0;
@@ -375,12 +372,7 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
     }
 
     /* Mirror result. */
-    let pathsize = path.len();
-    for index in 0..(pathsize / 2) {
-        let temp = path[index];
-        path[index] = path[pathsize - index - 1];
-        path[pathsize - index - 1] = temp;
-    }
+    path.reverse();
     path
 }
 

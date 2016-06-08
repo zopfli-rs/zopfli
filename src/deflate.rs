@@ -17,13 +17,11 @@ pub enum BlockType {
 }
 
 pub fn fixed_tree() -> (Vec<c_uint>, Vec<c_uint>) {
-    let mut ll = vec![8; ZOPFLI_NUM_LL];
-    for i in 144..256 {
-        ll[i] = 9;
-    }
-    for i in 256..280 {
-        ll[i] = 7;
-    }
+    let mut ll = Vec::with_capacity(ZOPFLI_NUM_LL);
+    ll.resize(144, 8);
+    ll.resize(256, 9);
+    ll.resize(280, 7);
+    ll.resize(288, 8);
     let d = vec![5; ZOPFLI_NUM_D];
     (ll, d)
 }
@@ -55,17 +53,15 @@ pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
     // Mark any seq of non-0's that is longer than 7 as a good_for_rle.
     let mut symbol = counts[0];
     let mut stride = 0;
-    for i in 0..(length + 1) {
-        if i == length || counts[i] != symbol {
+    for (i, &count) in counts.iter().enumerate().take(length) {
+        if count != symbol {
             if (symbol == 0 && stride >= 5) || (symbol != 0 && stride >= 7) {
                 for k in 0..stride {
                     good_for_rle[i - k - 1] = true;
                 }
             }
             stride = 1;
-            if i != length {
-                symbol = counts[i];
-            }
+            symbol = count;
         } else {
             stride += 1;
         }
@@ -124,28 +120,23 @@ pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
 //
 // d_lengths: the 32 lengths of the distance codes.
 pub fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut[c_uint]) {
-    let mut num_dist_codes = 0; // Amount of non-zero distance codes
     // Ignore the two unused codes from the spec
-    for i in 0..30 {
-        if d_lengths[i] != 0 {
-            num_dist_codes += 1;
-        }
-        // Two or more codes is fine.
-        if num_dist_codes >= 2 {
-            return;
-        }
-    }
+    let num_dist_codes = d_lengths.iter().take(30).filter(|&&d_length| d_length != 0).count();
 
-    if num_dist_codes == 0 {
-        d_lengths[0] = 1;
-        d_lengths[1] = 1;
-    } else if num_dist_codes == 1 {
-        let index = if d_lengths[0] == 0 {
-            0
-        } else {
-            1
-        };
-        d_lengths[index] = 1;
+    match num_dist_codes {
+        0 => {
+            d_lengths[0] = 1;
+            d_lengths[1] = 1;
+        },
+        1 => {
+            let index = if d_lengths[0] == 0 {
+                0
+            } else {
+                1
+            };
+            d_lengths[index] = 1;
+        },
+        _ => {}, // Two or more codes is fine.
     }
 }
 
@@ -477,8 +468,8 @@ pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, us
     add_bits(hdist as c_uint, 5, bp, out);
     add_bits(hclen as c_uint, 4, bp, out);
 
-    for i in 0..(hclen + 4) {
-        add_bits(clcl[order[i]], 3, bp, out);
+    for &item in order.iter().take(hclen + 4) {
+        add_bits(clcl[item], 3, bp, out);
     }
 
     for i in 0..rle.len() {
@@ -765,13 +756,12 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: si
 }
 
 pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
-    let npoints = splitpoints.len();
-    for i in 0..(npoints + 1) {
-        let start = if i == 0 { 0 } else { splitpoints[i - 1] };
-        let end = if i == npoints { lz77.size() } else { splitpoints[i] };
-        let final_block_i = i == npoints && final_block;
-        add_lz77_block_auto_type(options, final_block_i, in_data, lz77, start, end, 0, bp, out);
+    let mut last = 0;
+    for &item in splitpoints.iter() {
+        add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bp, out);
+        last = item;
     }
+    add_lz77_block_auto_type(options, final_block, in_data, lz77, last, lz77.size(), 0, bp, out);
 }
 
 pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
@@ -785,12 +775,11 @@ pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], 
     let npoints = splitpoints_uncompressed.len();
     let mut splitpoints = Vec::with_capacity(npoints);
 
-    for i in 0..(npoints + 1) {
-        let start = if i == 0 { instart } else { splitpoints_uncompressed[i - 1] };
-        let end = if i == npoints { inend } else { splitpoints_uncompressed[i] };
-        let mut s = ZopfliBlockState::new(options, start, end, 1);
+    let mut last = instart;
+    for &item in &splitpoints_uncompressed {
+        let mut s = ZopfliBlockState::new(options, last, item, 1);
 
-        let store = lz77_optimal(&mut s, in_data, start, end, options.numiterations);
+        let store = lz77_optimal(&mut s, in_data, last, item, options.numiterations);
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);
@@ -799,9 +788,20 @@ pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], 
             lz77.lit_len_dist(store.litlens[j], store.dists[j], store.pos[j]);
         }
 
-        if i < npoints {
-            splitpoints.push(lz77.size());
-        }
+        splitpoints.push(lz77.size());
+
+        last = item;
+    }
+
+    let mut s = ZopfliBlockState::new(options, last, inend, 1);
+
+    let store = lz77_optimal(&mut s, in_data, last, inend, options.numiterations);
+    totalcost += calculate_block_size_auto_type(&store, 0, store.size());
+
+    // ZopfliAppendLZ77Store(&store, &lz77);
+    assert!(store.size() > 0);
+    for j in 0..store.size() {
+        lz77.lit_len_dist(store.litlens[j], store.dists[j], store.pos[j]);
     }
 
     /* Second block splitting attempt */
@@ -810,13 +810,13 @@ pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], 
         let mut totalcost2 = 0.0;
 
         blocksplit_lz77(options, &lz77, options.blocksplittingmax as usize, &mut splitpoints2);
-        let npoints2 = splitpoints2.len();
 
-        for i in 0..(npoints2 + 1) {
-            let start = if i == 0 { 0 } else { splitpoints2[i - 1] };
-            let end = if i == npoints2 { lz77.size() } else { splitpoints2[i] };
-            totalcost2 += calculate_block_size_auto_type(&lz77, start, end);
+        let mut last = 0;
+        for &item in &splitpoints2 {
+            totalcost2 += calculate_block_size_auto_type(&lz77, last, item);
+            last = item;
         }
+        totalcost2 += calculate_block_size_auto_type(&lz77, last, lz77.size());
 
         if totalcost2 < totalcost {
             splitpoints = splitpoints2;

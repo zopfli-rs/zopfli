@@ -10,9 +10,9 @@ pub fn lengths_to_symbols(lengths: &[c_uint], maxbits: c_uint) -> Vec<c_uint> {
 
     // 1) Count the number of codes for each code length. Let bl_count[N] be the
     // number of codes of length N, N >= 1. */
-    for i in 0..n {
-        assert!(lengths[i] <= maxbits);
-        bl_count[lengths[i] as usize] += 1;
+    for &length in lengths.iter() {
+        assert!(length <= maxbits);
+        bl_count[length as usize] += 1;
     }
     // 2) Find the numerical value of the smallest code for each code length.
     let mut code = 0;

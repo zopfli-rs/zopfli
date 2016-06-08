@@ -1,3 +1,5 @@
+#![feature(iter_arith)]
+
 #![feature(plugin)]
 #![plugin(clippy)]
 

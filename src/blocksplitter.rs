@@ -46,9 +46,9 @@ pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, co
             besti = 0;
             best = vp[0];
 
-            for i in 1..num {
-                if vp[i] < best {
-                  best = vp[i];
+            for (i, &item) in vp.iter().enumerate().take(num).skip(1) {
+                if item < best {
+                  best = item;
                   besti = i;
                 }
             }
@@ -104,15 +104,20 @@ pub struct SplitCostContext<'a> {
 pub fn find_largest_splittable_block(lz77size: size_t, done: &Vec<c_uchar>, splitpoints: &Vec<size_t>) -> Option<(size_t, size_t)> {
     let mut longest = 0;
     let mut found = None;
-    let npoints = splitpoints.len();
 
-    for i in 0..(npoints + 1) {
-        let start = if i == 0 { 0 } else { splitpoints[i - 1] };
-        let end = if i == npoints { lz77size - 1 } else { splitpoints[i] };
-        if done[start] == 0 && end - start > longest {
-            found = Some((start, end));
-            longest = end - start;
+    let mut last = 0;
+
+    for &item in splitpoints.iter() {
+        if done[last] == 0 && item - last > longest {
+            found = Some((last, item));
+            longest = item - last;
         }
+        last = item;
+    }
+
+    let end = lz77size - 1;
+    if done[last] == 0 && end - last > longest {
+        found = Some((last, end));
     }
 
     found

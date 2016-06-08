@@ -222,9 +222,8 @@ impl Lz77Store {
         }
 
         let mut pos = instart;
-        let pathsize = path.len();
-        for i in 0..pathsize {
-            let mut length = path[i];
+        for &item in &path {
+            let mut length = item;
             assert!(pos < inend);
 
             h.update(arr, pos);
@@ -616,15 +615,16 @@ pub fn get_histogram_at(lz77: &Lz77Store, lpos: size_t) -> (Vec<size_t>, Vec<siz
     let llpos = ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL);
     let dpos = ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D);
 
-    for i in 0..ZOPFLI_NUM_LL {
-        ll[i] = lz77.ll_counts[llpos + i];
+    for (i, item) in ll.iter_mut().enumerate() {
+        *item = lz77.ll_counts[llpos + i];
     }
     let end = cmp::min(llpos + ZOPFLI_NUM_LL, lz77.size());
     for i in (lpos + 1)..end {
         ll[lz77.ll_symbol[i] as usize] -= 1;
     }
-    for i in 0..ZOPFLI_NUM_D {
-        d[i] = lz77.d_counts[dpos + i];
+
+    for (i, item) in d.iter_mut().enumerate() {
+        *item = lz77.d_counts[dpos + i];
     }
     let end = cmp::min(dpos + ZOPFLI_NUM_D, lz77.size());
     for i in (lpos + 1)..end {
