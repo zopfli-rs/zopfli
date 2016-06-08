@@ -466,7 +466,7 @@ pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, i
             stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
             stats.calculate_entropy();
         }
-        if i > 5 && cost == lastcost {
+        if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
             stats = beststats;
             stats.randomize_stat_freqs(&mut ran_state);
             stats.calculate_entropy();
