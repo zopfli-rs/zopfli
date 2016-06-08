@@ -127,7 +127,7 @@ pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Ve
     result
 }
 
-fn lowest_list(lists: &mut [List], leaves: &Vec<Leaf>) {
+fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
     // We're in the lowest list, just add another leaf to the lookaheads
     // There will always be more leaves to be added on level 0 so this is safe.
     let mut current_list = lists.get_mut(0).unwrap();
@@ -138,7 +138,7 @@ fn lowest_list(lists: &mut [List], leaves: &Vec<Leaf>) {
     current_list.next_leaf_index += 1;
 }
 
-fn next_leaf(lists: &mut [List], leaves: &Vec<Leaf>, current_list_index: usize) {
+fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     let mut current_list = lists.get_mut(current_list_index).unwrap();
 
     // The next leaf goes next; counting itself makes the leaf_count increase by one.
@@ -150,7 +150,7 @@ fn next_leaf(lists: &mut [List], leaves: &Vec<Leaf>, current_list_index: usize) 
     current_list.next_leaf_index += 1;
 }
 
-fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &Vec<Leaf>, current_list_index: usize) {
+fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     let num_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.len();
     let previous_list_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.as_ptr();
     {
@@ -173,12 +173,12 @@ fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &Vec<Leaf>, current
     boundary_pm(lists, leaves, current_list_index - 1);
 }
 
-fn boundary_pm_toplevel(lists: &mut [List], leaves: &Vec<Leaf>) {
+fn boundary_pm_toplevel(lists: &mut [List], leaves: &[Leaf]) {
     let last_index = lists.len() - 1;
     boundary_pm(lists, leaves, last_index);
 }
 
-fn boundary_pm(lists: &mut [List], leaves: &Vec<Leaf>, current_list_index: usize) {
+fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     let next_leaf_index = lists[current_list_index].next_leaf_index;
 
     if current_list_index == 0 && next_leaf_index == leaves.len() {

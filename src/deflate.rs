@@ -166,7 +166,7 @@ pub fn calculate_block_symbol_size_small(ll_lengths: &[c_uint], d_lengths: &[c_u
 }
 
 /// Same as `calculate_block_symbol_size`, but with the histogram provided by the caller.
-pub fn calculate_block_symbol_size_given_counts(ll_counts: &Vec<size_t>, d_counts: &Vec<size_t>, ll_lengths: &[c_uint], d_lengths: &[c_uint], lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
+pub fn calculate_block_symbol_size_given_counts(ll_counts: &[size_t], d_counts: &[size_t], ll_lengths: &[c_uint], d_lengths: &[c_uint], lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
 
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
@@ -755,7 +755,7 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: si
     }
 }
 
-pub fn add_all_blocks(splitpoints: &Vec<size_t>, lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_all_blocks(splitpoints: &[size_t], lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
     let mut last = 0;
     for &item in splitpoints.iter() {
         add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bp, out);

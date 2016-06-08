@@ -101,7 +101,7 @@ pub struct SplitCostContext<'a> {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-pub fn find_largest_splittable_block(lz77size: size_t, done: &Vec<c_uchar>, splitpoints: &Vec<size_t>) -> Option<(size_t, size_t)> {
+pub fn find_largest_splittable_block(lz77size: size_t, done: &[c_uchar], splitpoints: &[size_t]) -> Option<(size_t, size_t)> {
     let mut longest = 0;
     let mut found = None;
 
@@ -126,7 +126,7 @@ pub fn find_largest_splittable_block(lz77size: size_t, done: &Vec<c_uchar>, spli
 /// Prints the block split points as decimal and hex values in the terminal.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &Vec<size_t>) {
+pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[size_t]) {
     let nlz77points = lz77splitpoints.len();
     let mut splitpoints = Vec::with_capacity(nlz77points);
 
