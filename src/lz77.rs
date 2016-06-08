@@ -358,21 +358,19 @@ impl<'a> ZopfliBlockState<'a> {
             Some(ref mut lmc) => {
                 /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
                 that this cache value is not filled in yet. */
-                let mut length_lmcpos = lmc.length_at(lmcpos);
-                let mut dist_lmcpos = lmc.dist_at(lmcpos);
 
-                let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
+                let cache_available = lmc.length_at(lmcpos) == 0 || lmc.dist_at(lmcpos) != 0;
 
                 if limit == ZOPFLI_MAX_MATCH && !sublen.is_null() && !cache_available {
-                    assert!(length_lmcpos == 1 && dist_lmcpos == 0);
+                    assert!(lmc.length_at(lmcpos) == 1 && lmc.dist_at(lmcpos) == 0);
                     if length < ZOPFLI_MIN_MATCH as c_ushort {
-                        dist_lmcpos = 0;
-                        length_lmcpos = 0;
+                        lmc.store_dist_at(lmcpos, 0);
+                        lmc.store_length_at(lmcpos, 0);
                     } else {
-                        dist_lmcpos = distance;
-                        length_lmcpos = length;
+                        lmc.store_dist_at(lmcpos, distance);
+                        lmc.store_length_at(lmcpos, length);
                     }
-                    assert!(!(length_lmcpos == 1 && dist_lmcpos == 0));
+                    assert!(!(lmc.length_at(lmcpos) == 1 && lmc.dist_at(lmcpos) == 0));
                     lmc.store_sublen(sublen, lmcpos, length as size_t);
                 }
             }

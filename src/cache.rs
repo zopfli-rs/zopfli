@@ -34,6 +34,14 @@ impl ZopfliLongestMatchCache {
         self.dist[pos]
     }
 
+    pub fn store_length_at(&mut self, pos: size_t, val: c_ushort) {
+        self.length[pos] = val;
+    }
+
+    pub fn store_dist_at(&mut self, pos: size_t, val: c_ushort) {
+        self.dist[pos] = val;
+    }
+
     /// Returns the length up to which could be stored in the cache.
     pub fn max_sublen(&self, pos: size_t) -> c_uint {
         let start = ZOPFLI_CACHE_LENGTH * pos * 3;
