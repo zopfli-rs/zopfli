@@ -13,6 +13,7 @@ readme = "README.md"
 libc = "*"
 crc = "*"
 adler32 = "*"
+clippy = "*"
 
 [profile.release]
 debug = true
