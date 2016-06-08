@@ -179,7 +179,7 @@ pub fn calculate_block_symbol_size_given_counts(ll_counts: &Vec<size_t>, d_count
     let mut result = 0;
 
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
-        return calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend);
+        calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
         for i in 0..256 {
             result += ll_lengths[i] * ll_counts[i] as c_uint;

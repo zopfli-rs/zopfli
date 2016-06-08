@@ -293,7 +293,7 @@ impl<'a> ZopfliBlockState<'a> {
         };
 
         match self.lmc {
-            None => return longest_match,
+            None => longest_match,
             Some(ref lmc) => {
                 /* The LMC cache starts at the beginning of the block rather than the
                  beginning of the whole array. */
