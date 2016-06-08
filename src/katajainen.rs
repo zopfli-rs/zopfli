@@ -144,7 +144,7 @@ fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     // The next leaf goes next; counting itself makes the leaf_count increase by one.
     current_list.lookahead2.weight = leaves[current_list.next_leaf_index].weight;
     current_list.lookahead2.leaf_counts.clear();
-    current_list.lookahead2.leaf_counts.extend(current_list.lookahead1.leaf_counts.iter());
+    current_list.lookahead2.leaf_counts.extend_from_slice(&current_list.lookahead1.leaf_counts);
     let last_index = current_list.lookahead2.leaf_counts.len() - 1;
     current_list.lookahead2.leaf_counts[last_index] += 1;
     current_list.next_leaf_index += 1;
