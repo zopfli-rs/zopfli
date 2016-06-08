@@ -131,7 +131,7 @@ fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
     // We're in the lowest list, just add another leaf to the lookaheads
     // There will always be more leaves to be added on level 0 so this is safe.
     let mut current_list = lists.get_mut(0).unwrap();
-    let ref next_leaf = leaves[current_list.next_leaf_index];
+    let next_leaf = &leaves[current_list.next_leaf_index];
     current_list.lookahead2.weight = next_leaf.weight;
 
     current_list.lookahead2.leaf_counts[0] = current_list.lookahead1.leaf_counts.last().unwrap() + 1;
@@ -154,7 +154,7 @@ fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &[Leaf], current_li
     let num_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.len();
     let previous_list_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.as_ptr();
     {
-        let ref mut current_list = lists[current_list_index];
+        let mut current_list = &mut lists[current_list_index];
 
         // Make a tree from the lookaheads from the previous list; that goes next.
         // This is not a leaf node, so the leaf count stays the same.
