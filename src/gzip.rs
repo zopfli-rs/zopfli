@@ -26,13 +26,13 @@ pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
 
     let crc = crc32::checksum_ieee(in_data);
 
-    out.push((crc >> 0) as u8);
+    out.push(crc as u8);
     out.push((crc >> 8) as u8);
     out.push((crc >> 16) as u8);
     out.push((crc >> 24) as u8);
 
     let input_size = in_data.len() as u32;
-    out.push((input_size >> 0) as u8);
+    out.push(input_size as u8);
     out.push((input_size >> 8) as u8);
     out.push((input_size >> 16) as u8);
     out.push((input_size >> 24) as u8);
