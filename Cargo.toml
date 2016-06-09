@@ -1,19 +1,19 @@
 [package]
 name = "zopfli"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Carol (Nichols || Goulding) <carol.nichols@gmail.com>"]
-description = "This is mostly the C zopfli implementation, with some functions replaced by Rust"
-license = "MIT"
+description = "A Rust implementation of the Zopfli compression algorithm."
+license = "Apache-2.0"
 keywords = ["compression"]
-homepage = "https://github.com/carols10cents/zopfli-1"
-repository = "https://github.com/carols10cents/zopfli-1"
-readme = "README.md"
+homepage = "https://github.com/carols10cents/zopfli"
+repository = "https://github.com/carols10cents/zopfli"
+readme = "README"
 
 [dependencies]
-libc = "*"
-crc = "*"
-adler32 = "*"
-clippy = "*"
+libc = "0.2"
+crc = "1.2"
+adler32 = "0.2"
+clippy = "0.0"
 
 [profile.release]
 debug = true
