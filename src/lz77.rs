@@ -550,7 +550,7 @@ pub fn find_longest_match_loop(h: &mut ZopfliHash, array: &[c_uchar], pos: size_
         };
 
         chain_counter -= 1;
-        if chain_counter <= 0 {
+        if chain_counter == 0 {
             break;
         }
     }
