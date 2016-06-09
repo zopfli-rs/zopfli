@@ -59,6 +59,7 @@ pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolSta
     }
 }
 
+#[derive(Default)]
 pub struct RanState {
     m_w: u32,
     m_z: u32,
@@ -99,8 +100,8 @@ impl Clone for SymbolStats {
     }
 }
 
-impl SymbolStats {
-    pub fn new() -> SymbolStats {
+impl Default for SymbolStats {
+    fn default() -> SymbolStats {
         SymbolStats {
             litlens: [0; ZOPFLI_NUM_LL],
             dists: [0; ZOPFLI_NUM_D],
@@ -108,7 +109,9 @@ impl SymbolStats {
             d_symbols: [0.0; ZOPFLI_NUM_D],
         }
     }
+}
 
+impl SymbolStats {
     pub fn randomize_stat_freqs(&mut self, state: &mut RanState) {
         fn randomize_freqs(freqs: &mut [size_t], state: &mut RanState) {
             let n = freqs.len();
@@ -190,7 +193,7 @@ impl SymbolStats {
 }
 
 pub fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &SymbolStats, w2: c_double) -> SymbolStats {
-    let mut result = SymbolStats::new();
+    let mut result: SymbolStats = Default::default();
 
     for i in 0..ZOPFLI_NUM_LL {
         result.litlens[i] = (stats1.litlens[i] as c_double * w1 + stats2.litlens[i] as c_double * w2) as size_t;
@@ -424,8 +427,8 @@ pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, i
     let mut currentstore = Lz77Store::new();
     let mut outputstore = currentstore.clone();
 
-    let mut stats = SymbolStats::new();
-    let mut beststats = SymbolStats::new();
+    let mut stats: SymbolStats = Default::default();
+    let mut beststats: SymbolStats = Default::default();
 
     let mut bestcost = f64::MAX;
     let mut lastcost = 0.0;

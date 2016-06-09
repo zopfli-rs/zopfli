@@ -13,7 +13,7 @@ use Options;
 /// Parameter dists: Contains the distances. A value is 0 to indicate that there is
 /// no dist and the corresponding litlens value is a literal instead of a length.
 /// Parameter size: The size of both the litlens and dists arrays.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Lz77Store {
    pub litlens: Vec<c_ushort>,
    pub dists: Vec<c_ushort>,

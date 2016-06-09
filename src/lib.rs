@@ -50,8 +50,8 @@ pub struct Options {
   pub blocksplittingmax: c_int,
 }
 
-impl Options {
-    pub fn new() -> Options {
+impl Default for Options {
+    fn default() -> Options {
         Options {
             verbose: false,
             verbose_more: false,
