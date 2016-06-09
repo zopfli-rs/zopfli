@@ -145,8 +145,9 @@ pub fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut[c_uint]) {
 pub fn calculate_block_symbol_size_small(ll_lengths: &[c_uint], d_lengths: &[c_uint], lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t {
     let mut result = 0;
 
+    assert!(lend - 1 < lz77.size());
+
     for i in lstart..lend {
-        assert!(i < lz77.size());
         let litlens_i = lz77.litlens[i];
         let dists_i = lz77.dists[i];
         assert!(litlens_i < 259);
