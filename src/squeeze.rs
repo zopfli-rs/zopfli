@@ -17,7 +17,7 @@ use lz77::{Lz77Store, ZopfliBlockState, find_longest_match};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
-const K_INV_LOG2: c_double = 1.4426950408889;  // 1.0 / log(2.0)
+const K_INV_LOG2: c_double = f64::consts::LOG2_E;  // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
 #[allow(non_snake_case)]
