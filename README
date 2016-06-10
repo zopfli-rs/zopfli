@@ -1,39 +1,33 @@
-Zopfli Compression Algorithm is a compression library programmed in C to perform
-very good, but slow, deflate or zlib compression.
+# Zopfli in Rust
 
-The basic function to compress data is ZopfliCompress in zopfli.h. Use the
-ZopfliOptions object to set parameters that affect the speed and compression.
-Use the ZopfliInitOptions function to place the default values in the
-ZopfliOptions first.
+This is a reimplementation of the [Zopfli](https://github.com/google/zopfli) compression tool in Rust.
 
-ZopfliCompress supports deflate, gzip and zlib output format with a parameter.
-To support only one individual format, you can instead use ZopfliDeflate in
-deflate.h, ZopfliZlibCompress in zlib_container.h or ZopfliGzipCompress in
-gzip_container.h.
+I have totally ignored zopfliping.
 
-ZopfliDeflate creates a valid deflate stream in memory, see:
-http://www.ietf.org/rfc/rfc1951.txt
-ZopfliZlibCompress creates a valid zlib stream in memory, see:
-http://www.ietf.org/rfc/rfc1950.txt
-ZopfliGzipCompress creates a valid gzip stream in memory, see:
-http://www.ietf.org/rfc/rfc1952.txt
+More info about why and how I did this can be found in [the slides for a talk I gave about it](https://github.com/carols10cents/rust-out-your-c-talk).
 
-This library can only compress, not decompress. Existing zlib or deflate
-libraries can decompress the data.
+## How to build
 
-zopfli_bin.c is separate from the library and contains an example program to
-create very well compressed gzip files. Currently the makefile builds this
-program with the library statically linked in.
+To build the code, you'll need a nightly Rust (for one little feature, `iter_arith`), and then you  can do:
 
-The source code of Zopfli is under src/zopfli. Build instructions:
+```
+$ cargo build --release
+```
 
-To build zopfli, compile all .c source files under src/zopfli to a single binary
-with C, and link to the standard C math library, e.g.:
-gcc src/zopfli/*.c -O2 -W -Wall -Wextra -Wno-unused-function -ansi -pedantic -lm -o zopfli
+and the executable will be in `target/release/zopfli`.
 
-A makefile is provided as well, but only for linux. Use "make" to build the
-binary, "make libzopfli" to build it as a shared library. For other platforms,
-please use the build instructions above instead.
+## Running the tests
 
-Zopfli Compression Algorithm was created by Lode Vandevenne and Jyrki
-Alakuijala, based on an algorithm by Jyrki Alakuijala.
+There are some unit tests, mostly around the boundary package merge algorithm implementation in katajainen.rs, that can be run with:
+
+```
+$ cargo test
+```
+
+Golden master tests, to check that compressed files are exactly the same as the C implementation would generate, can be run using:
+
+```
+$ ./test/run.sh
+```
+
+and then checking that git reports no changes to the files in `test/results`.
