@@ -338,7 +338,7 @@ pub fn calculate_tree_size(ll_lengths: &[c_uint], d_lengths: &[c_uint]) -> size_
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
-pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, use_17: bool, use_18: bool, bp: *mut c_uchar, out: &mut Vec<u8>) -> size_t {
+pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, use_17: bool, use_18: bool, bp: &mut u8, out: &mut Vec<u8>) -> size_t {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -501,7 +501,7 @@ pub fn encode_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], use_16: bool, us
     result_size
 }
 
-pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: &mut u8, out: &mut Vec<u8>) {
     let mut best = 0;
     let mut bestsize = 0;
 
@@ -530,7 +530,7 @@ pub fn add_dynamic_tree(ll_lengths: &[c_uint], d_lengths: &[c_uint], bp: *mut c_
 ///   set it to `0` to not do the assertion.
 /// `bp`: output bit pointer
 /// `out`: dynamic output array to append to
-pub fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: &mut u8, out: &mut Vec<u8>) {
     let compressed_size;
     let mut uncompressed_size: size_t = 0;
 
@@ -672,7 +672,7 @@ pub fn get_dynamic_lengths(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> (c
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
 /// end code 256. `expected_data_size` is the uncompressed block size, used for
 /// assert, but you can set it to `0` to not do the assertion.
-pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t , ll_symbols: &[c_uint], ll_lengths: &[c_uint], d_symbols: &[c_uint], d_lengths: &[c_uint], bp: &mut u8, out: &mut Vec<u8>) {
     let mut testlength: size_t = 0;
 
     for i in lstart..lend {
@@ -699,7 +699,7 @@ pub fn add_lz77_data(lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_da
     assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
 
-pub fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: size_t, lend: size_t, expected_data_size: size_t, bp: &mut u8, out: &mut Vec<u8>) {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, BlockType::Uncompressed);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, BlockType::Fixed);
     let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
@@ -756,7 +756,7 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: size_t, lend: si
     }
 }
 
-pub fn add_all_blocks(splitpoints: &[size_t], lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_all_blocks(splitpoints: &[size_t], lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bp: &mut u8, out: &mut Vec<u8>) {
     let mut last = 0;
     for &item in splitpoints.iter() {
         add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bp, out);
@@ -765,7 +765,7 @@ pub fn add_all_blocks(splitpoints: &[size_t], lz77: &Lz77Store, options: &Option
     add_lz77_block_auto_type(options, final_block, in_data, lz77, last, lz77.size(), 0, bp, out);
 }
 
-pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: &mut u8, out: &mut Vec<u8>) {
     let mut totalcost = 0.0;
     let mut lz77 = Lz77Store::new();
 
@@ -838,7 +838,7 @@ pub fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], 
 /// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-pub fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: &mut u8, out: &mut Vec<u8>) {
     /* If btype=Dynamic is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
@@ -880,7 +880,7 @@ pub fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_d
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: bool, in_data: &[u8], bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: bool, in_data: &[u8], bp: &mut u8, out: &mut Vec<u8>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
@@ -907,46 +907,46 @@ pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: bool,
 /// Given the value of bp and the amount of bytes, the amount of bits represented
 /// is not simply bytesize * 8 + bp because even representing one bit requires a
 /// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
-pub fn add_bit(bit: c_int, bp: *mut c_uchar, out: &mut Vec<u8>) {
-    if unsafe { *bp } == 0 {
+pub fn add_bit(bit: c_int, bp: &mut u8, out: &mut Vec<u8>) {
+    if *bp == 0 {
         out.push(0);
     }
     let outsize = out.len();
-    out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
-    unsafe { *bp = (*bp + 1) & 7};
+    out[outsize - 1] |= (bit << *bp ) as u8;
+    *bp = (*bp + 1) & 7;
 }
 
-pub fn add_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_bits(symbol: c_uint, length: c_uint, bp: &mut u8, out: &mut Vec<u8>) {
     /* TODO(lode): make more efficient (add more bits at once). */
     for i in 0..length {
         let bit = (symbol >> i) & 1;
-        if unsafe { *bp } == 0 {
+        if *bp == 0 {
             out.push(0);
         }
         let outsize = out.len();
-        out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
-        unsafe { *bp = (*bp + 1) & 7};
+        out[outsize - 1] |= (bit << *bp) as u8;
+        *bp = (*bp + 1) & 7;
     }
 }
 
 /// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
 /// uses both orders in one standard.
-pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_huffman_bits(symbol: c_uint, length: c_uint, bp: &mut u8, out: &mut Vec<u8>) {
     /* TODO(lode): make more efficient (add more bits at once). */
     for i in 0..length {
         let bit = (symbol >> (length - i - 1)) & 1;
-        if unsafe { *bp } == 0 {
+        if *bp == 0 {
             out.push(0);
         }
         let outsize = out.len();
-        out[outsize - 1] |= (bit << unsafe { *bp }) as u8;
-        unsafe { *bp = (*bp + 1) & 7};
+        out[outsize - 1] |= (bit << *bp) as u8;
+        *bp = (*bp + 1) & 7;
     }
 }
 
 /// Since an uncompressed block can be max 65535 in size, it actually adds
 /// multible blocks if needed.
-pub fn add_non_compressed_block(_options: &Options, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: *mut c_uchar, out: &mut Vec<u8>) {
+pub fn add_non_compressed_block(_options: &Options, final_block: bool, in_data: &[u8], instart: size_t, inend: size_t, bp: &mut u8, out: &mut Vec<u8>) {
     let mut pos = instart;
     loop {
         let mut blocksize = 65535;
@@ -964,7 +964,7 @@ pub fn add_non_compressed_block(_options: &Options, final_block: bool, in_data: 
         add_bit(0, bp, out);
 
         /* Any bits of input up to the next byte boundary are ignored. */
-        unsafe { *bp = 0; }
+        *bp = 0;
 
         out.push((blocksize % 256) as u8);
         out.push(((blocksize / 256) % 256) as u8);
