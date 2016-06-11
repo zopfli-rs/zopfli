@@ -22,7 +22,7 @@ pub mod zlib;
 use std::io::prelude::*;
 use std::fs::File;
 
-use libc::{c_int, c_uchar};
+use libc::c_int;
 
 use deflate::{deflate, BlockType};
 use gzip::gzip_compress;
@@ -70,8 +70,7 @@ pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &m
         Format::Zlib => zlib_compress(options, in_data, out),
         Format::Deflate => {
             let mut bp = 0;
-            let bp_ptr: *mut c_uchar = &mut bp;
-            deflate(options, BlockType::Dynamic, true, in_data, bp_ptr, out);
+            deflate(options, BlockType::Dynamic, true, in_data, &mut bp, out);
         }
     }
 }

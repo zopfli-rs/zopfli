@@ -1,5 +1,5 @@
 use crc::crc32;
-use libc::{c_uchar, c_double};
+use libc::c_double;
 
 use deflate::{deflate, BlockType};
 use Options;
@@ -20,9 +20,8 @@ pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push(3);  /* OS follows Unix conventions. */
 
     let mut bp = 0;
-    let bp_ptr: *mut c_uchar = &mut bp;
 
-    deflate(options, BlockType::Dynamic, true, in_data, bp_ptr, out);
+    deflate(options, BlockType::Dynamic, true, in_data, &mut bp, out);
 
     let crc = crc32::checksum_ieee(in_data);
 
