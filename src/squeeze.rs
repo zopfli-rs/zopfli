@@ -13,7 +13,7 @@ use libc::malloc;
 
 use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
-use lz77::{Lz77Store, ZopfliBlockState, find_longest_match};
+use lz77::{Lz77Store, ZopfliBlockState, Cache, find_longest_match};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
@@ -250,8 +250,9 @@ fn get_cost_model_min_cost<F>(costmodel: F) -> f64
 /// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
-fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, costmodel: F, h: &mut ZopfliHash, costs: &mut Vec<f32>) -> (f64, Vec<u16>)
-    where F: Fn(u32, u32) -> f64
+fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, costmodel: F, h: &mut ZopfliHash, costs: &mut Vec<f32>) -> (f64, Vec<u16>)
+    where F: Fn(u32, u32) -> f64,
+          C: Cache,
 {
     // Best cost to get here so far.
     let blocksize = inend - instart;
@@ -390,8 +391,9 @@ fn trace_backwards(size: usize, length_array: Vec<u16>) -> Vec<u16> {
 /// `store`: place to output the LZ77 data
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
-fn lz77_optimal_run<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, costmodel: F, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<f32>)
-    where F: Fn(u32, u32) -> f64
+fn lz77_optimal_run<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, costmodel: F, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<f32>)
+    where F: Fn(u32, u32) -> f64,
+          C: Cache,
 {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace_backwards(inend - instart, length_array);
@@ -408,7 +410,9 @@ fn lz77_optimal_run<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize,
 /// using with a fixed tree.
 /// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, store: &mut Lz77Store) {
+pub fn lz77_optimal_fixed<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, store: &mut Lz77Store)
+    where C: Cache,
+{
     s.blockstart = instart;
     s.blockend = inend;
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
@@ -419,7 +423,9 @@ pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: usi
 /// Calculates lit/len and dist pairs for given data.
 /// If `instart` is larger than 0, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, numiterations: i32) -> Lz77Store {
+pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, numiterations: i32) -> Lz77Store
+    where C: Cache,
+{
 
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
     let mut costs = Vec::with_capacity(inend - instart + 1);
