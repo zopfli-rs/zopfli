@@ -22,8 +22,6 @@ mod zlib;
 use std::io::prelude::*;
 use std::fs::File;
 
-use libc::c_int;
-
 use deflate::{deflate, BlockType};
 use gzip::gzip_compress;
 use zlib::zlib_compress;
@@ -39,12 +37,12 @@ pub struct Options {
   compression cost. Good values: 10, 15 for small files, 5 for files over
   several MB in size or it will be too slow.
   */
-  numiterations: c_int,
+  numiterations: i32,
   /*
   Maximum amount of blocks to split into (0 for unlimited, but this can give
   extreme results that hurt compression on some files). Default value: 15.
   */
-  blocksplittingmax: c_int,
+  blocksplittingmax: i32,
 }
 
 impl Default for Options {
