@@ -264,16 +264,19 @@ pub struct ZopfliBlockState<'a> {
 }
 
 impl<'a> ZopfliBlockState<'a> {
-    pub fn new(options: &Options, blockstart: usize, blockend: usize, add_lmc: i32) -> ZopfliBlockState {
+    pub fn new(options: &Options, blockstart: usize, blockend: usize) -> ZopfliBlockState {
+        ZopfliBlockState {
+            lmc: Some(ZopfliLongestMatchCache::new(blockend - blockstart)),
+            .. ZopfliBlockState::new_without_cache(options, blockstart, blockend)
+        }
+    }
+
+    pub fn new_without_cache(options: &Options, blockstart: usize, blockend: usize) -> ZopfliBlockState {
         ZopfliBlockState {
             options: options,
             blockstart: blockstart,
             blockend: blockend,
-            lmc: if add_lmc > 0 {
-                Some(ZopfliLongestMatchCache::new(blockend - blockstart))
-            } else {
-                None
-            },
+            lmc: None,
         }
     }
 

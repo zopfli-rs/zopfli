@@ -718,7 +718,7 @@ fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8]
         let instart = lz77.pos[lstart];
         let inend = instart + get_byte_range(lz77, lstart, lend);
 
-        let mut s = ZopfliBlockState::new(options, instart, inend, 1);
+        let mut s = ZopfliBlockState::new(options, instart, inend);
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut fixedstore);
         fixedcost = calculate_block_size(&fixedstore, 0, fixedstore.size(), BlockType::Fixed);
     }
@@ -774,7 +774,7 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
 
     let mut last = instart;
     for &item in &splitpoints_uncompressed {
-        let mut s = ZopfliBlockState::new(options, last, item, 1);
+        let mut s = ZopfliBlockState::new(options, last, item);
 
         let store = lz77_optimal(&mut s, in_data, last, item, options.numiterations);
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
@@ -790,7 +790,7 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
         last = item;
     }
 
-    let mut s = ZopfliBlockState::new(options, last, inend, 1);
+    let mut s = ZopfliBlockState::new(options, last, inend);
 
     let store = lz77_optimal(&mut s, in_data, last, inend, options.numiterations);
     totalcost += calculate_block_size_auto_type(&store, 0, store.size());
@@ -844,7 +844,7 @@ fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data:
         },
         BlockType::Fixed => {
             let mut store = Lz77Store::new();
-            let mut s = ZopfliBlockState::new(options, instart, inend, 1);
+            let mut s = ZopfliBlockState::new(options, instart, inend);
 
             lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
             add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
