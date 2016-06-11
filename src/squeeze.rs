@@ -21,7 +21,7 @@ const K_INV_LOG2: c_double = f64::consts::LOG2_E;  // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
 #[allow(non_snake_case)]
-pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> c_double {
+fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> c_double {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -46,7 +46,7 @@ pub fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>)
 
 /// Cost model based on symbol statistics.
 #[allow(non_snake_case)]
-pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolStats>) -> c_double {
+fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolStats>) -> c_double {
     let stats = stats_option.expect("GetCostStat expects Some(SymbolStats)");
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
@@ -60,13 +60,13 @@ pub fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolSta
 }
 
 #[derive(Default)]
-pub struct RanState {
+struct RanState {
     m_w: u32,
     m_z: u32,
 }
 
 impl RanState {
-    pub fn new() -> RanState {
+    fn new() -> RanState {
         RanState {
             m_w: 1,
             m_z: 2,
@@ -74,7 +74,7 @@ impl RanState {
     }
 
     /// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
-    pub fn random_marsaglia(&mut self) -> u32 {
+    fn random_marsaglia(&mut self) -> u32 {
         self.m_z = 36969 * (self.m_z & 65535) + (self.m_z >> 16);
         self.m_w = 18000 * (self.m_w & 65535) + (self.m_w >> 16);
         (self.m_z << 16).wrapping_add(self.m_w) // 32-bit result.
@@ -82,7 +82,7 @@ impl RanState {
 }
 
 #[derive(Copy)]
-pub struct SymbolStats {
+struct SymbolStats {
   /* The literal and length symbols. */
   litlens: [size_t; ZOPFLI_NUM_LL],
   /* The 32 unique dist symbols, not the 32768 possible dists. */
@@ -112,7 +112,7 @@ impl Default for SymbolStats {
 }
 
 impl SymbolStats {
-    pub fn randomize_stat_freqs(&mut self, state: &mut RanState) {
+    fn randomize_stat_freqs(&mut self, state: &mut RanState) {
         fn randomize_freqs(freqs: &mut [size_t], state: &mut RanState) {
             let n = freqs.len();
             let mut i: usize = 0;
@@ -136,7 +136,7 @@ impl SymbolStats {
     /// actual theoritical bit lengths according to the entropy. Since the resulting
     /// values are fractional, they cannot be used to encode the tree specified by
     /// DEFLATE.
-    pub fn calculate_entropy(&mut self) {
+    fn calculate_entropy(&mut self) {
         fn calculate_and_store_entropy(count: &[size_t], bitlengths: &mut [c_double]) {
             let n = count.len();
 
@@ -171,7 +171,7 @@ impl SymbolStats {
     }
 
     /// Appends the symbol statistics from the store.
-    pub fn get_statistics(&mut self, store: &Lz77Store) {
+    fn get_statistics(&mut self, store: &Lz77Store) {
         for i in 0..store.dists.len() {
             let store_litlens_usize = store.litlens[i] as usize;
             if store.dists[i] == 0 {
@@ -186,13 +186,13 @@ impl SymbolStats {
         self.calculate_entropy();
     }
 
-    pub fn clear_freqs(&mut self) {
+    fn clear_freqs(&mut self) {
         self.litlens = [0; ZOPFLI_NUM_LL];
         self.dists = [0; ZOPFLI_NUM_D];
     }
 }
 
-pub fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &SymbolStats, w2: c_double) -> SymbolStats {
+fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &SymbolStats, w2: c_double) -> SymbolStats {
     let mut result: SymbolStats = Default::default();
 
     for i in 0..ZOPFLI_NUM_LL {
@@ -207,7 +207,7 @@ pub fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &Symbo
 
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
-pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>) -> c_double {
+fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>) -> c_double {
     let mut bestlength: c_int = 0; // length that has lowest cost in the cost model
     let mut bestdist: c_int = 0; // distance that has lowest cost in the cost model
 
@@ -252,7 +252,7 @@ pub fn get_cost_model_min_cost(costmodel: fn(c_uint, c_uint, Option<&SymbolStats
 /// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
-pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
+fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -355,7 +355,7 @@ pub fn get_best_lengths(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_
 /// `length_array`. The `length_array` must contain the optimal length to reach that
 /// byte. The path will be filled with the lengths to use, so its data size will be
 /// the amount of lz77 symbols.
-pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushort> {
+fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushort> {
     let mut index = size;
     if size == 0 {
         return vec![];
@@ -391,7 +391,7 @@ pub fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushor
 /// `store`: place to output the LZ77 data
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
-pub fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
+fn lz77_optimal_run(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: fn (c_uint, c_uint, Option<&SymbolStats>) -> c_double, costcontext: Option<&SymbolStats>, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, costcontext, h, costs);
     let path = trace_backwards(inend - instart, length_array);
     store.follow_path(in_data, instart, inend, path, s);

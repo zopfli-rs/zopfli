@@ -14,7 +14,7 @@ struct Node {
 }
 
 impl Node {
-    pub fn new(weight: size_t, initial_count: c_int, capacity: usize) -> Node {
+    fn new(weight: size_t, initial_count: c_int, capacity: usize) -> Node {
         let mut n = Node {
             weight: weight,
             leaf_counts: Vec::with_capacity(capacity),
@@ -26,8 +26,8 @@ impl Node {
 
 #[derive(Debug)]
 struct Leaf {
-    pub weight: size_t,
-    pub index: size_t,
+    weight: size_t,
+    index: size_t,
 }
 impl PartialEq for Leaf {
     fn eq(&self, other: &Self) -> bool {
