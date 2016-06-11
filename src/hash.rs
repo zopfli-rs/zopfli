@@ -66,7 +66,7 @@ impl ZopfliHash {
     /// Update the sliding hash value with the given byte. All calls to this function
     /// must be made on consecutive input characters. Since the hash value exists out
     /// of multiple input bytes, a few warmups with this function are needed initially.
-    pub fn update_val(&mut self, c: c_uchar) {
+    fn update_val(&mut self, c: c_uchar) {
         self.val = ((self.val << HASH_SHIFT) ^ c as c_int) & HASH_MASK;
     }
 

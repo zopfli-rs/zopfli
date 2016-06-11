@@ -283,7 +283,7 @@ impl<'a> ZopfliBlockState<'a> {
     /// Returns 1 if it got the values from the cache, 0 if not.
     /// Updates the limit value to a smaller one if possible with more limited
     /// information from the cache.
-    pub fn try_get_from_longest_match_cache(&self, pos: size_t, mut limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
+    fn try_get_from_longest_match_cache(&self, pos: size_t, mut limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
         let mut longest_match = LongestMatch {
             distance: 0,
             length: 0,
@@ -347,7 +347,7 @@ impl<'a> ZopfliBlockState<'a> {
 
     /// Stores the found sublen, distance and length in the longest match cache, if
     /// possible.
-    pub fn store_in_longest_match_cache(&mut self, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
+    fn store_in_longest_match_cache(&mut self, pos: size_t, limit: size_t, sublen: *mut c_ushort, distance: c_ushort, length: c_ushort) {
         /* The LMC cache starts at the beginning of the block rather than the
         beginning of the whole array. */
         let lmcpos = pos - self.blockstart;
@@ -378,7 +378,7 @@ impl<'a> ZopfliBlockState<'a> {
 }
 
 pub struct LongestMatch {
-    pub distance: c_ushort,
+    distance: c_ushort,
     pub length: c_ushort,
     from_cache: c_int,
     limit: size_t,
@@ -390,7 +390,7 @@ pub struct LongestMatch {
 /// `scan` is the position to compare; `match` is the earlier position to compare.
 /// `end` is the last possible byte, beyond which to stop looking.
 /// `safe_end` is a few (8) bytes before end, for comparing multiple bytes at once.
-pub fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end: usize, _safe_end: usize) -> usize {
+fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end: usize, _safe_end: usize) -> usize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
     // /* 8 checks at once per array bounds check (size_t is 64-bit). */
@@ -453,7 +453,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
     longest_match
 }
 
-pub fn find_longest_match_loop(h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> (i32, size_t) {
+fn find_longest_match_loop(h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> (i32, size_t) {
     let hpos = pos & ZOPFLI_WINDOW_MASK;
     let mut which_hash = 1;
 
@@ -576,7 +576,7 @@ pub fn find_longest_match_loop(h: &mut ZopfliHash, array: &[c_uchar], pos: size_
 ///  rather unpredictable way
 /// -the first zopfli run, so it affects the chance of the first run being closer
 ///  to the optimal output
-pub fn get_length_score(length: c_int, distance: c_int) -> c_int {
+fn get_length_score(length: c_int, distance: c_int) -> c_int {
     // At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
     // on tested files.
     if distance > 1024 {
@@ -586,7 +586,7 @@ pub fn get_length_score(length: c_int, distance: c_int) -> c_int {
     }
 }
 
-pub fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_ushort) {
+fn verify_len_dist(data: &[c_uchar], pos: size_t, dist: c_ushort, length: c_ushort) {
     for i in 0..length {
         let d1 = data[pos - (dist as usize) + (i as usize)];
         let d2 = data[pos + (i as usize)];
@@ -606,7 +606,7 @@ pub fn get_byte_range(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> size_t 
     lz77.pos[l] + (if lz77.dists[l] == 0 { 1 } else { lz77.litlens[l] }) as size_t - lz77.pos[lstart]
 }
 
-pub fn get_histogram_at(lz77: &Lz77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
+fn get_histogram_at(lz77: &Lz77Store, lpos: size_t) -> (Vec<size_t>, Vec<size_t>) {
     let mut ll = vec![0; ZOPFLI_NUM_LL];
     let mut d = vec![0; ZOPFLI_NUM_D];
 

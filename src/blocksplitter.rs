@@ -9,7 +9,7 @@ use Options;
 /// Finds minimum of function `f(i)` where `i` is of type `size_t`, `f(i)` is of type
 /// `c_double`, `i` is in range `start-end` (excluding `end`).
 /// Returns the index to the minimum and the minimum value.
-pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, context: &SplitCostContext, start: size_t, end: size_t) -> (size_t, c_double) {
+fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, context: &SplitCostContext, start: size_t, end: size_t) -> (size_t, c_double) {
     let mut start = start;
     let mut end = end;
     if end - start < 1024 {
@@ -74,17 +74,17 @@ pub fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, co
 /// dists: ll77 distances
 /// lstart: start of block
 /// lend: end of block (not inclusive)
-pub fn estimate_cost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
+fn estimate_cost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
     calculate_block_size_auto_type(lz77, lstart, lend)
 }
 
 /// Gets the cost which is the sum of the cost of the left and the right section
 /// of the data.
-pub fn split_cost(i: size_t, c: &SplitCostContext) -> c_double {
+fn split_cost(i: size_t, c: &SplitCostContext) -> c_double {
     estimate_cost(c.lz77, c.start, i) + estimate_cost(c.lz77, i, c.end)
 }
 
-pub struct SplitCostContext<'a> {
+struct SplitCostContext<'a> {
     lz77: &'a Lz77Store,
     start: size_t,
     end: size_t,
@@ -101,7 +101,7 @@ pub struct SplitCostContext<'a> {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-pub fn find_largest_splittable_block(lz77size: size_t, done: &[c_uchar], splitpoints: &[size_t]) -> Option<(size_t, size_t)> {
+fn find_largest_splittable_block(lz77size: size_t, done: &[c_uchar], splitpoints: &[size_t]) -> Option<(size_t, size_t)> {
     let mut longest = 0;
     let mut found = None;
 
@@ -124,9 +124,7 @@ pub fn find_largest_splittable_block(lz77size: size_t, done: &[c_uchar], splitpo
 }
 
 /// Prints the block split points as decimal and hex values in the terminal.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[size_t]) {
+fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[size_t]) {
     let nlz77points = lz77splitpoints.len();
     let mut splitpoints = Vec::with_capacity(nlz77points);
 
