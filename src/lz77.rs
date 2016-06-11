@@ -283,7 +283,7 @@ impl<'a> ZopfliBlockState<'a> {
     /// Returns 1 if it got the values from the cache, 0 if not.
     /// Updates the limit value to a smaller one if possible with more limited
     /// information from the cache.
-    pub fn try_get_from_longest_match_cache(&self, pos: size_t, mut limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
+    pub fn try_get_from_longest_match_cache(&self, pos: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
         let mut longest_match = LongestMatch {
             distance: 0,
             length: 0,
@@ -310,10 +310,11 @@ impl<'a> ZopfliBlockState<'a> {
 
                 if limit_ok_for_cache && cache_available {
                     if sublen.is_null() || length_lmcpos as c_uint <= max_sublen {
-                        let mut length = length_lmcpos;
-                        if length > limit as c_ushort {
-                            length = limit as c_ushort;
-                        }
+                        let length = if length_lmcpos > limit as c_ushort {
+                            limit as c_ushort
+                        } else {
+                            length_lmcpos
+                        };
                         let distance;
                         if !sublen.is_null() {
                             lmc.fetch_sublen(lmcpos, length as usize, sublen);
@@ -336,8 +337,7 @@ impl<'a> ZopfliBlockState<'a> {
                     }
                     /* Can't use much of the cache, since the "sublens" need to be calculated,
                     but at least we already know when to stop. */
-                    limit = length_lmcpos as size_t;
-                    longest_match.limit = limit;
+                    longest_match.limit = length_lmcpos as size_t;
                 }
 
                 longest_match
@@ -410,8 +410,6 @@ pub fn get_match(array: &[c_uchar], scan_offset: usize, match_offset: usize, end
 }
 
 pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &[c_uchar], pos: size_t, size: size_t, limit: size_t, sublen: *mut c_ushort) -> LongestMatch {
-    let mut limit = limit;
-
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
     if longest_match.from_cache == 1 {
@@ -419,7 +417,7 @@ pub fn find_longest_match(s: &mut ZopfliBlockState, h: &mut ZopfliHash, array: &
         return longest_match;
     }
 
-    limit = longest_match.limit;
+    let mut limit = longest_match.limit;
 
     assert!(limit <= ZOPFLI_MAX_MATCH);
     assert!(limit >= ZOPFLI_MIN_MATCH);
@@ -500,14 +498,10 @@ pub fn find_longest_match_loop(h: &mut ZopfliHash, array: &[c_uchar], pos: size_
                 let same0 = h.same[pos & ZOPFLI_WINDOW_MASK];
                 if same0 > 2 && array[scan_offset] == array[match_offset] {
                     let same1 = h.same[(pos - (dist as size_t)) & ZOPFLI_WINDOW_MASK];
-                    let mut same = if same0 < same1 {
-                        same0
-                    } else {
-                        same1
+                    let same = {
+                        let same = cmp::min(same0,same1);
+                        cmp::min(same, limit as c_ushort)
                     };
-                    if (same as size_t) > limit {
-                        same = limit as c_ushort;
-                    }
                     scan_offset += same as size_t;
                     match_offset += same as size_t;
                 }

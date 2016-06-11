@@ -76,14 +76,10 @@ pub fn optimize_huffman_for_rle(counts: &mut [size_t]) {
         if i == length || good_for_rle[i] || (counts[i] as i32 - limit as i32).abs() >= 4 {
             if stride >= 4 || (stride >= 3 && sum == 0) {
                 // The stride must end, collapse what we have, if we have enough (4).
-                let mut count = (sum + stride / 2) / stride;
-                if count < 1 {
-                    count = 1;
-                }
-                if sum == 0 {
-                    // Don't make an all zeros stride to be upgraded to ones.
-                    count = 0;
-                }
+                let count = {
+                    let count = (sum + stride / 2) / stride;
+                    if sum == 0 { 0 } else if count < 1 { 1 } else { count }
+                };
                 for k in 0..stride {
                     // We don't want to change value at counts[i],
                     // that is already belonging to the next stride. Thus - 1.
