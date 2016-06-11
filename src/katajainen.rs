@@ -151,20 +151,19 @@ fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
 }
 
 fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
-    let num_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.len();
-    let previous_list_leaf_counts = lists[current_list_index - 1].lookahead2.leaf_counts.as_ptr();
     {
-        let mut current_list = &mut lists[current_list_index];
+        let (head, tail) = lists.split_at_mut(current_list_index);
+        let prev_list = head.last_mut().unwrap();
+        let current_list = tail.first_mut().unwrap();
+
+        let previous_list_leaf_counts = &prev_list.lookahead2.leaf_counts;
 
         // Make a tree from the lookaheads from the previous list; that goes next.
         // This is not a leaf node, so the leaf count stays the same.
         current_list.lookahead2.weight = weight_sum;
         current_list.lookahead2.leaf_counts.clear();
-        for i in 0..num_leaf_counts {
-            current_list.lookahead2.leaf_counts.push(unsafe {
-                *previous_list_leaf_counts.offset(i as isize)
-            });
-        }
+
+        current_list.lookahead2.leaf_counts.extend(previous_list_leaf_counts);
         current_list.lookahead2.leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
     }
 
