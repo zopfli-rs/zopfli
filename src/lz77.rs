@@ -331,7 +331,7 @@ impl LongestMatch {
 /// `scan` is the position to compare; `match` is the earlier position to compare.
 /// `end` is the last possible byte, beyond which to stop looking.
 /// `safe_end` is a few (8) bytes before end, for comparing multiple bytes at once.
-fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize, _safe_end: usize) -> usize {
+fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) -> usize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
     // /* 8 checks at once per array bounds check (usize is 64-bit). */
@@ -405,7 +405,6 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
     let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
 
     let arrayend = pos + limit;
-    let arrayend_safe = arrayend - 8;
 
     assert!(h.val(which_hash) < 65536);
 
@@ -454,7 +453,7 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
                     scan_offset += same as usize;
                     match_offset += same as usize;
                 }
-                scan_offset = get_match(array, scan_offset, match_offset, arrayend, arrayend_safe);
+                scan_offset = get_match(array, scan_offset, match_offset, arrayend);
                 currentlength = scan_offset - pos;  /* The found length. */
             }
 
