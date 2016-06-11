@@ -20,8 +20,7 @@ use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, 
 const K_INV_LOG2: c_double = f64::consts::LOG2_E;  // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
-#[allow(non_snake_case)]
-fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> c_double {
+fn get_cost_fixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> c_double {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -45,9 +44,8 @@ fn GetCostFixed(litlen: c_uint, dist: c_uint, _unused: Option<&SymbolStats>) -> 
 }
 
 /// Cost model based on symbol statistics.
-#[allow(non_snake_case)]
-fn GetCostStat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolStats>) -> c_double {
-    let stats = stats_option.expect("GetCostStat expects Some(SymbolStats)");
+fn get_cost_stat(litlen: c_uint, dist: c_uint, stats_option: Option<&SymbolStats>) -> c_double {
+    let stats = stats_option.expect("get_cost_stat expects Some(SymbolStats)");
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
     } else {
@@ -412,7 +410,7 @@ pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: siz
     s.blockend = inend;
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
     let mut costs = Vec::with_capacity(inend - instart - 1);
-    lz77_optimal_run(s, in_data, instart, inend, GetCostFixed, None, store, &mut h, &mut costs);
+    lz77_optimal_run(s, in_data, instart, inend, get_cost_fixed, None, store, &mut h, &mut costs);
 }
 
 /// Calculates lit/len and dist pairs for given data.
@@ -447,7 +445,7 @@ pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, i
     run. */
     for i in 0..numiterations {
         currentstore.reset();
-        lz77_optimal_run(s, in_data, instart, inend, GetCostStat, Some(&stats), &mut currentstore, &mut h, &mut costs);
+        lz77_optimal_run(s, in_data, instart, inend, get_cost_stat, Some(&stats), &mut currentstore, &mut h, &mut costs);
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
 
         if s.options.verbose_more || (s.options.verbose && cost < bestcost) {
