@@ -7,14 +7,16 @@ use Options;
 /// Finds minimum of function `f(i)` where `i` is of type `usize`, `f(i)` is of type
 /// `f64`, `i` is in range `start-end` (excluding `end`).
 /// Returns the index to the minimum and the minimum value.
-fn find_minimum(f: fn(i: usize, context: &SplitCostContext) -> f64, context: &SplitCostContext, start: usize, end: usize) -> (usize, f64) {
+fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
+    where F: Fn(usize) -> f64
+{
     let mut start = start;
     let mut end = end;
     if end - start < 1024 {
         let mut best = f64::MAX;
         let mut result = start;
         for i in start..end {
-            let v = f(i, context);
+            let v = f(i);
             if v < best {
                 best = v;
                 result = i;
@@ -38,7 +40,7 @@ fn find_minimum(f: fn(i: usize, context: &SplitCostContext) -> f64, context: &Sp
 
             for i in 0..num {
                 p[i] = start + (i + 1) * ((end - start) / (num + 1));
-                vp[i] = f(p[i], context);
+                vp[i] = f(p[i]);
             }
 
             besti = 0;
@@ -74,18 +76,6 @@ fn find_minimum(f: fn(i: usize, context: &SplitCostContext) -> f64, context: &Sp
 /// lend: end of block (not inclusive)
 fn estimate_cost(lz77: &Lz77Store, lstart: usize, lend: usize) -> f64 {
     calculate_block_size_auto_type(lz77, lstart, lend)
-}
-
-/// Gets the cost which is the sum of the cost of the left and the right section
-/// of the data.
-fn split_cost(i: usize, c: &SplitCostContext) -> f64 {
-    estimate_cost(c.lz77, c.start, i) + estimate_cost(c.lz77, i, c.end)
-}
-
-struct SplitCostContext<'a> {
-    lz77: &'a Lz77Store,
-    start: usize,
-    end: usize,
 }
 
 /// Finds next block to try to split, the largest of the available ones.
@@ -171,14 +161,9 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
         if maxblocks > 0 && numblocks >= maxblocks {
           break;
         }
-        let c = SplitCostContext {
-            lz77: lz77,
-            start: lstart,
-            end: lend,
-        };
 
         assert!(lstart < lend);
-        let find_minimum_result = find_minimum(split_cost, &c, lstart + 1, lend);
+        let find_minimum_result = find_minimum(|i| estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend);
         llpos = find_minimum_result.0;
         splitcost = find_minimum_result.1;
 
