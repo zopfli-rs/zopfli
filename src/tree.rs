@@ -1,7 +1,5 @@
-use libc::{c_uint};
-
 /// Converts a series of Huffman tree bitlengths, to the bit values of the symbols.
-pub fn lengths_to_symbols(lengths: &[c_uint], maxbits: c_uint) -> Vec<c_uint> {
+pub fn lengths_to_symbols(lengths: &[u32], maxbits: u32) -> Vec<u32> {
     let mut bl_count = vec![0; (maxbits + 1) as usize];
     let mut next_code = vec![0; (maxbits + 1) as usize];
     let n = lengths.len();

@@ -9,7 +9,7 @@
 
 use std::{mem, cmp, f64, f32};
 
-use libc::{c_uint, c_double, c_int, size_t, c_ushort, malloc, c_float};
+use libc::malloc;
 
 use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
@@ -17,10 +17,10 @@ use lz77::{Lz77Store, ZopfliBlockState, find_longest_match};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
-const K_INV_LOG2: c_double = f64::consts::LOG2_E;  // 1.0 / log(2.0)
+const K_INV_LOG2: f64 = f64::consts::LOG2_E;  // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
-fn get_cost_fixed(litlen: c_uint, dist: c_uint) -> c_double {
+fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -28,7 +28,7 @@ fn get_cost_fixed(litlen: c_uint, dist: c_uint) -> c_double {
             9
         }
     } else {
-        let dbits = get_dist_extra_bits(dist as c_int);
+        let dbits = get_dist_extra_bits(dist as i32);
         let lbits = get_length_extra_bits(litlen as usize);
         let lsym = get_length_symbol(litlen as usize);
         let mut cost = 0;
@@ -40,18 +40,18 @@ fn get_cost_fixed(litlen: c_uint, dist: c_uint) -> c_double {
         cost += 5;  // Every dist symbol has length 5.
         cost + dbits + lbits
     };
-    result as c_double
+    result as f64
 }
 
 /// Cost model based on symbol statistics.
-fn get_cost_stat(litlen: c_uint, dist: c_uint, stats: &SymbolStats) -> c_double {
+fn get_cost_stat(litlen: u32, dist: u32, stats: &SymbolStats) -> f64 {
     if dist == 0 {
         stats.ll_symbols[litlen as usize]
     } else {
         let lsym = get_length_symbol(litlen as usize) as usize;
-        let lbits = get_length_extra_bits(litlen as usize) as c_double;
-        let dsym = get_dist_symbol(dist as c_int) as usize;
-        let dbits = get_dist_extra_bits(dist as c_int) as c_double;
+        let lbits = get_length_extra_bits(litlen as usize) as f64;
+        let dsym = get_dist_symbol(dist as i32) as usize;
+        let dbits = get_dist_extra_bits(dist as i32) as f64;
         lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
     }
 }
@@ -81,14 +81,14 @@ impl RanState {
 #[derive(Copy)]
 struct SymbolStats {
   /* The literal and length symbols. */
-  litlens: [size_t; ZOPFLI_NUM_LL],
+  litlens: [usize; ZOPFLI_NUM_LL],
   /* The 32 unique dist symbols, not the 32768 possible dists. */
-  dists: [size_t; ZOPFLI_NUM_D],
+  dists: [usize; ZOPFLI_NUM_D],
 
   /* Length of each lit/len symbol in bits. */
-  ll_symbols: [c_double; ZOPFLI_NUM_LL],
+  ll_symbols: [f64; ZOPFLI_NUM_LL],
   /* Length of each dist symbol in bits. */
-  d_symbols: [c_double; ZOPFLI_NUM_D],
+  d_symbols: [f64; ZOPFLI_NUM_D],
 }
 
 impl Clone for SymbolStats {
@@ -110,14 +110,14 @@ impl Default for SymbolStats {
 
 impl SymbolStats {
     fn randomize_stat_freqs(&mut self, state: &mut RanState) {
-        fn randomize_freqs(freqs: &mut [size_t], state: &mut RanState) {
+        fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) {
             let n = freqs.len();
             let mut i: usize = 0;
             let end = n;
 
             while i < end {
                 if (state.random_marsaglia() >> 4) % 3 == 0 {
-                    let index = state.random_marsaglia() % n as c_uint;
+                    let index = state.random_marsaglia() % n as u32;
                     freqs[i] = freqs[index as usize];
                 }
                 i += 1;
@@ -134,12 +134,12 @@ impl SymbolStats {
     /// values are fractional, they cannot be used to encode the tree specified by
     /// DEFLATE.
     fn calculate_entropy(&mut self) {
-        fn calculate_and_store_entropy(count: &[size_t], bitlengths: &mut [c_double]) {
+        fn calculate_and_store_entropy(count: &[usize], bitlengths: &mut [f64]) {
             let n = count.len();
 
             let sum = count.iter().sum();
 
-            let log2sum = (if sum == 0 { n } else { sum } as c_double).ln() * K_INV_LOG2;
+            let log2sum = (if sum == 0 { n } else { sum } as f64).ln() * K_INV_LOG2;
 
             for i in 0..n {
                 // When the count of the symbol is 0, but its cost is requested anyway, it
@@ -148,7 +148,7 @@ impl SymbolStats {
                 if count[i] == 0 {
                     bitlengths[i] = log2sum;
                 } else {
-                    bitlengths[i] = log2sum - (count[i] as c_double).ln() * K_INV_LOG2;
+                    bitlengths[i] = log2sum - (count[i] as f64).ln() * K_INV_LOG2;
                 }
 
                 // Depending on compiler and architecture, the above subtraction of two
@@ -175,7 +175,7 @@ impl SymbolStats {
                 self.litlens[store_litlens_usize] += 1;
             } else {
                 self.litlens[get_length_symbol(store_litlens_usize) as usize] +=1 ;
-                self.dists[get_dist_symbol(store.dists[i] as c_int) as usize] += 1;
+                self.dists[get_dist_symbol(store.dists[i] as i32) as usize] += 1;
             }
         }
         self.litlens[256] = 1;  /* End symbol. */
@@ -189,14 +189,14 @@ impl SymbolStats {
     }
 }
 
-fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &SymbolStats, w2: c_double) -> SymbolStats {
+fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: f64, stats2: &SymbolStats, w2: f64) -> SymbolStats {
     let mut result: SymbolStats = Default::default();
 
     for i in 0..ZOPFLI_NUM_LL {
-        result.litlens[i] = (stats1.litlens[i] as c_double * w1 + stats2.litlens[i] as c_double * w2) as size_t;
+        result.litlens[i] = (stats1.litlens[i] as f64 * w1 + stats2.litlens[i] as f64 * w2) as usize;
     }
     for i in 0..ZOPFLI_NUM_D {
-        result.dists[i] = (stats1.dists[i] as c_double * w1 + stats2.dists[i] as c_double * w2) as size_t;
+        result.dists[i] = (stats1.dists[i] as f64 * w1 + stats2.dists[i] as f64 * w2) as usize;
     }
     result.litlens[256] = 1; // End symbol.
     result
@@ -204,18 +204,18 @@ fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: c_double, stats2: &SymbolSta
 
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
-fn get_cost_model_min_cost<F>(costmodel: F) -> c_double
-        where F: Fn(c_uint, c_uint) -> c_double
+fn get_cost_model_min_cost<F>(costmodel: F) -> f64
+        where F: Fn(u32, u32) -> f64
 {
-    let mut bestlength: c_int = 0; // length that has lowest cost in the cost model
-    let mut bestdist: c_int = 0; // distance that has lowest cost in the cost model
+    let mut bestlength: i32 = 0; // length that has lowest cost in the cost model
+    let mut bestdist: i32 = 0; // distance that has lowest cost in the cost model
 
     // Table of distances that have a different distance symbol in the deflate
     // specification. Each value is the first distance that has a new symbol. Only
     // different symbols affect the cost model so only these need to be checked.
     // See RFC 1951 section 3.2.5. Compressed blocks (length and distance codes).
 
-    let dsymbols: [c_int; 30] = [
+    let dsymbols: [i32; 30] = [
         1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
         769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
     ];
@@ -224,20 +224,20 @@ fn get_cost_model_min_cost<F>(costmodel: F) -> c_double
     for i in 3..259 {
         let c = costmodel(i, 1);
         if c < mincost {
-            bestlength = i as c_int;
+            bestlength = i as i32;
             mincost = c;
         }
     }
 
     mincost = f64::MAX;
     for &dsym in dsymbols.iter().take(30) {
-        let c = costmodel(3, dsym as c_uint);
+        let c = costmodel(3, dsym as u32);
         if c < mincost {
             bestdist = dsym;
             mincost = c;
         }
     }
-    costmodel(bestlength as c_uint, bestdist as c_uint)
+    costmodel(bestlength as u32, bestdist as u32)
 }
 
 /// Performs the forward pass for "squeeze". Gets the most optimal length to reach
@@ -250,8 +250,8 @@ fn get_cost_model_min_cost<F>(costmodel: F) -> c_double
 /// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
-fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: F, h: &mut ZopfliHash, costs: &mut Vec<c_float>) -> (c_double, Vec<c_ushort>)
-    where F: Fn(c_uint, c_uint) -> c_double
+fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, costmodel: F, h: &mut ZopfliHash, costs: &mut Vec<f32>) -> (f64, Vec<u16>)
+    where F: Fn(u32, u32) -> f64
 {
     // Best cost to get here so far.
     let blocksize = inend - instart;
@@ -261,7 +261,7 @@ fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t
     }
     let mut leng;
     let mut longest_match;
-    let sublen = unsafe { malloc(mem::size_of::<c_ushort>() * 259) as *mut c_ushort };
+    let sublen = unsafe { malloc(mem::size_of::<u16>() * 259) as *mut u16 };
     let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
         instart - ZOPFLI_WINDOW_SIZE
     } else {
@@ -293,19 +293,19 @@ fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t
 
         // If we're in a long repetition of the same character and have more than
         // ZOPFLI_MAX_MATCH characters before and after our position.
-        if h.same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as c_ushort * 2
+        if h.same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as u16 * 2
             && i > instart + ZOPFLI_MAX_MATCH + 1
             && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
-            && h.same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as c_ushort {
+            && h.same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as u16 {
 
-            let symbolcost = costmodel(ZOPFLI_MAX_MATCH as c_uint, 1);
+            let symbolcost = costmodel(ZOPFLI_MAX_MATCH as u32, 1);
             // Set the length to reach each one to ZOPFLI_MAX_MATCH, and the cost to
             // the cost corresponding to that length. Doing this, we skip
             // ZOPFLI_MAX_MATCH values to avoid calling ZopfliFindLongestMatch.
 
             for _ in 0..ZOPFLI_MAX_MATCH {
-                costs[j + ZOPFLI_MAX_MATCH] = costs[j] + symbolcost as c_float;
-                length_array[j + ZOPFLI_MAX_MATCH] = ZOPFLI_MAX_MATCH as c_ushort;
+                costs[j + ZOPFLI_MAX_MATCH] = costs[j] + symbolcost as f32;
+                length_array[j + ZOPFLI_MAX_MATCH] = ZOPFLI_MAX_MATCH as u16;
                 i += 1;
                 j += 1;
                 h.update(arr, i);
@@ -317,37 +317,37 @@ fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t
 
         // Literal.
         if i + 1 <= inend {
-            let new_cost = costmodel(arr[i] as c_uint, 0) + costs[j] as c_double;
+            let new_cost = costmodel(arr[i] as u32, 0) + costs[j] as f64;
             assert!(new_cost >= 0.0);
-            if new_cost < costs[j + 1] as c_double {
-                costs[j + 1] = new_cost as c_float;
+            if new_cost < costs[j + 1] as f64 {
+                costs[j + 1] = new_cost as f32;
                 length_array[j + 1] = 1;
             }
         }
         // Lengths.
-        let kend = cmp::min(leng as size_t, inend - i);
-        let mincostaddcostj = mincost + costs[j] as c_double;
+        let kend = cmp::min(leng as usize, inend - i);
+        let mincostaddcostj = mincost + costs[j] as f64;
 
         for k in 3..(kend + 1) {
             // Calling the cost model is expensive, avoid this if we are already at
             // the minimum possible cost that it can return.
-            if costs[j + k] as c_double <= mincostaddcostj {
+            if costs[j + k] as f64 <= mincostaddcostj {
                 continue;
             }
 
-            let new_cost = costmodel(k as c_uint, unsafe { *sublen.offset(k as isize) } as c_uint) + costs[j] as c_double;
+            let new_cost = costmodel(k as u32, unsafe { *sublen.offset(k as isize) } as u32) + costs[j] as f64;
             assert!(new_cost >= 0.0);
-            if new_cost < costs[j + k] as c_double {
+            if new_cost < costs[j + k] as f64 {
                 assert!(k <= ZOPFLI_MAX_MATCH);
-                costs[j + k] = new_cost as c_float;
-                length_array[j + k] = k as c_ushort;
+                costs[j + k] = new_cost as f32;
+                length_array[j + k] = k as u16;
             }
         }
         i += 1;
     }
 
     assert!(costs[blocksize] >= 0.0);
-    (costs[blocksize] as c_double, length_array)
+    (costs[blocksize] as f64, length_array)
 }
 
 
@@ -355,7 +355,7 @@ fn get_best_lengths<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t
 /// `length_array`. The `length_array` must contain the optimal length to reach that
 /// byte. The path will be filled with the lengths to use, so its data size will be
 /// the amount of lz77 symbols.
-fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushort> {
+fn trace_backwards(size: usize, length_array: Vec<u16>) -> Vec<u16> {
     let mut index = size;
     if size == 0 {
         return vec![];
@@ -390,8 +390,8 @@ fn trace_backwards(size: size_t, length_array: Vec<c_ushort>) -> Vec<c_ushort> {
 /// `store`: place to output the LZ77 data
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
-fn lz77_optimal_run<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, costmodel: F, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<c_float>)
-    where F: Fn(c_uint, c_uint) -> c_double
+fn lz77_optimal_run<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, costmodel: F, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<f32>)
+    where F: Fn(u32, u32) -> f64
 {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace_backwards(inend - instart, length_array);
@@ -408,7 +408,7 @@ fn lz77_optimal_run<F>(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t
 /// using with a fixed tree.
 /// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, store: &mut Lz77Store) {
+pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, store: &mut Lz77Store) {
     s.blockstart = instart;
     s.blockend = inend;
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
@@ -419,7 +419,7 @@ pub fn lz77_optimal_fixed(s: &mut ZopfliBlockState, in_data: &[u8], instart: siz
 /// Calculates lit/len and dist pairs for given data.
 /// If `instart` is larger than 0, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: size_t, inend: size_t, numiterations: c_int) -> Lz77Store {
+pub fn lz77_optimal(s: &mut ZopfliBlockState, in_data: &[u8], instart: usize, inend: usize, numiterations: i32) -> Lz77Store {
 
     let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
     let mut costs = Vec::with_capacity(inend - instart + 1);

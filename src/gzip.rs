@@ -1,5 +1,4 @@
 use crc::crc32;
-use libc::c_double;
 
 use deflate::{deflate, BlockType};
 use Options;
@@ -39,6 +38,6 @@ pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     if options.verbose {
         let insize = in_data.len();
         let outsize = out.len();
-        println!("Original Size: {}, Gzip: {}, Compression: {}% Removed", insize, outsize, 100.0 * (insize - outsize) as c_double / insize as c_double);
+        println!("Original Size: {}, Gzip: {}, Compression: {}% Removed", insize, outsize, 100.0 * (insize - outsize) as f64 / insize as f64);
     }
 }

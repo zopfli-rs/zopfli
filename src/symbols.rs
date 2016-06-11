@@ -1,6 +1,4 @@
-use libc::{c_int};
-
-const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
+const LENGTH_SYMBOL_TABLE: [i32; 259] = [
     0, 0, 0,
     257, 258, 259, 260, 261, 262, 263, 264,
     265, 265, 266, 266, 267, 267, 268, 268,
@@ -38,12 +36,12 @@ const LENGTH_SYMBOL_TABLE: [c_int; 259] = [
 
 /// Gets the symbol for the given length, cfr. the DEFLATE spec.
 /// Returns symbol in range [257-285] (inclusive).
-pub fn get_length_symbol(length: usize) -> c_int {
+pub fn get_length_symbol(length: usize) -> i32 {
     LENGTH_SYMBOL_TABLE[length]
 }
 
 /// Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec.
-pub fn get_dist_extra_bits(dist: c_int) -> c_int {
+pub fn get_dist_extra_bits(dist: i32) -> i32 {
     if dist < 5 {
         0
     } else {
@@ -66,7 +64,7 @@ pub fn get_dist_extra_bits(dist: c_int) -> c_int {
 }
 
 /// Gets value of the extra bits for the given dist, cfr. the DEFLATE spec.
-pub fn get_dist_extra_bits_value(dist: c_int) -> c_int {
+pub fn get_dist_extra_bits_value(dist: i32) -> i32 {
     if dist < 5 {
         0
     } else {
@@ -88,7 +86,7 @@ pub fn get_dist_extra_bits_value(dist: c_int) -> c_int {
     }
 }
 
-pub fn get_dist_symbol(dist: c_int) -> c_int {
+pub fn get_dist_symbol(dist: i32) -> i32 {
     match dist {
         0...4 => dist - 1,
         5...6 => 4,
@@ -120,7 +118,7 @@ pub fn get_dist_symbol(dist: c_int) -> c_int {
     }
 }
 
-const LENGTH_EXTRA_BITS: [c_int; 259] = [
+const LENGTH_EXTRA_BITS: [i32; 259] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -140,11 +138,11 @@ const LENGTH_EXTRA_BITS: [c_int; 259] = [
 ];
 
 /// Gets the amount of extra bits for the given length, cfr. the DEFLATE spec.
-pub fn get_length_extra_bits(l: usize) -> c_int {
+pub fn get_length_extra_bits(l: usize) -> i32 {
     LENGTH_EXTRA_BITS[l]
 }
 
-const LENGTH_EXTRA_BITS_VALUE: [c_int; 259] = [
+const LENGTH_EXTRA_BITS_VALUE: [i32; 259] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 3, 0,
     1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5,
     6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6,
@@ -160,26 +158,26 @@ const LENGTH_EXTRA_BITS_VALUE: [c_int; 259] = [
 ];
 
 /// Gets value of the extra bits for the given length, cfr. the DEFLATE spec.
-pub fn get_length_extra_bits_value(l: c_int) -> c_int {
+pub fn get_length_extra_bits_value(l: i32) -> i32 {
     LENGTH_EXTRA_BITS_VALUE[l as usize]
 }
 
-const LENGTH_SYMBOL_EXTRA_BITS_TABLE: [c_int; 29] = [
+const LENGTH_SYMBOL_EXTRA_BITS_TABLE: [i32; 29] = [
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
     3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
 ];
 
 /// Gets the amount of extra bits for the given length symbol.
-pub fn get_length_symbol_extra_bits(s: c_int) -> c_int {
+pub fn get_length_symbol_extra_bits(s: i32) -> i32 {
     LENGTH_SYMBOL_EXTRA_BITS_TABLE[s as usize - 257]
 }
 
-const DIST_SYMBOL_EXTRA_BITS_TABLE: [c_int; 30] = [
+const DIST_SYMBOL_EXTRA_BITS_TABLE: [i32; 30] = [
     0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
     9, 9, 10, 10, 11, 11, 12, 12, 13, 13
 ];
 
 /// Gets the amount of extra bits for the given distance symbol.
-pub fn get_dist_symbol_extra_bits(s: c_int) -> c_int {
+pub fn get_dist_symbol_extra_bits(s: i32) -> i32 {
     DIST_SYMBOL_EXTRA_BITS_TABLE[s as usize]
 }

@@ -1,15 +1,13 @@
 use std::f64;
 
-use libc::{size_t, c_double, c_uchar};
-
 use deflate::calculate_block_size_auto_type;
 use lz77::{Lz77Store, ZopfliBlockState};
 use Options;
 
-/// Finds minimum of function `f(i)` where `i` is of type `size_t`, `f(i)` is of type
-/// `c_double`, `i` is in range `start-end` (excluding `end`).
+/// Finds minimum of function `f(i)` where `i` is of type `usize`, `f(i)` is of type
+/// `f64`, `i` is in range `start-end` (excluding `end`).
 /// Returns the index to the minimum and the minimum value.
-fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, context: &SplitCostContext, start: size_t, end: size_t) -> (size_t, c_double) {
+fn find_minimum(f: fn(i: usize, context: &SplitCostContext) -> f64, context: &SplitCostContext, start: usize, end: usize) -> (usize, f64) {
     let mut start = start;
     let mut end = end;
     if end - start < 1024 {
@@ -74,20 +72,20 @@ fn find_minimum(f: fn(i: size_t, context: &SplitCostContext) -> c_double, contex
 /// dists: ll77 distances
 /// lstart: start of block
 /// lend: end of block (not inclusive)
-fn estimate_cost(lz77: &Lz77Store, lstart: size_t, lend: size_t) -> c_double {
+fn estimate_cost(lz77: &Lz77Store, lstart: usize, lend: usize) -> f64 {
     calculate_block_size_auto_type(lz77, lstart, lend)
 }
 
 /// Gets the cost which is the sum of the cost of the left and the right section
 /// of the data.
-fn split_cost(i: size_t, c: &SplitCostContext) -> c_double {
+fn split_cost(i: usize, c: &SplitCostContext) -> f64 {
     estimate_cost(c.lz77, c.start, i) + estimate_cost(c.lz77, i, c.end)
 }
 
 struct SplitCostContext<'a> {
     lz77: &'a Lz77Store,
-    start: size_t,
-    end: size_t,
+    start: usize,
+    end: usize,
 }
 
 /// Finds next block to try to split, the largest of the available ones.
@@ -101,7 +99,7 @@ struct SplitCostContext<'a> {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-fn find_largest_splittable_block(lz77size: size_t, done: &[c_uchar], splitpoints: &[size_t]) -> Option<(size_t, size_t)> {
+fn find_largest_splittable_block(lz77size: usize, done: &[u8], splitpoints: &[usize]) -> Option<(usize, usize)> {
     let mut longest = 0;
     let mut found = None;
 
@@ -124,7 +122,7 @@ fn find_largest_splittable_block(lz77size: size_t, done: &[c_uchar], splitpoints
 }
 
 /// Prints the block split points as decimal and hex values in the terminal.
-fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[size_t]) {
+fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
     let nlz77points = lz77splitpoints.len();
     let mut splitpoints = Vec::with_capacity(nlz77points);
 
@@ -155,7 +153,7 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[size_t]) {
 /// Does blocksplitting on LZ77 data.
 /// The output splitpoints are indices in the LZ77 data.
 /// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
-pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
+pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, splitpoints: &mut Vec<usize>) {
 
     if lz77.size() < 10 {
         return;  /* This code fails on tiny files. */
@@ -163,7 +161,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: size_t, s
 
     let mut llpos;
     let mut numblocks = 1;
-    let mut splitcost: c_double;
+    let mut splitcost: f64;
     let mut origcost;
     let mut done = vec![0; lz77.size()];
     let mut lstart = 0;
@@ -226,7 +224,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: size_t, s
 ///   The coordinates are indices in the input array.
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
-pub fn blocksplit(options: &Options, in_data: &[u8], instart: size_t, inend: size_t, maxblocks: size_t, splitpoints: &mut Vec<size_t>) {
+pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usize, maxblocks: usize, splitpoints: &mut Vec<usize>) {
     let mut pos;
     let mut s = ZopfliBlockState::new(options, instart, inend, 0);
 
@@ -255,7 +253,7 @@ pub fn blocksplit(options: &Options, in_data: &[u8], instart: size_t, inend: siz
                     break;
                 }
             }
-            pos += length as size_t;
+            pos += length as usize;
         }
     }
     assert!(splitpoints.len() == nlz77points);
