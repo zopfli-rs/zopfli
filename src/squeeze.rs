@@ -112,7 +112,7 @@ impl SymbolStats {
     fn randomize_stat_freqs(&mut self, state: &mut RanState) {
         fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) {
             let n = freqs.len();
-            let mut i: usize = 0;
+            let mut i = 0;
             let end = n;
 
             while i < end {
@@ -190,7 +190,7 @@ impl SymbolStats {
 }
 
 fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: f64, stats2: &SymbolStats, w2: f64) -> SymbolStats {
-    let mut result: SymbolStats = Default::default();
+    let mut result = SymbolStats::default();
 
     for i in 0..ZOPFLI_NUM_LL {
         result.litlens[i] = (stats1.litlens[i] as f64 * w1 + stats2.litlens[i] as f64 * w2) as usize;
@@ -207,15 +207,15 @@ fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: f64, stats2: &SymbolStats, w
 fn get_cost_model_min_cost<F>(costmodel: F) -> f64
         where F: Fn(u32, u32) -> f64
 {
-    let mut bestlength: i32 = 0; // length that has lowest cost in the cost model
-    let mut bestdist: i32 = 0; // distance that has lowest cost in the cost model
+    let mut bestlength = 0; // length that has lowest cost in the cost model
+    let mut bestdist = 0; // distance that has lowest cost in the cost model
 
     // Table of distances that have a different distance symbol in the deflate
     // specification. Each value is the first distance that has a new symbol. Only
     // different symbols affect the cost model so only these need to be checked.
     // See RFC 1951 section 3.2.5. Compressed blocks (length and distance codes).
 
-    let dsymbols: [i32; 30] = [
+    let dsymbols = [
         1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
         769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
     ];
@@ -434,8 +434,8 @@ pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usi
     let mut currentstore = Lz77Store::new();
     let mut outputstore = currentstore.clone();
 
-    let mut stats: SymbolStats = Default::default();
-    let mut beststats: SymbolStats = Default::default();
+    let mut stats = SymbolStats::default();
+    let mut beststats = SymbolStats::default();
 
     let mut bestcost = f64::MAX;
     let mut lastcost = 0.0;

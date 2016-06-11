@@ -70,7 +70,7 @@ impl ZopfliHash {
 
     pub fn update(&mut self, array: &[u8], pos: usize) {
         let hpos = pos & ZOPFLI_WINDOW_MASK;
-        let mut amount: i32 = 0;
+        let mut amount = 0;
 
         let hash_value = if pos + ZOPFLI_MIN_MATCH <= array.len() {
             array[pos + ZOPFLI_MIN_MATCH - 1]

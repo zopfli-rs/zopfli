@@ -151,7 +151,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 
     let mut llpos;
     let mut numblocks = 1;
-    let mut splitcost: f64;
+    let mut splitcost;
     let mut origcost;
     let mut done = vec![0; lz77.size()];
     let mut lstart = 0;

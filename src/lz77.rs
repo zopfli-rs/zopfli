@@ -108,9 +108,9 @@ impl Lz77Store {
     pub fn greedy<C>(&mut self, s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize)
         where C: Cache,
     {
-        let mut leng: u16;
-        let mut dist: u16;
-        let mut lengthscore: i32;
+        let mut leng;
+        let mut dist;
+        let mut lengthscore;
         let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
             instart - ZOPFLI_WINDOW_SIZE
         } else {
@@ -120,9 +120,9 @@ impl Lz77Store {
         let mut longest_match;
 
         /* Lazy matching. */
-        let mut prev_length: u32 = 0;
-        let mut prev_match: u32 = 0;
-        let mut prevlengthscore: i32;
+        let mut prev_length = 0;
+        let mut prev_match = 0;
+        let mut prevlengthscore;
         let mut match_available = false;
 
         if instart == inend {

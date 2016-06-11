@@ -530,7 +530,7 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mu
 /// `out`: dynamic output array to append to
 fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bp: &mut u8, out: &mut Vec<u8>) {
     let compressed_size;
-    let mut uncompressed_size: usize = 0;
+    let mut uncompressed_size = 0;
 
     if btype == BlockType::Uncompressed {
         let length = get_byte_range(lz77, lstart, lend);
@@ -610,7 +610,7 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: usize, lend: usize, btype:
             let ll_lengths = fixed_tree.0;
             let d_lengths = fixed_tree.1;
 
-            let mut result: f64 = 3.0; /* bfinal and btype bits */
+            let mut result = 3.0; /* bfinal and btype bits */
             result += calculate_block_symbol_size(&ll_lengths, &d_lengths, lz77, lstart, lend) as f64;
             result
         },
@@ -669,10 +669,10 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 /// end code 256. `expected_data_size` is the uncompressed block size, used for
 /// assert, but you can set it to `0` to not do the assertion.
 fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize , ll_symbols: &[u32], ll_lengths: &[u32], d_symbols: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mut Vec<u8>) {
-    let mut testlength: usize = 0;
+    let mut testlength = 0;
 
     for i in lstart..lend {
-        let dist: u32 = lz77.dists[i] as u32;
+        let dist = lz77.dists[i] as u32;
         let litlen = lz77.litlens[i] as usize;
         if dist == 0 {
             assert!(litlen < 256);
@@ -680,8 +680,8 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
             add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen], bp, out);
             testlength += 1;
         } else {
-            let lls: u32 = get_length_symbol(litlen) as u32;
-            let ds: u32 = get_dist_symbol(dist as i32) as u32;
+            let lls = get_length_symbol(litlen) as u32;
+            let ds = get_dist_symbol(dist as i32) as u32;
             assert!(litlen >= 3 && litlen <= 288);
             assert!(ll_lengths[lls as usize] > 0);
             assert!(d_lengths[ds as usize] > 0);

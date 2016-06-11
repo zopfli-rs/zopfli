@@ -12,7 +12,7 @@ pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     let cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
     let fdict = 0;
-    let mut cmfflg: u32 = 256 * cmf + fdict * 32 + flevel * 64;
+    let mut cmfflg = 256 * cmf + fdict * 32 + flevel * 64;
     let fcheck = 31 - cmfflg % 31;
     cmfflg += fcheck;
 
