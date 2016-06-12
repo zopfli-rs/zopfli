@@ -1,5 +1,7 @@
 # Zopfli in Rust
 
+[![Build Status](https://travis-ci.org/carols10cents/zopfli.svg?branch=master)](https://travis-ci.org/carols10cents/zopfli)
+
 This is a reimplementation of the [Zopfli](https://github.com/google/zopfli) compression tool in Rust.
 
 I have totally ignored zopfliping.
