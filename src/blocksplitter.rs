@@ -172,6 +172,8 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
             numblocks += 1;
         }
 
+        // If `find_largest_splittable_block` returns `None`, no further split will
+        // likely reduce compression.
         let is_finished = find_largest_splittable_block(lz77.size(), &done, splitpoints)
             .map_or(true, |(start, end)| {
                 lstart = start;
