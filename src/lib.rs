@@ -1,5 +1,3 @@
-#![feature(iter_arith)]
-
 #![deny(trivial_casts, trivial_numeric_casts)]
 
 extern crate libc;

@@ -137,7 +137,7 @@ impl SymbolStats {
         fn calculate_and_store_entropy(count: &[usize], bitlengths: &mut [f64]) {
             let n = count.len();
 
-            let sum = count.iter().sum();
+            let sum = count.iter().fold(0, |acc, &x| acc + x);
 
             let log2sum = (if sum == 0 { n } else { sum } as f64).ln() * K_INV_LOG2;
 
