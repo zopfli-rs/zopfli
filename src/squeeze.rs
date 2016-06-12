@@ -362,7 +362,8 @@ fn trace_backwards(size: usize, length_array: Vec<u16>) -> Vec<u16> {
         return vec![];
     }
     let mut path = vec![]; // TODO: with capacity
-    loop {
+
+    while index > 0 {
         let lai = length_array[index];
         let laiu = lai as usize;
         path.push(lai);
@@ -370,9 +371,6 @@ fn trace_backwards(size: usize, length_array: Vec<u16>) -> Vec<u16> {
         assert!(laiu <= ZOPFLI_MAX_MATCH);
         assert!(lai != 0);
         index -= laiu;
-        if index == 0 {
-            break;
-        }
     }
 
     /* Mirror result. */
