@@ -1,7 +1,7 @@
 use std::{ptr, cmp};
 
 use cache::{ZopfliLongestMatchCache};
-use hash::ZopfliHash;
+use hash::{ZopfliHash, Which};
 use symbols::{get_dist_symbol, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use Options;
@@ -396,7 +396,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
 
 fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: *mut u16) -> (i32, usize) {
     let hpos = pos & ZOPFLI_WINDOW_MASK;
-    let mut which_hash = 1;
+    let mut which_hash = Which::Hash1;
 
     let mut bestlength = 1;
     let mut bestdist = 0;
@@ -465,9 +465,9 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
         }
 
         /* Switch to the other hash once this will be more efficient. */
-        if which_hash == 1 && bestlength >= h.same[hpos] as usize && h.val(2) == h.hash_val_at(p as usize, 2) {
+        if which_hash == Which::Hash1 && bestlength >= h.same[hpos] as usize && h.val(Which::Hash2) == h.hash_val_at(p as usize, Which::Hash2) {
             /* Now use the hash that encodes the length and first byte. */
-            which_hash = 2;
+            which_hash = Which::Hash2;
         }
 
         pp = p as i32;
