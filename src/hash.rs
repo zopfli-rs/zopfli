@@ -72,7 +72,7 @@ impl ZopfliHash {
         let hpos = pos & ZOPFLI_WINDOW_MASK;
         let mut amount = 0;
 
-        let hash_value = array.iter().nth(pos + ZOPFLI_MIN_MATCH - 1).cloned().unwrap_or(0);
+        let hash_value = array.get(pos + ZOPFLI_MIN_MATCH - 1).cloned().unwrap_or(0);
         self.update_val(hash_value);
 
         self.hashval[hpos] = self.val;
