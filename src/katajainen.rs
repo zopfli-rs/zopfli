@@ -161,7 +161,7 @@ fn next_tree(weight_sum: usize, lists: &mut [List], leaves: &[Leaf], current_lis
         current_list.lookahead2.weight = weight_sum;
         current_list.lookahead2.leaf_counts.clear();
 
-        current_list.lookahead2.leaf_counts.extend(previous_list_leaf_counts);
+        current_list.lookahead2.leaf_counts.extend_from_slice(previous_list_leaf_counts);
         current_list.lookahead2.leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
     }
 

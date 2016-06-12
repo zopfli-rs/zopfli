@@ -1,3 +1,4 @@
+use std::cmp;
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
 use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
@@ -74,14 +75,7 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
         if i == length || good_for_rle[i] || (counts[i] as i32 - limit as i32).abs() >= 4 {
             if stride >= 4 || (stride >= 3 && sum == 0) {
                 // The stride must end, collapse what we have, if we have enough (4).
-                let mut count = (sum + stride / 2) / stride;
-                if count < 1 {
-                    count = 1;
-                }
-                if sum == 0 {
-                    // Don't make an all zeros stride to be upgraded to ones.
-                    count = 0;
-                }
+                let count = if sum == 0 { 0 } else { cmp::max((sum + stride / 2) / stride, 1) };
                 for k in 0..stride {
                     // We don't want to change value at counts[i],
                     // that is already belonging to the next stride. Thus - 1.

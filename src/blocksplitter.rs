@@ -33,11 +33,7 @@ fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
         let mut lastbest = f64::MAX;
         let mut pos = start;
 
-        loop {
-            if end - start <= num {
-                break;
-            }
-
+        while end - start > num {
             for i in 0..num {
                 p[i] = start + (i + 1) * ((end - start) / (num + 1));
                 vp[i] = f(p[i]);
@@ -157,11 +153,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
     let mut lstart = 0;
     let mut lend = lz77.size();
 
-    loop {
-        if maxblocks > 0 && numblocks >= maxblocks {
-          break;
-        }
-
+    while maxblocks != 0 && numblocks < maxblocks {
         assert!(lstart < lend);
         let find_minimum_result = find_minimum(|i| estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend);
         llpos = find_minimum_result.0;
@@ -180,16 +172,14 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
             numblocks += 1;
         }
 
-        match find_largest_splittable_block(lz77.size(), &done, splitpoints) {
-            None => break, /* No further split will probably reduce compression. */
-            Some((start, end)) => {
+        let is_finished = find_largest_splittable_block(lz77.size(), &done, splitpoints)
+            .map_or(true, |(start, end)| {
                 lstart = start;
                 lend = end;
-                if lend - lstart < 10 {
-                    break;
-                }
-            }
-        }
+                lend - lstart < 10
+            });
+
+        if is_finished { break }
     }
 
     if options.verbose {
@@ -210,25 +200,23 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
 pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usize, maxblocks: usize, splitpoints: &mut Vec<usize>) {
-    let mut pos;
-    let mut s = ZopfliBlockState::new_without_cache(options, instart, inend);
-
     let mut lz77splitpoints = Vec::with_capacity(maxblocks);
-
     let mut store = Lz77Store::new();
-
     splitpoints.clear();
 
     /* Unintuitively, Using a simple LZ77 method here instead of lz77_optimal
     results in better blocks. */
-    store.greedy(&mut s, in_data, instart, inend);
+    {
+        let mut state = ZopfliBlockState::new_without_cache(options, instart, inend);
+        store.greedy(&mut state, in_data, instart, inend);
+    }
 
     blocksplit_lz77(options, &store, maxblocks, &mut lz77splitpoints);
 
     let nlz77points = lz77splitpoints.len();
 
     /* Convert LZ77 positions to positions in the uncompressed input. */
-    pos = instart;
+    let mut pos = instart;
     if nlz77points > 0 {
         for i in 0..store.size() {
             let length = if store.dists[i] == 0 { 1 } else { store.litlens[i] };

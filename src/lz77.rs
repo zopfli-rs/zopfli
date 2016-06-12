@@ -353,8 +353,6 @@ fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) 
 pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: *mut u16) -> LongestMatch
     where C: Cache,
 {
-    let mut limit = limit;
-
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
     if longest_match.from_cache == 1 {
@@ -362,7 +360,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
         return longest_match;
     }
 
-    limit = longest_match.limit;
+    let mut limit = longest_match.limit;
 
     assert!(limit <= ZOPFLI_MAX_MATCH);
     assert!(limit >= ZOPFLI_MIN_MATCH);
@@ -442,16 +440,9 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
                 let same0 = h.same[pos & ZOPFLI_WINDOW_MASK];
                 if same0 > 2 && array[scan_offset] == array[match_offset] {
                     let same1 = h.same[(pos - (dist as usize)) & ZOPFLI_WINDOW_MASK];
-                    let mut same = if same0 < same1 {
-                        same0
-                    } else {
-                        same1
-                    };
-                    if (same as usize) > limit {
-                        same = limit as u16;
-                    }
-                    scan_offset += same as usize;
-                    match_offset += same as usize;
+                    let same = [same0, same1, limit as u16].iter().min().map(|x| *x as usize).unwrap();
+                    scan_offset += same;
+                    match_offset += same;
                 }
                 scan_offset = get_match(array, scan_offset, match_offset, arrayend);
                 currentlength = scan_offset - pos;  /* The found length. */
@@ -651,10 +642,7 @@ impl Cache for ZopfliLongestMatchCache {
 
         if limit_ok_for_cache && cache_available {
             if sublen.is_null() || length_lmcpos as u32 <= max_sublen {
-                let mut length = length_lmcpos;
-                if length > limit as u16 {
-                    length = limit as u16;
-                }
+                let length = cmp::min(length_lmcpos, limit as u16);
                 let distance;
                 if !sublen.is_null() {
                     self.fetch_sublen(lmcpos, length as usize, sublen);
