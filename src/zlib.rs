@@ -6,8 +6,6 @@ use deflate::{deflate, BlockType};
 use Options;
 
 pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
-    let mut bp = 0;
-
     let checksum = adler32(io::Cursor::new(&in_data)).expect("Error with adler32");
     let cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
@@ -19,7 +17,7 @@ pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push((cmfflg / 256) as u8);
     out.push((cmfflg % 256) as u8);
 
-    deflate(options, BlockType::Dynamic, true, in_data, &mut bp, out);
+    deflate(options, BlockType::Dynamic, true, in_data, out);
 
     out.push(((checksum >> 24) % 256) as u8);
     out.push(((checksum >> 16) % 256) as u8);

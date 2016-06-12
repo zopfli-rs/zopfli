@@ -64,10 +64,7 @@ fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut V
     match *output_type {
         Format::Gzip => gzip_compress(options, in_data, out),
         Format::Zlib => zlib_compress(options, in_data, out),
-        Format::Deflate => {
-            let mut bp = 0;
-            deflate(options, BlockType::Dynamic, true, in_data, &mut bp, out);
-        }
+        Format::Deflate => deflate(options, BlockType::Dynamic, true, in_data, out),
     }
 }
 
