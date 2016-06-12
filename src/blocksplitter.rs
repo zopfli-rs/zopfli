@@ -211,7 +211,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 ///   blocks is the amount of splitpoitns + 1.
 pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usize, maxblocks: usize, splitpoints: &mut Vec<usize>) {
     let mut pos;
-    let mut s = ZopfliBlockState::new(options, instart, inend, 0);
+    let mut s = ZopfliBlockState::new_without_cache(options, instart, inend);
 
     let mut lz77splitpoints = Vec::with_capacity(maxblocks);
 
