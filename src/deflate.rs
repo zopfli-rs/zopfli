@@ -865,22 +865,19 @@ fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data:
 ///   -Uncompressed: non compressed blocks (00)
 ///   -Fixed: blocks with fixed tree (01)
 ///   -Dynamic: blocks with dynamic tree (10)
-/// final: whether this is the last section of the input, sets the final bit to the
-///   last deflate block.
 /// in: the input bytes
 /// insize: number of input bytes
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], out: &mut Vec<u8>) {
+pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Vec<u8>) {
     let mut bp = 0;
     let mut i = 0;
     let insize = in_data.len();
     while i < insize {
-        let masterfinal = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
-        let final2 = final_block && masterfinal;
-        let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
-        deflate_part(options, btype, final2, in_data, i, i + size, &mut bp, out);
+        let final_block = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
+        let size = if final_block { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
+        deflate_part(options, btype, final_block, in_data, i, i + size, &mut bp, out);
         i += size;
     }
 }

@@ -62,6 +62,6 @@ pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &m
     match *output_type {
         Format::Gzip => gzip_compress(options, in_data, out),
         Format::Zlib => zlib_compress(options, in_data, out),
-        Format::Deflate => deflate(options, BlockType::Dynamic, true, in_data, out),
+        Format::Deflate => deflate(options, BlockType::Dynamic, in_data, out),
     }
 }
