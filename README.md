@@ -10,13 +10,15 @@ More info about why and how I did this can be found in [the slides for a talk I 
 
 ## How to build
 
-To build the code, you'll need a nightly Rust (for one little feature, `iter_arith`), and then you  can do:
+To build the code, run:
 
 ```
 $ cargo build --release
 ```
 
 and the executable will be in `target/release/zopfli`.
+
+This should work on stable or beta Rust.
 
 ## Running the tests
 
