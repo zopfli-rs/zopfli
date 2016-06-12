@@ -7,6 +7,7 @@ use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, 
 use tree::{lengths_to_symbols};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
 use Options;
+use iter::IsFinalIterator;
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum BlockType {
@@ -939,18 +940,13 @@ fn add_huffman_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
 /// Since an uncompressed block can be max 65535 in size, it actually adds
 /// multible blocks if needed.
 fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
-    let mut pos = instart;
-    loop {
-        let mut blocksize = 65535;
+    let in_data = &in_data[instart..inend];
 
-        if pos + blocksize > inend {
-            blocksize = inend - pos;
-        }
-        let currentfinal = pos + blocksize >= inend;
-
+    for (chunk, is_final) in in_data.chunks(65535).is_final() {
+        let blocksize = chunk.len();
         let nlen = !blocksize;
 
-        add_bit((final_block && currentfinal) as i32, bp, out);
+        add_bit((final_block && is_final) as i32, bp, out);
         /* BTYPE 00 */
         add_bit(0, bp, out);
         add_bit(0, bp, out);
@@ -963,13 +959,6 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
         out.push((nlen % 256) as u8);
         out.push(((nlen / 256) % 256) as u8);
 
-        for i in 0..blocksize {
-            out.push(in_data[pos + i]);
-        }
-
-        if currentfinal {
-            break;
-        }
-        pos += blocksize;
+        out.extend_from_slice(chunk);
     }
 }
