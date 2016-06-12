@@ -31,6 +31,12 @@ libzopfli:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -fPIC -c
 	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.1
 
+.PHONY: test
+test:
+	cargo test
+	./test/run.sh
+	git diff --exit-code
+
 # Remove all libraries and binaries
 clean:
 	cargo clean && rm -f zopfli $(ZOPFLILIB_OBJ) libzopfli*
