@@ -33,11 +33,7 @@ fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
         let mut lastbest = f64::MAX;
         let mut pos = start;
 
-        loop {
-            if end - start <= num {
-                break;
-            }
-
+        while end - start > num {
             for i in 0..num {
                 p[i] = start + (i + 1) * ((end - start) / (num + 1));
                 vp[i] = f(p[i]);
@@ -157,7 +153,7 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
     let mut lstart = 0;
     let mut lend = lz77.size();
 
-    while maxblocks > 0 && numblocks >= maxblocks {
+    while maxblocks != 0 && numblocks < maxblocks {
         assert!(lstart < lend);
         let find_minimum_result = find_minimum(|i| estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend);
         llpos = find_minimum_result.0;

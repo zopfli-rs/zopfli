@@ -76,7 +76,6 @@ fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut V
 /// outfilename: filename to write output to, or 0 to write to stdout instead
 pub fn compress_file(options: &Options, output_type: &Format, infilename: &str, outfilename: &str) {
     let mut file = File::open(infilename)
-        .map(|file| file)
         .unwrap_or_else(|why| panic!("couldn't open {}: {}", infilename, why));
 
     let mut in_data = Vec::with_capacity(file.metadata().map(|x| x.len()).unwrap_or(0) as usize);

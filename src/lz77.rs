@@ -440,9 +440,9 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
                 let same0 = h.same[pos & ZOPFLI_WINDOW_MASK];
                 if same0 > 2 && array[scan_offset] == array[match_offset] {
                     let same1 = h.same[(pos - (dist as usize)) & ZOPFLI_WINDOW_MASK];
-                    let same = cmp::min(cmp::min(same0,same1), limit as u16);
-                    scan_offset += same as usize;
-                    match_offset += same as usize;
+                    let same = [same0, same1, limit as u16].iter().min().map(|x| *x as usize).unwrap();
+                    scan_offset += same;
+                    match_offset += same;
                 }
                 scan_offset = get_match(array, scan_offset, match_offset, arrayend);
                 currentlength = scan_offset - pos;  /* The found length. */
