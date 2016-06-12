@@ -540,7 +540,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
             lz77.pos[lstart]
         };
         let end = pos + length;
-        add_non_compressed_block(options, final_block, in_data, pos, end, bp, out);
+        add_non_compressed_block(final_block, in_data, pos, end, bp, out);
         return;
     }
 
@@ -840,7 +840,7 @@ fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data:
     block splitting as they have no dynamic huffman trees. */
     match btype {
         BlockType::Uncompressed => {
-            add_non_compressed_block(options, final_block, in_data, instart, inend, bp, out);
+            add_non_compressed_block(final_block, in_data, instart, inend, bp, out);
         },
         BlockType::Fixed => {
             let mut store = Lz77Store::new();
@@ -942,7 +942,7 @@ fn add_huffman_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
 
 /// Since an uncompressed block can be max 65535 in size, it actually adds
 /// multible blocks if needed.
-fn add_non_compressed_block(_options: &Options, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
     let mut pos = instart;
     loop {
         let mut blocksize = 65535;
