@@ -871,12 +871,7 @@ fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data:
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: bool, in_data: &[u8], out: &mut Vec<u8>) {
-    let options = unsafe {
-        assert!(!options_ptr.is_null());
-        &*options_ptr
-    };
-
+pub fn deflate(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], out: &mut Vec<u8>) {
     let offset = out.len();
     let mut bp = 0;
     let mut i = 0;
