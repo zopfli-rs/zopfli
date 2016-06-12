@@ -3,7 +3,7 @@ use std::env;
 extern crate zopfli;
 
 fn main() {
-    let options: zopfli::Options = Default::default();
+    let options = zopfli::Options::default();
     let output_type = zopfli::Format::Gzip;
 
     // TODO: CLI arguments

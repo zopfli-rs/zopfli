@@ -6,23 +6,21 @@ extern crate libc;
 extern crate crc;
 extern crate adler32;
 
-pub mod blocksplitter;
-pub mod cache;
-pub mod deflate;
-pub mod gzip;
-pub mod hash;
-pub mod katajainen;
-pub mod lz77;
-pub mod squeeze;
-pub mod symbols;
-pub mod tree;
-pub mod util;
-pub mod zlib;
+mod blocksplitter;
+mod cache;
+mod deflate;
+mod gzip;
+mod hash;
+mod katajainen;
+mod lz77;
+mod squeeze;
+mod symbols;
+mod tree;
+mod util;
+mod zlib;
 
 use std::io::prelude::*;
 use std::fs::File;
-
-use libc::c_int;
 
 use deflate::{deflate, BlockType};
 use gzip::gzip_compress;
@@ -31,20 +29,20 @@ use zlib::zlib_compress;
 /// Options used throughout the program.
 pub struct Options {
   /* Whether to print output */
-  pub verbose: bool,
+  verbose: bool,
   /* Whether to print more detailed output */
-  pub verbose_more: bool,
+  verbose_more: bool,
   /*
   Maximum amount of times to rerun forward and backward pass to optimize LZ77
   compression cost. Good values: 10, 15 for small files, 5 for files over
   several MB in size or it will be too slow.
   */
-  pub numiterations: c_int,
+  numiterations: i32,
   /*
   Maximum amount of blocks to split into (0 for unlimited, but this can give
   extreme results that hurt compression on some files). Default value: 15.
   */
-  pub blocksplittingmax: c_int,
+  blocksplittingmax: i32,
 }
 
 impl Default for Options {
@@ -64,7 +62,7 @@ pub enum Format {
     Deflate,
 }
 
-pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut Vec<u8>) {
+fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut Vec<u8>) {
     match *output_type {
         Format::Gzip => gzip_compress(options, in_data, out),
         Format::Zlib => zlib_compress(options, in_data, out),

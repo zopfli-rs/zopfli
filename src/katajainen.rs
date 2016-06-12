@@ -1,20 +1,18 @@
 use std::cmp::Ordering;
 use std::{mem};
 
-use libc::{size_t, c_int, c_uint};
-
 // Bounded package merge algorithm, based on the paper
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
 #[derive(Debug)]
 struct Node {
-    weight: size_t,
-    leaf_counts: Vec<c_int>,
+    weight: usize,
+    leaf_counts: Vec<i32>,
 }
 
 impl Node {
-    pub fn new(weight: size_t, initial_count: c_int, capacity: usize) -> Node {
+    fn new(weight: usize, initial_count: i32, capacity: usize) -> Node {
         let mut n = Node {
             weight: weight,
             leaf_counts: Vec::with_capacity(capacity),
@@ -26,8 +24,8 @@ impl Node {
 
 #[derive(Debug)]
 struct Leaf {
-    pub weight: size_t,
-    pub index: size_t,
+    weight: usize,
+    index: usize,
 }
 impl PartialEq for Leaf {
     fn eq(&self, other: &Self) -> bool {
@@ -50,12 +48,12 @@ impl PartialOrd for Leaf {
 struct List {
     lookahead1: Node,
     lookahead2: Node,
-    next_leaf_index: size_t,
+    next_leaf_index: usize,
 }
 
 /// Calculates the bitlengths for the Huffman tree, based on the counts of each
 /// symbol.
-pub fn length_limited_code_lengths(frequencies: &[size_t], maxbits: c_int) -> Vec<c_uint> {
+pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u32> {
     let mut leaves = vec![];
 
     // Count used symbols and place them in the leaves.
@@ -150,7 +148,7 @@ fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     current_list.next_leaf_index += 1;
 }
 
-fn next_tree(weight_sum: size_t, lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
+fn next_tree(weight_sum: usize, lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     {
         let (head, tail) = lists.split_at_mut(current_list_index);
         let prev_list = head.last_mut().unwrap();
