@@ -868,27 +868,24 @@ fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data:
 ///   last deflate block.
 /// in: the input bytes
 /// insize: number of input bytes
-/// bp: bit pointer for the output array. This must initially be 0, and for
-///   consecutive calls must be reused (it can have values from 0-7). This is
-///   because deflate appends blocks as bit-based data, rather than on byte
-///   boundaries.
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
-pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: bool, in_data: &[u8], bp: &mut u8, out: &mut Vec<u8>) {
+pub fn deflate(options_ptr: *const Options, btype: BlockType, final_block: bool, in_data: &[u8], out: &mut Vec<u8>) {
     let options = unsafe {
         assert!(!options_ptr.is_null());
         &*options_ptr
     };
 
     let offset = out.len();
+    let mut bp = 0;
     let mut i = 0;
     let insize = in_data.len();
     while i < insize {
         let masterfinal = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
         let final2 = final_block && masterfinal;
         let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
-        deflate_part(options, btype, final2, in_data, i, i + size, bp, out);
+        deflate_part(options, btype, final2, in_data, i, i + size, &mut bp, out);
         i += size;
     }
     if options.verbose {

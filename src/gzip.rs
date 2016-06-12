@@ -18,9 +18,7 @@ pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push(2);  /* XFL, 2 indicates best compression. */
     out.push(3);  /* OS follows Unix conventions. */
 
-    let mut bp = 0;
-
-    deflate(options, BlockType::Dynamic, true, in_data, &mut bp, out);
+    deflate(options, BlockType::Dynamic, true, in_data, out);
 
     let crc = crc32::checksum_ieee(in_data);
 
