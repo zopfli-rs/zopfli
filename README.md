@@ -4,7 +4,7 @@
 
 This is a reimplementation of the [Zopfli](https://github.com/google/zopfli) compression tool in Rust.
 
-I have totally ignored zopfliping.
+I have totally ignored zopflipng.
 
 More info about why and how I did this can be found in [the slides for a talk I gave about it](https://github.com/carols10cents/rust-out-your-c-talk).
 
