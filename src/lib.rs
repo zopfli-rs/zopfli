@@ -4,6 +4,7 @@ extern crate libc;
 extern crate crc;
 extern crate adler32;
 
+mod iter;
 mod blocksplitter;
 mod cache;
 mod deflate;
