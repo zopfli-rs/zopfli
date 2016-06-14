@@ -597,7 +597,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
         return;
     }
 
-    bitwise_writer.add_bit(final_block as i32);
+    bitwise_writer.add_bit(final_block as u8);
 
     let (ll_lengths, d_lengths) = match btype {
         BlockType::Uncompressed => unreachable!(),
@@ -883,7 +883,7 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
-        bitwise_writer.add_bit((final_block && is_final) as i32);
+        bitwise_writer.add_bit((final_block && is_final) as u8);
         /* BTYPE 00 */
         bitwise_writer.add_bit(0);
         bitwise_writer.add_bit(0);
@@ -931,19 +931,19 @@ impl<'a> BitwiseWriter<'a> {
     /// Given the value of bp and the amount of bytes, the amount of bits represented
     /// is not simply bytesize * 8 + bp because even representing one bit requires a
     /// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
-    fn add_bit(&mut self, bit: i32) {
+    fn add_bit(&mut self, bit: u8) {
         if self.bp == 0 {
             self.out.push(0);
         }
         let outsize = self.out.len();
-        self.out[outsize - 1] |= (bit << self.bp) as u8;
+        self.out[outsize - 1] |= bit << self.bp;
         self.bp = (self.bp + 1) & 7;
     }
 
     fn add_bits(&mut self, symbol: u32, length: u32) {
         /* TODO(lode): make more efficient (add more bits at once). */
         for i in 0..length {
-            let bit = ((symbol >> i) & 1) as i32;
+            let bit = ((symbol >> i) & 1) as u8;
             self.add_bit(bit);
         }
     }
@@ -953,7 +953,7 @@ impl<'a> BitwiseWriter<'a> {
     fn add_huffman_bits(&mut self, symbol: u32, length: u32) {
         /* TODO(lode): make more efficient (add more bits at once). */
         for i in 0..length {
-            let bit = ((symbol >> (length - i - 1)) & 1) as i32;
+            let bit = ((symbol >> (length - i - 1)) & 1) as u8;
             self.add_bit(bit);
         }
     }
