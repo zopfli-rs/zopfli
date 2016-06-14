@@ -611,10 +611,10 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
             bitwise_writer.add_bit(1);
             let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
-            let detect_tree_size = bitwise_writer.out.len();
+            let detect_tree_size = bitwise_writer.bytes_written();
             add_dynamic_tree(&ll_lengths, &d_lengths, bitwise_writer);
             if options.verbose {
-                println!("treesize: {}", bitwise_writer.out.len() - detect_tree_size);
+                println!("treesize: {}", bitwise_writer.bytes_written() - detect_tree_size);
             }
             (ll_lengths, d_lengths)
         }
@@ -623,7 +623,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     let ll_symbols = lengths_to_symbols(&ll_lengths, 15);
     let d_symbols = lengths_to_symbols(&d_lengths, 15);
 
-    let detect_block_size = bitwise_writer.out.len();
+    let detect_block_size = bitwise_writer.bytes_written();
     add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bitwise_writer);
 
     /* End symbol. */
@@ -636,7 +636,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
             lz77.litlens[i] as usize
         };
     }
-    compressed_size = bitwise_writer.out.len() - detect_block_size;
+    compressed_size = bitwise_writer.bytes_written() - detect_block_size;
     if options.verbose {
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
@@ -913,6 +913,10 @@ impl<'a> BitwiseWriter<'a> {
             bp: 0,
             out: out,
         }
+    }
+
+    fn bytes_written(&self) -> usize {
+        self.out.len()
     }
 
     /// For when you want to add a full byte.
