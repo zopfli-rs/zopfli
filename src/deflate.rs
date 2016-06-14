@@ -891,7 +891,7 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
         bitwise_writer.add_bit(0);
 
         /* Any bits of input up to the next byte boundary are ignored. */
-        bitwise_writer.bp = 0;
+        bitwise_writer.reset_bp();
 
         bitwise_writer.out.push((blocksize % 256) as u8);
         bitwise_writer.out.push(((blocksize / 256) % 256) as u8);
@@ -954,5 +954,9 @@ impl<'a> BitwiseWriter<'a> {
             self.out[outsize - 1] |= (bit << self.bp) as u8;
             self.bp = (self.bp + 1) & 7;
         }
+    }
+
+    fn reset_bp(&mut self) {
+        self.bp = 0;
     }
 }
