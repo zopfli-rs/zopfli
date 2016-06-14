@@ -794,15 +794,13 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: usize, lend: usi
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, BlockType::Uncompressed);
     /* Don't do the expensive fixed cost calculation for larger blocks that are
      unlikely to use it. */
-    let fixedcost = if lz77.size() > 1000 { uncompressedcost } else { calculate_block_size(lz77, lstart, lend, BlockType::Fixed) };
-    let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
-    if uncompressedcost < fixedcost && uncompressedcost < dyncost {
+    let fixedcost = if lz77.size() > 1000 {
         uncompressedcost
-    } else if fixedcost < dyncost {
-        fixedcost
     } else {
-        dyncost
-    }
+        calculate_block_size(lz77, lstart, lend, BlockType::Fixed)
+    };
+    let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
+    uncompressedcost.min(fixedcost).min(dyncost)
 }
 
 fn add_all_blocks(splitpoints: &[usize], lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bitwise_writer: &mut BitwiseWriter) {
