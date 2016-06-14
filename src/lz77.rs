@@ -204,11 +204,7 @@ impl Lz77Store {
     pub fn follow_path<C>(&mut self, in_data: &[u8], instart: usize, inend: usize, path: Vec<u16>, s: &mut ZopfliBlockState<C>)
         where C: Cache,
     {
-        let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
-            instart - ZOPFLI_WINDOW_SIZE
-        } else {
-            0
-        };
+        let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
 
         if instart == inend {
             return;
