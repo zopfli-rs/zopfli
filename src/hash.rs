@@ -3,6 +3,12 @@ use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH};
 const HASH_SHIFT: i32 = 5;
 const HASH_MASK: i32 = 32767;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Which {
+    Hash1,
+    Hash2,
+}
+
 pub struct ZopfliHash {
     head: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
     prev: Vec<u16>,  /* Index to index of prev. occurrence of same hash. */
@@ -109,35 +115,31 @@ impl ZopfliHash {
         self.head2[index2] = hpos as i32;
     }
 
-    pub fn head_at(&self, index: usize, which_hash: usize) -> i32 {
-        if which_hash == 1 {
-            self.head[index]
-        } else {
-            self.head2[index]
+    pub fn head_at(&self, index: usize, which: Which) -> i32 {
+        match which {
+            Which::Hash1 => self.head[index],
+            Which::Hash2 => self.head2[index],
         }
     }
 
-    pub fn prev_at(&self, index: usize, which_hash: usize) -> u16 {
-        if which_hash == 1 {
-            self.prev[index]
-        } else {
-            self.prev2[index]
+    pub fn prev_at(&self, index: usize, which: Which) -> u16 {
+        match which {
+            Which::Hash1 => self.prev[index],
+            Which::Hash2 => self.prev2[index],
         }
     }
 
-    pub fn hash_val_at(&self, index: usize, which_hash: usize) -> i32 {
-        if which_hash == 1 {
-            self.hashval[index]
-        } else {
-            self.hashval2[index]
+    pub fn hash_val_at(&self, index: usize, which: Which) -> i32 {
+        match which {
+            Which::Hash1 => self.hashval[index],
+            Which::Hash2 => self.hashval2[index],
         }
     }
 
-    pub fn val(&self, which_hash: usize) -> i32 {
-        if which_hash == 1 {
-            self.val
-        } else {
-            self.val2
+    pub fn val(&self, which: Which) -> i32 {
+        match which {
+            Which::Hash1 => self.val,
+            Which::Hash2 => self.val2,
         }
     }
 }
