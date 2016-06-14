@@ -18,9 +18,6 @@ mod tree;
 mod util;
 mod zlib;
 
-use std::io::prelude::*;
-use std::fs::File;
-
 use deflate::{deflate, BlockType};
 use gzip::gzip_compress;
 use zlib::zlib_compress;
@@ -61,34 +58,10 @@ pub enum Format {
     Deflate,
 }
 
-fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut Vec<u8>) {
+pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut Vec<u8>) {
     match *output_type {
         Format::Gzip => gzip_compress(options, in_data, out),
         Format::Zlib => zlib_compress(options, in_data, out),
         Format::Deflate => deflate(options, BlockType::Dynamic, true, in_data, out),
     }
-}
-
-/// outfilename: filename to write output to, or 0 to write to stdout instead
-pub fn compress_file(options: &Options, output_type: &Format, infilename: &str, outfilename: &str) {
-    let mut file = File::open(infilename)
-        .unwrap_or_else(|why| panic!("couldn't open {}: {}", infilename, why));
-
-    let mut in_data = Vec::with_capacity(file.metadata().map(|x| x.len()).unwrap_or(0) as usize);
-    let mut out_data = vec![];
-
-    // Read the contents of the file into in_data
-    file.read_to_end(&mut in_data).ok()
-        // Panic if the file could not be read
-        .map_or_else(|| panic!("couldn't read the input file"), |_| {
-            // Compress `in_data` and store the result in `out_data`
-            compress(options, output_type, &in_data, &mut out_data);
-            // Attempt to create the output file
-            File::create(outfilename).ok()
-                // Panic if the output file could not be opened
-                .map_or_else(|| panic!("couldn't create output file"), |mut buffer| {
-                    // Write the `out_data` into the newly created file.
-                    buffer.write_all(&out_data).expect("couldn't write to output file")
-                });
-        });
 }
