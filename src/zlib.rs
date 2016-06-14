@@ -17,7 +17,7 @@ pub fn zlib_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
     out.push((cmfflg / 256) as u8);
     out.push((cmfflg % 256) as u8);
 
-    deflate(options, BlockType::Dynamic, true, in_data, out);
+    deflate(options, BlockType::Dynamic, in_data, out);
 
     out.push(((checksum >> 24) % 256) as u8);
     out.push(((checksum >> 16) % 256) as u8);
