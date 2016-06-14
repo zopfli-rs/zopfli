@@ -9,6 +9,60 @@ use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MASTER_BLOCK_SIZE};
 use Options;
 use iter::IsFinalIterator;
 
+/// Compresses according to the deflate specification and append the compressed
+/// result to the output.
+///
+/// options: global program options
+/// btype: the deflate block type. Use Dynamic for best compression.
+///   - Uncompressed: non compressed blocks (00)
+///   - Fixed: blocks with fixed tree (01)
+///   - Dynamic: blocks with dynamic tree (10)
+/// in_data: the input bytes
+/// out: pointer to the dynamic output array to which the result is appended. Must
+///   be freed after use.
+pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Vec<u8>) {
+    let mut bp = 0;
+    let mut i = 0;
+    let insize = in_data.len();
+    while i < insize {
+        let final_block = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
+        let size = if final_block { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
+        deflate_part(options, btype, final_block, in_data, i, i + size, &mut bp, out);
+        i += size;
+    }
+}
+
+/// Deflate a part, to allow deflate() to use multiple master blocks if
+/// needed.
+/// It is possible to call this function multiple times in a row, shifting
+/// instart and inend to next bytes of the data. If instart is larger than 0, then
+/// previous bytes are used as the initial dictionary for LZ77.
+/// This function will usually output multiple deflate blocks. If final is true, then
+/// the final bit will be set on the last block.
+/// Like deflate, but allows to specify start and end byte with instart and
+/// inend. Only that part is compressed, but earlier bytes are still used for the
+/// back window.
+fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
+    /* If btype=Dynamic is specified, it tries all block types. If a lesser btype is
+    given, then however it forces that one. Neither of the lesser types needs
+    block splitting as they have no dynamic huffman trees. */
+    match btype {
+        BlockType::Uncompressed => {
+            add_non_compressed_block(final_block, in_data, instart, inend, bp, out);
+        },
+        BlockType::Fixed => {
+            let mut store = Lz77Store::new();
+            let mut s = ZopfliBlockState::new(options, instart, inend);
+
+            lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
+            add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
+        },
+        BlockType::Dynamic => {
+            blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out);
+        },
+    }
+}
+
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum BlockType {
     Uncompressed,
@@ -821,65 +875,6 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
     }
 
     add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bp, out);
-}
-
-
-/// Deflate a part, to allow deflate() to use multiple master blocks if
-/// needed.
-/// It is possible to call this function multiple times in a row, shifting
-/// instart and inend to next bytes of the data. If instart is larger than 0, then
-/// previous bytes are used as the initial dictionary for LZ77.
-/// This function will usually output multiple deflate blocks. If final is true, then
-/// the final bit will be set on the last block.
-/// Like deflate, but allows to specify start and end byte with instart and
-/// inend. Only that part is compressed, but earlier bytes are still used for the
-/// back window.
-fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
-    /* If btype=Dynamic is specified, it tries all block types. If a lesser btype is
-    given, then however it forces that one. Neither of the lesser types needs
-    block splitting as they have no dynamic huffman trees. */
-    match btype {
-        BlockType::Uncompressed => {
-            add_non_compressed_block(final_block, in_data, instart, inend, bp, out);
-        },
-        BlockType::Fixed => {
-            let mut store = Lz77Store::new();
-            let mut s = ZopfliBlockState::new(options, instart, inend);
-
-            lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
-            add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
-        },
-        BlockType::Dynamic => {
-            blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out);
-        },
-    }
-}
-
-/// Compresses according to the deflate specification and append the compressed
-/// result to the output.
-/// This function will usually output multiple deflate blocks. If final is true, then
-/// the final bit will be set on the last block.
-///
-/// options: global program options
-/// btype: the deflate block type. Use Dynamic for best compression.
-///   -Uncompressed: non compressed blocks (00)
-///   -Fixed: blocks with fixed tree (01)
-///   -Dynamic: blocks with dynamic tree (10)
-/// in: the input bytes
-/// insize: number of input bytes
-/// out: pointer to the dynamic output array to which the result is appended. Must
-///   be freed after use.
-/// outsize: pointer to the dynamic output array size.
-pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Vec<u8>) {
-    let mut bp = 0;
-    let mut i = 0;
-    let insize = in_data.len();
-    while i < insize {
-        let final_block = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
-        let size = if final_block { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
-        deflate_part(options, btype, final_block, in_data, i, i + size, &mut bp, out);
-        i += size;
-    }
 }
 
 /// bp = bitpointer, always in range [0, 7].
