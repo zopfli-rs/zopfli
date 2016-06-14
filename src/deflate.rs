@@ -597,18 +597,18 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
         return;
     }
 
-    add_bit(final_block as i32, bitwise_writer);
+    bitwise_writer.add_bit(final_block as i32);
 
     let (ll_lengths, d_lengths) = match btype {
         BlockType::Uncompressed => unreachable!(),
         BlockType::Fixed => {
-            add_bit(1, bitwise_writer);
-            add_bit(0, bitwise_writer);
+            bitwise_writer.add_bit(1);
+            bitwise_writer.add_bit(0);
             fixed_tree()
         },
         BlockType::Dynamic => {
-            add_bit(0, bitwise_writer);
-            add_bit(1, bitwise_writer);
+            bitwise_writer.add_bit(0);
+            bitwise_writer.add_bit(1);
             let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
             let detect_tree_size = bitwise_writer.out.len();
@@ -876,20 +876,6 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
     add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bitwise_writer);
 }
 
-/// bitwise_writer = writer responsible for writing bits
-/// The outsize is number of necessary bytes to encode the bits.
-/// Given the value of bp and the amount of bytes, the amount of bits represented
-/// is not simply bytesize * 8 + bp because even representing one bit requires a
-/// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
-fn add_bit(bit: i32, bitwise_writer: &mut BitwiseWriter) {
-    if bitwise_writer.bp == 0 {
-        bitwise_writer.out.push(0);
-    }
-    let outsize = bitwise_writer.out.len();
-    bitwise_writer.out[outsize - 1] |= (bit << bitwise_writer.bp ) as u8;
-    bitwise_writer.bp = (bitwise_writer.bp + 1) & 7;
-}
-
 fn add_bits(symbol: u32, length: u32, bitwise_writer: &mut BitwiseWriter) {
     /* TODO(lode): make more efficient (add more bits at once). */
     for i in 0..length {
@@ -927,10 +913,10 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
-        add_bit((final_block && is_final) as i32, bitwise_writer);
+        bitwise_writer.add_bit((final_block && is_final) as i32);
         /* BTYPE 00 */
-        add_bit(0, bitwise_writer);
-        add_bit(0, bitwise_writer);
+        bitwise_writer.add_bit(0);
+        bitwise_writer.add_bit(0);
 
         /* Any bits of input up to the next byte boundary are ignored. */
         bitwise_writer.bp = 0;
@@ -955,5 +941,18 @@ impl<'a> BitwiseWriter<'a> {
             bp: 0,
             out: out,
         }
+    }
+
+    /// The outsize is number of necessary bytes to encode the bits.
+    /// Given the value of bp and the amount of bytes, the amount of bits represented
+    /// is not simply bytesize * 8 + bp because even representing one bit requires a
+    /// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
+    fn add_bit(&mut self, bit: i32) {
+        if self.bp == 0 {
+            self.out.push(0);
+        }
+        let outsize = self.out.len();
+        self.out[outsize - 1] |= (bit << self.bp) as u8;
+        self.bp = (self.bp + 1) & 7;
     }
 }
