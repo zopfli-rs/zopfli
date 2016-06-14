@@ -29,14 +29,14 @@ impl ZopfliHash {
     pub fn new(window_size: usize) -> ZopfliHash {
         ZopfliHash {
            head: vec![-1; 65536],
-           prev: (0..window_size as u16).collect::<Vec<_>>(),
+           prev: (0..window_size as u16).collect(),
            hashval: vec![-1; window_size],
            val: 0,
 
            /* Fields with similar purpose as the above hash, but for the second hash with
            a value that is calculated differently.  */
            head2: vec![-1; 65536],
-           prev2: (0..window_size as u16).collect::<Vec<_>>(),
+           prev2: (0..window_size as u16).collect(),
            hashval2: vec![-1; window_size],
            val2: 0,
 
@@ -47,13 +47,13 @@ impl ZopfliHash {
     pub fn reset(&mut self, window_size: usize) {
         self.val = 0;
         self.head = vec![-1; 65536];
-        self.prev = (0..window_size as u16).collect::<Vec<_>>();
+        self.prev = (0..window_size as u16).collect();
         self.hashval = vec![-1; window_size];
 
         self.same = vec![0; window_size];
         self.val2 = 0;
         self.head2 = vec![-1; 65536];
-        self.prev2 = (0..window_size as u16).collect::<Vec<_>>();
+        self.prev2 = (0..window_size as u16).collect();
         self.hashval2 = vec![-1; window_size];
     }
 
