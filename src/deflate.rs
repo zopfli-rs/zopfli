@@ -873,7 +873,6 @@ fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data:
 ///   be freed after use.
 /// outsize: pointer to the dynamic output array size.
 pub fn deflate(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], out: &mut Vec<u8>) {
-    let offset = out.len();
     let mut bp = 0;
     let mut i = 0;
     let insize = in_data.len();
@@ -883,10 +882,6 @@ pub fn deflate(options: &Options, btype: BlockType, final_block: bool, in_data: 
         let size = if masterfinal { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
         deflate_part(options, btype, final2, in_data, i, i + size, &mut bp, out);
         i += size;
-    }
-    if options.verbose {
-        let outsize = out.len();
-        println!("Original Size: {}, Deflate: {}, Compression: {}% Removed", insize, outsize - offset, 100.0 * (insize - (outsize - offset)) as f64 / insize as f64);
     }
 }
 

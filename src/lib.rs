@@ -25,7 +25,7 @@ use zlib::zlib_compress;
 /// Options used throughout the program.
 pub struct Options {
   /* Whether to print output */
-  verbose: bool,
+  pub verbose: bool,
   /* Whether to print more detailed output */
   verbose_more: bool,
   /*
