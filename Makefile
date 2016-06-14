@@ -33,7 +33,8 @@ libzopfli:
 
 .PHONY: test
 test:
-	cargo test && ./test/run.sh
+	cargo test
+	./test/run.sh
 
 # Remove all libraries and binaries
 clean:
