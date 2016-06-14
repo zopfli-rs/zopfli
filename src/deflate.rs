@@ -21,13 +21,13 @@ use iter::IsFinalIterator;
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Vec<u8>) {
-    let mut bp = 0;
+    let mut bitwise_writer = BitwiseWriter::new(out);
     let mut i = 0;
     let insize = in_data.len();
     while i < insize {
         let final_block = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
         let size = if final_block { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
-        deflate_part(options, btype, final_block, in_data, i, i + size, &mut bp, out);
+        deflate_part(options, btype, final_block, in_data, i, i + size, &mut bitwise_writer);
         i += size;
     }
 }
@@ -42,23 +42,23 @@ pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Ve
 /// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
+fn deflate_part(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bitwise_writer: &mut BitwiseWriter) {
     /* If btype=Dynamic is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
     match btype {
         BlockType::Uncompressed => {
-            add_non_compressed_block(final_block, in_data, instart, inend, bp, out);
+            add_non_compressed_block(final_block, in_data, instart, inend, bitwise_writer);
         },
         BlockType::Fixed => {
             let mut store = Lz77Store::new();
             let mut s = ZopfliBlockState::new(options, instart, inend);
 
             lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
-            add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bp, out);
+            add_lz77_block(options, btype, final_block, in_data, &store, 0, store.size(), 0, bitwise_writer);
         },
         BlockType::Dynamic => {
-            blocksplit_attempt(options, final_block, in_data, instart, inend, bp, out);
+            blocksplit_attempt(options, final_block, in_data, instart, inend, bitwise_writer);
         },
     }
 }
@@ -390,7 +390,7 @@ fn calculate_tree_size(ll_lengths: &[u32], d_lengths: &[u32]) -> usize {
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
-fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool, use_18: bool, bp: &mut u8, out: &mut Vec<u8>) -> usize {
+fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool, use_18: bool, bitwise_writer: &mut BitwiseWriter) -> usize {
     let mut hlit = 29;  /* 286 - 257 */
     let mut hdist = 29;  /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -517,26 +517,26 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
         hclen -= 1;
     }
 
-    add_bits(hlit as u32, 5, bp, out);
-    add_bits(hdist as u32, 5, bp, out);
-    add_bits(hclen as u32, 4, bp, out);
+    add_bits(hlit as u32, 5, bitwise_writer);
+    add_bits(hdist as u32, 5, bitwise_writer);
+    add_bits(hclen as u32, 4, bitwise_writer);
 
     for &item in order.iter().take(hclen + 4) {
-        add_bits(clcl[item], 3, bp, out);
+        add_bits(clcl[item], 3, bitwise_writer);
     }
 
     for i in 0..rle.len() {
         let rle_i = rle[i] as usize;
         let rle_bits_i = rle_bits[i] as u32;
         let sym = clsymbols[rle_i];
-        add_huffman_bits(sym, clcl[rle_i], bp, out);
+        add_huffman_bits(sym, clcl[rle_i], bitwise_writer);
         /* Extra bits. */
         if rle_i == 16 {
-            add_bits(rle_bits_i, 2, bp, out);
+            add_bits(rle_bits_i, 2, bitwise_writer);
         } else if rle_i == 17 {
-            add_bits(rle_bits_i, 3, bp, out);
+            add_bits(rle_bits_i, 3, bitwise_writer);
         } else if rle_i == 18 {
-            add_bits(rle_bits_i, 7, bp, out);
+            add_bits(rle_bits_i, 7, bitwise_writer);
         }
     }
 
@@ -553,7 +553,7 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
     result_size
 }
 
-fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mut Vec<u8>) {
+fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bitwise_writer: &mut BitwiseWriter) {
     let mut best = 0;
     let mut bestsize = 0;
 
@@ -565,7 +565,7 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mu
         }
     }
 
-    encode_tree(ll_lengths, d_lengths, best & 1 > 0, best & 2 > 0, best & 4 > 0, bp, out);
+    encode_tree(ll_lengths, d_lengths, best & 1 > 0, best & 2 > 0, best & 4 > 0, bitwise_writer);
 }
 
 /// Adds a deflate block with the given LZ77 data to the output.
@@ -580,9 +580,8 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mu
 /// `lend`: where to end in the LZ77 data (not inclusive)
 /// `expected_data_size`: the uncompressed block size, used for assert, but you can
 ///   set it to `0` to not do the assertion.
-/// `bp`: output bit pointer
-/// `out`: dynamic output array to append to
-fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bp: &mut u8, out: &mut Vec<u8>) {
+/// `bitwise_writer`: writer responsible for appending bits
+fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bitwise_writer: &mut BitwiseWriter) {
     let compressed_size;
     let mut uncompressed_size = 0;
 
@@ -594,28 +593,28 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
             lz77.pos[lstart]
         };
         let end = pos + length;
-        add_non_compressed_block(final_block, in_data, pos, end, bp, out);
+        add_non_compressed_block(final_block, in_data, pos, end, bitwise_writer);
         return;
     }
 
-    add_bit(final_block as i32, bp, out);
+    add_bit(final_block as i32, bitwise_writer);
 
     let (ll_lengths, d_lengths) = match btype {
         BlockType::Uncompressed => unreachable!(),
         BlockType::Fixed => {
-            add_bit(1, bp, out);
-            add_bit(0, bp, out);
+            add_bit(1, bitwise_writer);
+            add_bit(0, bitwise_writer);
             fixed_tree()
         },
         BlockType::Dynamic => {
-            add_bit(0, bp, out);
-            add_bit(1, bp, out);
+            add_bit(0, bitwise_writer);
+            add_bit(1, bitwise_writer);
             let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
-            let detect_tree_size = out.len();
-            add_dynamic_tree(&ll_lengths, &d_lengths, bp, out);
+            let detect_tree_size = bitwise_writer.out.len();
+            add_dynamic_tree(&ll_lengths, &d_lengths, bitwise_writer);
             if options.verbose {
-                println!("treesize: {}", out.len() - detect_tree_size);
+                println!("treesize: {}", bitwise_writer.out.len() - detect_tree_size);
             }
             (ll_lengths, d_lengths)
         }
@@ -624,11 +623,11 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     let ll_symbols = lengths_to_symbols(&ll_lengths, 15);
     let d_symbols = lengths_to_symbols(&d_lengths, 15);
 
-    let detect_block_size = out.len();
-    add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bp, out);
+    let detect_block_size = bitwise_writer.out.len();
+    add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bitwise_writer);
 
     /* End symbol. */
-    add_huffman_bits(ll_symbols[256], ll_lengths[256], bp, out);
+    add_huffman_bits(ll_symbols[256], ll_lengths[256], bitwise_writer);
 
     for i in lstart..lend {
         uncompressed_size += if lz77.dists[i] == 0 {
@@ -637,7 +636,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
             lz77.litlens[i] as usize
         };
     }
-    compressed_size = out.len() - detect_block_size;
+    compressed_size = bitwise_writer.out.len() - detect_block_size;
     if options.verbose {
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
@@ -722,7 +721,7 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
 /// end code 256. `expected_data_size` is the uncompressed block size, used for
 /// assert, but you can set it to `0` to not do the assertion.
-fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize , ll_symbols: &[u32], ll_lengths: &[u32], d_symbols: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mut Vec<u8>) {
+fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize , ll_symbols: &[u32], ll_lengths: &[u32], d_symbols: &[u32], d_lengths: &[u32], bitwise_writer: &mut BitwiseWriter) {
     let mut testlength = 0;
 
     for i in lstart..lend {
@@ -731,7 +730,7 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
         if dist == 0 {
             assert!(litlen < 256);
             assert!(ll_lengths[litlen] > 0);
-            add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen], bp, out);
+            add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen], bitwise_writer);
             testlength += 1;
         } else {
             let lls = get_length_symbol(litlen) as u32;
@@ -739,17 +738,17 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
             assert!(litlen >= 3 && litlen <= 288);
             assert!(ll_lengths[lls as usize] > 0);
             assert!(d_lengths[ds as usize] > 0);
-            add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize], bp, out);
-            add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32, bp, out);
-            add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize], bp, out);
-            add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32, bp, out);
+            add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize], bitwise_writer);
+            add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32, bitwise_writer);
+            add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize], bitwise_writer);
+            add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32, bitwise_writer);
             testlength += litlen;
         }
     }
     assert!(expected_data_size == 0 || testlength == expected_data_size);
 }
 
-fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bitwise_writer: &mut BitwiseWriter) {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, BlockType::Uncompressed);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, BlockType::Fixed);
     let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
@@ -762,9 +761,9 @@ fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8]
     let mut fixedstore = Lz77Store::new();
     if lstart == lend {
         /* Smallest empty block is represented by fixed block */
-        add_bits(final_block as u32, 1, bp, out);
-        add_bits(1, 2, bp, out);  /* btype 01 */
-        add_bits(0, 7, bp, out);  /* end symbol has code 0000000 */
+        add_bits(final_block as u32, 1, bitwise_writer);
+        add_bits(1, 2, bitwise_writer);  /* btype 01 */
+        add_bits(0, 7, bitwise_writer);  /* end symbol has code 0000000 */
         return;
     }
     if expensivefixed {
@@ -778,15 +777,15 @@ fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8]
     }
 
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
-        add_lz77_block(options, BlockType::Uncompressed, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
+        add_lz77_block(options, BlockType::Uncompressed, final_block, in_data, lz77, lstart, lend, expected_data_size, bitwise_writer);
     } else if fixedcost < dyncost {
         if expensivefixed {
-            add_lz77_block(options, BlockType::Fixed, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bp, out);
+            add_lz77_block(options, BlockType::Fixed, final_block, in_data, &fixedstore, 0, fixedstore.size(), expected_data_size, bitwise_writer);
         } else {
-            add_lz77_block(options, BlockType::Fixed, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
+            add_lz77_block(options, BlockType::Fixed, final_block, in_data, lz77, lstart, lend, expected_data_size, bitwise_writer);
         }
     } else {
-        add_lz77_block(options, BlockType::Dynamic, final_block, in_data, lz77, lstart, lend, expected_data_size, bp, out);
+        add_lz77_block(options, BlockType::Dynamic, final_block, in_data, lz77, lstart, lend, expected_data_size, bitwise_writer);
     }
 }
 
@@ -806,16 +805,16 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: usize, lend: usi
     }
 }
 
-fn add_all_blocks(splitpoints: &[usize], lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bp: &mut u8, out: &mut Vec<u8>) {
+fn add_all_blocks(splitpoints: &[usize], lz77: &Lz77Store, options: &Options, final_block: bool, in_data: &[u8], bitwise_writer: &mut BitwiseWriter) {
     let mut last = 0;
     for &item in splitpoints.iter() {
-        add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bp, out);
+        add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bitwise_writer);
         last = item;
     }
-    add_lz77_block_auto_type(options, final_block, in_data, lz77, last, lz77.size(), 0, bp, out);
+    add_lz77_block_auto_type(options, final_block, in_data, lz77, last, lz77.size(), 0, bitwise_writer);
 }
 
-fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
+fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], instart: usize, inend: usize, bitwise_writer: &mut BitwiseWriter) {
     let mut totalcost = 0.0;
     let mut lz77 = Lz77Store::new();
 
@@ -874,73 +873,87 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
         }
     }
 
-    add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bp, out);
+    add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bitwise_writer);
 }
 
-/// bp = bitpointer, always in range [0, 7].
+/// bitwise_writer = writer responsible for writing bits
 /// The outsize is number of necessary bytes to encode the bits.
 /// Given the value of bp and the amount of bytes, the amount of bits represented
 /// is not simply bytesize * 8 + bp because even representing one bit requires a
 /// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
-fn add_bit(bit: i32, bp: &mut u8, out: &mut Vec<u8>) {
-    if *bp == 0 {
-        out.push(0);
+fn add_bit(bit: i32, bitwise_writer: &mut BitwiseWriter) {
+    if bitwise_writer.bp == 0 {
+        bitwise_writer.out.push(0);
     }
-    let outsize = out.len();
-    out[outsize - 1] |= (bit << *bp ) as u8;
-    *bp = (*bp + 1) & 7;
+    let outsize = bitwise_writer.out.len();
+    bitwise_writer.out[outsize - 1] |= (bit << bitwise_writer.bp ) as u8;
+    bitwise_writer.bp = (bitwise_writer.bp + 1) & 7;
 }
 
-fn add_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_bits(symbol: u32, length: u32, bitwise_writer: &mut BitwiseWriter) {
     /* TODO(lode): make more efficient (add more bits at once). */
     for i in 0..length {
         let bit = (symbol >> i) & 1;
-        if *bp == 0 {
-            out.push(0);
+        if bitwise_writer.bp == 0 {
+            bitwise_writer.out.push(0);
         }
-        let outsize = out.len();
-        out[outsize - 1] |= (bit << *bp) as u8;
-        *bp = (*bp + 1) & 7;
+        let outsize = bitwise_writer.out.len();
+        bitwise_writer.out[outsize - 1] |= (bit << bitwise_writer.bp) as u8;
+        bitwise_writer.bp = (bitwise_writer.bp + 1) & 7;
     }
 }
 
 /// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
 /// uses both orders in one standard.
-fn add_huffman_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_huffman_bits(symbol: u32, length: u32, bitwise_writer: &mut BitwiseWriter) {
     /* TODO(lode): make more efficient (add more bits at once). */
     for i in 0..length {
         let bit = (symbol >> (length - i - 1)) & 1;
-        if *bp == 0 {
-            out.push(0);
+        if bitwise_writer.bp == 0 {
+            bitwise_writer.out.push(0);
         }
-        let outsize = out.len();
-        out[outsize - 1] |= (bit << *bp) as u8;
-        *bp = (*bp + 1) & 7;
+        let outsize = bitwise_writer.out.len();
+        bitwise_writer.out[outsize - 1] |= (bit << bitwise_writer.bp) as u8;
+        bitwise_writer.bp = (bitwise_writer.bp + 1) & 7;
     }
 }
 
 /// Since an uncompressed block can be max 65535 in size, it actually adds
 /// multible blocks if needed.
-fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, inend: usize, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, inend: usize, bitwise_writer: &mut BitwiseWriter) {
     let in_data = &in_data[instart..inend];
 
     for (chunk, is_final) in in_data.chunks(65535).is_final() {
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
-        add_bit((final_block && is_final) as i32, bp, out);
+        add_bit((final_block && is_final) as i32, bitwise_writer);
         /* BTYPE 00 */
-        add_bit(0, bp, out);
-        add_bit(0, bp, out);
+        add_bit(0, bitwise_writer);
+        add_bit(0, bitwise_writer);
 
         /* Any bits of input up to the next byte boundary are ignored. */
-        *bp = 0;
+        bitwise_writer.bp = 0;
 
-        out.push((blocksize % 256) as u8);
-        out.push(((blocksize / 256) % 256) as u8);
-        out.push((nlen % 256) as u8);
-        out.push(((nlen / 256) % 256) as u8);
+        bitwise_writer.out.push((blocksize % 256) as u8);
+        bitwise_writer.out.push(((blocksize / 256) % 256) as u8);
+        bitwise_writer.out.push((nlen % 256) as u8);
+        bitwise_writer.out.push(((nlen / 256) % 256) as u8);
 
-        out.extend_from_slice(chunk);
+        bitwise_writer.out.extend_from_slice(chunk);
+    }
+}
+
+pub struct BitwiseWriter<'a> {
+    bp: u8,
+    out: &'a mut Vec<u8>,
+}
+
+impl<'a> BitwiseWriter<'a> {
+    fn new(out: &mut Vec<u8>) -> BitwiseWriter {
+        BitwiseWriter {
+            bp: 0,
+            out: out,
+        }
     }
 }
