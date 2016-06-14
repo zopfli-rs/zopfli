@@ -945,13 +945,8 @@ impl<'a> BitwiseWriter<'a> {
     fn add_bits(&mut self, symbol: u32, length: u32) {
         /* TODO(lode): make more efficient (add more bits at once). */
         for i in 0..length {
-            let bit = (symbol >> i) & 1;
-            if self.bp == 0 {
-                self.out.push(0);
-            }
-            let outsize = self.out.len();
-            self.out[outsize - 1] |= (bit << self.bp) as u8;
-            self.bp = (self.bp + 1) & 7;
+            let bit = ((symbol >> i) & 1) as i32;
+            self.add_bit(bit);
         }
     }
 
@@ -960,13 +955,8 @@ impl<'a> BitwiseWriter<'a> {
     fn add_huffman_bits(&mut self, symbol: u32, length: u32) {
         /* TODO(lode): make more efficient (add more bits at once). */
         for i in 0..length {
-            let bit = (symbol >> (length - i - 1)) & 1;
-            if self.bp == 0 {
-                self.out.push(0);
-            }
-            let outsize = self.out.len();
-            self.out[outsize - 1] |= (bit << self.bp) as u8;
-            self.bp = (self.bp + 1) & 7;
+            let bit = ((symbol >> (length - i - 1)) & 1) as i32;
+            self.add_bit(bit);
         }
     }
 
