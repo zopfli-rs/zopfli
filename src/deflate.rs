@@ -529,7 +529,7 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
         let rle_i = rle[i] as usize;
         let rle_bits_i = rle_bits[i] as u32;
         let sym = clsymbols[rle_i];
-        add_huffman_bits(sym, clcl[rle_i], bitwise_writer);
+        bitwise_writer.add_huffman_bits(sym, clcl[rle_i]);
         /* Extra bits. */
         if rle_i == 16 {
             bitwise_writer.add_bits(rle_bits_i, 2);
@@ -627,7 +627,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     add_lz77_data(lz77, lstart, lend, expected_data_size, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bitwise_writer);
 
     /* End symbol. */
-    add_huffman_bits(ll_symbols[256], ll_lengths[256], bitwise_writer);
+    bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256]);
 
     for i in lstart..lend {
         uncompressed_size += if lz77.dists[i] == 0 {
@@ -730,7 +730,7 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
         if dist == 0 {
             assert!(litlen < 256);
             assert!(ll_lengths[litlen] > 0);
-            add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen], bitwise_writer);
+            bitwise_writer.add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen]);
             testlength += 1;
         } else {
             let lls = get_length_symbol(litlen) as u32;
@@ -738,9 +738,9 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
             assert!(litlen >= 3 && litlen <= 288);
             assert!(ll_lengths[lls as usize] > 0);
             assert!(d_lengths[ds as usize] > 0);
-            add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize], bitwise_writer);
+            bitwise_writer.add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize]);
             bitwise_writer.add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32);
-            add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize], bitwise_writer);
+            bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize]);
             bitwise_writer.add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32);
             testlength += litlen;
         }
@@ -876,21 +876,6 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
     add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bitwise_writer);
 }
 
-/// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
-/// uses both orders in one standard.
-fn add_huffman_bits(symbol: u32, length: u32, bitwise_writer: &mut BitwiseWriter) {
-    /* TODO(lode): make more efficient (add more bits at once). */
-    for i in 0..length {
-        let bit = (symbol >> (length - i - 1)) & 1;
-        if bitwise_writer.bp == 0 {
-            bitwise_writer.out.push(0);
-        }
-        let outsize = bitwise_writer.out.len();
-        bitwise_writer.out[outsize - 1] |= (bit << bitwise_writer.bp) as u8;
-        bitwise_writer.bp = (bitwise_writer.bp + 1) & 7;
-    }
-}
-
 /// Since an uncompressed block can be max 65535 in size, it actually adds
 /// multible blocks if needed.
 fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, inend: usize, bitwise_writer: &mut BitwiseWriter) {
@@ -947,6 +932,21 @@ impl<'a> BitwiseWriter<'a> {
         /* TODO(lode): make more efficient (add more bits at once). */
         for i in 0..length {
             let bit = (symbol >> i) & 1;
+            if self.bp == 0 {
+                self.out.push(0);
+            }
+            let outsize = self.out.len();
+            self.out[outsize - 1] |= (bit << self.bp) as u8;
+            self.bp = (self.bp + 1) & 7;
+        }
+    }
+
+    /// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
+    /// uses both orders in one standard.
+    fn add_huffman_bits(&mut self, symbol: u32, length: u32) {
+        /* TODO(lode): make more efficient (add more bits at once). */
+        for i in 0..length {
+            let bit = (symbol >> (length - i - 1)) & 1;
             if self.bp == 0 {
                 self.out.push(0);
             }
