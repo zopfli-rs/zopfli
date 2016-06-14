@@ -517,12 +517,12 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
         hclen -= 1;
     }
 
-    add_bits(hlit as u32, 5, bitwise_writer);
-    add_bits(hdist as u32, 5, bitwise_writer);
-    add_bits(hclen as u32, 4, bitwise_writer);
+    bitwise_writer.add_bits(hlit as u32, 5);
+    bitwise_writer.add_bits(hdist as u32, 5);
+    bitwise_writer.add_bits(hclen as u32, 4);
 
     for &item in order.iter().take(hclen + 4) {
-        add_bits(clcl[item], 3, bitwise_writer);
+        bitwise_writer.add_bits(clcl[item], 3);
     }
 
     for i in 0..rle.len() {
@@ -532,11 +532,11 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
         add_huffman_bits(sym, clcl[rle_i], bitwise_writer);
         /* Extra bits. */
         if rle_i == 16 {
-            add_bits(rle_bits_i, 2, bitwise_writer);
+            bitwise_writer.add_bits(rle_bits_i, 2);
         } else if rle_i == 17 {
-            add_bits(rle_bits_i, 3, bitwise_writer);
+            bitwise_writer.add_bits(rle_bits_i, 3);
         } else if rle_i == 18 {
-            add_bits(rle_bits_i, 7, bitwise_writer);
+            bitwise_writer.add_bits(rle_bits_i, 7);
         }
     }
 
@@ -739,9 +739,9 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
             assert!(ll_lengths[lls as usize] > 0);
             assert!(d_lengths[ds as usize] > 0);
             add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize], bitwise_writer);
-            add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32, bitwise_writer);
+            bitwise_writer.add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32);
             add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize], bitwise_writer);
-            add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32, bitwise_writer);
+            bitwise_writer.add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32);
             testlength += litlen;
         }
     }
@@ -761,9 +761,9 @@ fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8]
     let mut fixedstore = Lz77Store::new();
     if lstart == lend {
         /* Smallest empty block is represented by fixed block */
-        add_bits(final_block as u32, 1, bitwise_writer);
-        add_bits(1, 2, bitwise_writer);  /* btype 01 */
-        add_bits(0, 7, bitwise_writer);  /* end symbol has code 0000000 */
+        bitwise_writer.add_bits(final_block as u32, 1);
+        bitwise_writer.add_bits(1, 2);  /* btype 01 */
+        bitwise_writer.add_bits(0, 7);  /* end symbol has code 0000000 */
         return;
     }
     if expensivefixed {
@@ -876,19 +876,6 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
     add_all_blocks(&splitpoints, &lz77, options, final_block, in_data, bitwise_writer);
 }
 
-fn add_bits(symbol: u32, length: u32, bitwise_writer: &mut BitwiseWriter) {
-    /* TODO(lode): make more efficient (add more bits at once). */
-    for i in 0..length {
-        let bit = (symbol >> i) & 1;
-        if bitwise_writer.bp == 0 {
-            bitwise_writer.out.push(0);
-        }
-        let outsize = bitwise_writer.out.len();
-        bitwise_writer.out[outsize - 1] |= (bit << bitwise_writer.bp) as u8;
-        bitwise_writer.bp = (bitwise_writer.bp + 1) & 7;
-    }
-}
-
 /// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
 /// uses both orders in one standard.
 fn add_huffman_bits(symbol: u32, length: u32, bitwise_writer: &mut BitwiseWriter) {
@@ -954,5 +941,18 @@ impl<'a> BitwiseWriter<'a> {
         let outsize = self.out.len();
         self.out[outsize - 1] |= (bit << self.bp) as u8;
         self.bp = (self.bp + 1) & 7;
+    }
+
+    fn add_bits(&mut self, symbol: u32, length: u32) {
+        /* TODO(lode): make more efficient (add more bits at once). */
+        for i in 0..length {
+            let bit = (symbol >> i) & 1;
+            if self.bp == 0 {
+                self.out.push(0);
+            }
+            let outsize = self.out.len();
+            self.out[outsize - 1] |= (bit << self.bp) as u8;
+            self.bp = (self.bp + 1) & 7;
+        }
     }
 }
