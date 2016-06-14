@@ -893,12 +893,12 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
         /* Any bits of input up to the next byte boundary are ignored. */
         bitwise_writer.reset_bp();
 
-        bitwise_writer.out.push((blocksize % 256) as u8);
-        bitwise_writer.out.push(((blocksize / 256) % 256) as u8);
-        bitwise_writer.out.push((nlen % 256) as u8);
-        bitwise_writer.out.push(((nlen / 256) % 256) as u8);
+        bitwise_writer.add_byte((blocksize % 256) as u8);
+        bitwise_writer.add_byte(((blocksize / 256) % 256) as u8);
+        bitwise_writer.add_byte((nlen % 256) as u8);
+        bitwise_writer.add_byte(((nlen / 256) % 256) as u8);
 
-        bitwise_writer.out.extend_from_slice(chunk);
+        bitwise_writer.add_bytes(chunk);
     }
 }
 
@@ -913,6 +913,16 @@ impl<'a> BitwiseWriter<'a> {
             bp: 0,
             out: out,
         }
+    }
+
+    /// For when you want to add a full byte.
+    fn add_byte(&mut self, byte: u8) {
+        self.out.push(byte);
+    }
+
+    /// For adding a slice of bytes.
+    fn add_bytes(&mut self, bytes: &[u8]) {
+        self.out.extend_from_slice(bytes);
     }
 
     /// The outsize is number of necessary bytes to encode the bits.
