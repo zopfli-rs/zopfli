@@ -199,8 +199,8 @@ fn calculate_block_symbol_size_small(ll_lengths: &[u32], d_lengths: &[u32], lz77
 
     assert!(lend - 1 < lz77.size());
 
-    for i in lstart..lend {
-        match lz77.litlens[i] {
+    for &item in &lz77.litlens[lstart..lend] {
+        match item {
             LitLen::Literal(litlens_i) => {
                 assert!(litlens_i < 259);
                 result += ll_lengths[litlens_i as usize]
@@ -631,8 +631,8 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     /* End symbol. */
     bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256]);
 
-    for i in lstart..lend {
-        uncompressed_size += lz77.litlens[i].size();
+    for &item in &lz77.litlens[lstart..lend] {
+        uncompressed_size += item.size();
     }
     compressed_size = bitwise_writer.bytes_written() - detect_block_size;
     if options.verbose {
@@ -722,8 +722,8 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize , ll_symbols: &[u32], ll_lengths: &[u32], d_symbols: &[u32], d_lengths: &[u32], bitwise_writer: &mut BitwiseWriter) {
     let mut testlength = 0;
 
-    for i in lstart..lend {
-        match lz77.litlens[i] {
+    for &item in &lz77.litlens[lstart..lend] {
+        match item {
             LitLen::Literal(lit) => {
                 let litlen = lit as usize;
                 assert!(litlen < 256);
@@ -833,8 +833,8 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
 
         // ZopfliAppendLZ77Store(&store, &lz77);
         assert!(store.size() > 0);
-        for j in 0..store.size() {
-            lz77.append_store_item(store.litlens[j], store.pos[j]);
+        for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
+            lz77.append_store_item(litlens, pos);
         }
 
         splitpoints.push(lz77.size());
@@ -849,8 +849,8 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
 
     // ZopfliAppendLZ77Store(&store, &lz77);
     assert!(store.size() > 0);
-    for j in 0..store.size() {
-        lz77.append_store_item(store.litlens[j], store.pos[j]);
+    for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
+        lz77.append_store_item(litlens, pos);
     }
 
     /* Second block splitting attempt */
