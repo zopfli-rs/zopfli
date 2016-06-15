@@ -1,7 +1,7 @@
 use std::cmp;
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
-use lz77::{get_byte_range, ZopfliBlockState, Lz77Store, LitLen};
+use lz77::{ZopfliBlockState, Lz77Store, LitLen};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols};
@@ -583,7 +583,7 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bitwise_writer: &mut 
 /// `bitwise_writer`: writer responsible for appending bits
 fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bitwise_writer: &mut BitwiseWriter) {
     if btype == BlockType::Uncompressed {
-        let length = get_byte_range(lz77, lstart, lend);
+        let length = lz77.get_byte_range(lstart, lend);
         let pos = if lstart == lend {
             0
         } else {
@@ -641,7 +641,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
 pub fn calculate_block_size(lz77: &Lz77Store, lstart: usize, lend: usize, btype: BlockType) -> f64 {
     match btype {
         BlockType::Uncompressed => {
-            let length = get_byte_range(lz77, lstart, lend);
+            let length = lz77.get_byte_range(lstart, lend);
             let rem = length % 65535;
             let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
             /* An uncompressed block must actually be split into multiple blocks if it's
@@ -762,7 +762,7 @@ fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8]
     if expensivefixed {
         /* Recalculate the LZ77 with lz77_optimal_fixed */
         let instart = lz77.pos[lstart];
-        let inend = instart + get_byte_range(lz77, lstart, lend);
+        let inend = instart + lz77.get_byte_range(lstart, lend);
 
         let mut s = ZopfliBlockState::new(options, instart, inend);
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut fixedstore);

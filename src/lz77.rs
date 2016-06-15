@@ -333,6 +333,15 @@ impl Lz77Store {
             }
         }
     }
+
+    pub fn get_byte_range(&self, lstart: usize, lend: usize) -> usize {
+        if lstart == lend {
+            return 0;
+        }
+
+        let l = lend - 1;
+        self.pos[l] + self.litlens[l].size() - self.pos[lstart]
+    }
 }
 
 /// Some state information for compressing a block.
@@ -604,15 +613,6 @@ fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
             break;
         }
     }
-}
-
-pub fn get_byte_range(lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
-    if lstart == lend {
-        return 0;
-    }
-
-    let l = lend - 1;
-    lz77.pos[l] + lz77.litlens[l].size() - lz77.pos[lstart]
 }
 
 pub trait Cache {
