@@ -1,7 +1,7 @@
 use std::cmp;
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
-use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store, LitLen};
+use lz77::{get_byte_range, ZopfliBlockState, Lz77Store, LitLen};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols};
@@ -247,7 +247,7 @@ fn calculate_block_symbol_size(ll_lengths: &[u32], d_lengths: &[u32], lz77: &Lz7
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
-        let (ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
+        let (ll_counts, d_counts) = lz77.get_histogram(lstart, lend);
         calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths, d_lengths, lz77, lstart, lend)
     }
 }
@@ -697,7 +697,7 @@ fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
 fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Vec<u32>, Vec<u32>) {
-    let (mut ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
+    let (mut ll_counts, d_counts) = lz77.get_histogram(lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
     let ll_lengths = length_limited_code_lengths(&ll_counts, 15);

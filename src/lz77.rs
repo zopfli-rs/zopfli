@@ -266,7 +266,7 @@ impl Lz77Store {
         }
     }
 
-    pub fn get_histogram_at(&self, lpos: usize) -> (Vec<usize>, Vec<usize>) {
+    fn get_histogram_at(&self, lpos: usize) -> (Vec<usize>, Vec<usize>) {
         let mut ll = vec![0; ZOPFLI_NUM_LL];
         let mut d = vec![0; ZOPFLI_NUM_D];
 
@@ -295,6 +295,43 @@ impl Lz77Store {
         }
 
         (ll, d)
+    }
+
+    /// Gets the histogram of lit/len and dist symbols in the given range, using the
+    /// cumulative histograms, so faster than adding one by one for large range. Does
+    /// not add the one end symbol of value 256.
+    pub fn get_histogram(&self, lstart: usize, lend: usize) -> (Vec<usize>, Vec<usize>) {
+        if lstart + ZOPFLI_NUM_LL * 3 > lend {
+            let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
+            let mut d_counts = vec![0; ZOPFLI_NUM_D];
+            for i in lstart..lend  {
+                ll_counts[self.ll_symbol[i] as usize] += 1;
+                match self.litlens[i] {
+                    LitLen::LengthDist(_, _) => d_counts[self.d_symbol[i] as usize] += 1,
+                    _ => {},
+                }
+            }
+            (ll_counts, d_counts)
+        } else {
+            /* Subtract the cumulative histograms at the end and the start to get the
+            histogram for this range. */
+            let (ll, d) = self.get_histogram_at(lend - 1);
+
+            if lstart > 0 {
+                let (ll2, d2) = self.get_histogram_at(lstart - 1);
+
+                (
+                    ll.iter().zip(ll2.iter()).map(|(&ll_item1, &ll_item2)|
+                        ll_item1 - ll_item2
+                    ).collect(),
+                    d.iter().zip(d2.iter()).map(|(&d_item1, &d_item2)|
+                        d_item1 - d_item2
+                    ).collect(),
+                )
+            } else {
+                (ll, d)
+            }
+        }
     }
 }
 
@@ -576,43 +613,6 @@ pub fn get_byte_range(lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
 
     let l = lend - 1;
     lz77.pos[l] + lz77.litlens[l].size() - lz77.pos[lstart]
-}
-
-/// Gets the histogram of lit/len and dist symbols in the given range, using the
-/// cumulative histograms, so faster than adding one by one for large range. Does
-/// not add the one end symbol of value 256.
-pub fn get_histogram(lz77: &Lz77Store, lstart: usize, lend: usize) -> (Vec<usize>, Vec<usize>) {
-    if lstart + ZOPFLI_NUM_LL * 3 > lend {
-        let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
-        let mut d_counts = vec![0; ZOPFLI_NUM_D];
-        for i in lstart..lend  {
-            ll_counts[lz77.ll_symbol[i] as usize] += 1;
-            match lz77.litlens[i] {
-                LitLen::LengthDist(_, _) => d_counts[lz77.d_symbol[i] as usize] += 1,
-                _ => {},
-            }
-        }
-        (ll_counts, d_counts)
-    } else {
-        /* Subtract the cumulative histograms at the end and the start to get the
-        histogram for this range. */
-        let (ll, d) = lz77.get_histogram_at(lend - 1);
-
-        if lstart > 0 {
-            let (ll2, d2) = lz77.get_histogram_at(lstart - 1);
-
-            (
-                ll.iter().zip(ll2.iter()).map(|(&ll_item1, &ll_item2)|
-                    ll_item1 - ll_item2
-                ).collect(),
-                d.iter().zip(d2.iter()).map(|(&d_item1, &d_item2)|
-                    d_item1 - d_item2
-                ).collect(),
-            )
-        } else {
-            (ll, d)
-        }
-    }
 }
 
 pub trait Cache {
