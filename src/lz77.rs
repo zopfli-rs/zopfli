@@ -132,16 +132,10 @@ impl Lz77Store {
     pub fn greedy<C>(&mut self, s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize)
         where C: Cache,
     {
-        let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
-            instart - ZOPFLI_WINDOW_SIZE
-        } else {
-            0
-        };
-
         if instart == inend {
             return;
         }
-
+        let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
         let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
 
         let arr = &in_data[..inend];

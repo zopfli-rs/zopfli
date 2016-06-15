@@ -260,12 +260,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     if instart == inend {
         return (0.0, length_array);
     }
-
-    let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
-        instart - ZOPFLI_WINDOW_SIZE
-    } else {
-        0
-    };
+    let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
 
     h.reset(ZOPFLI_WINDOW_SIZE);
     let arr = &in_data[..inend];
