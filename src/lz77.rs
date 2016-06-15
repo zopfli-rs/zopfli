@@ -390,7 +390,7 @@ impl<'a, C> ZopfliBlockState<'a, C>
 pub struct LongestMatch {
     distance: u16,
     pub length: u16,
-    from_cache: i32,
+    from_cache: bool,
     limit: usize,
 }
 
@@ -399,7 +399,7 @@ impl LongestMatch {
         LongestMatch {
             distance: 0,
             length: 0,
-            from_cache: 0,
+            from_cache: false,
             limit: limit,
         }
     }
@@ -435,7 +435,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
 {
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
-    if longest_match.from_cache == 1 {
+    if longest_match.from_cache {
         assert!(pos + (longest_match.length as usize) <= size);
         return longest_match;
     }
@@ -451,7 +451,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
         try. */
         longest_match.distance = 0;
         longest_match.length = 0;
-        longest_match.from_cache = 0;
+        longest_match.from_cache = false;
         longest_match.limit = 0;
         return longest_match;
     }
@@ -469,7 +469,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
     assert!(pos + bestlength <= size);
     longest_match.distance = bestdist as u16;
     longest_match.length = bestlength as u16;
-    longest_match.from_cache = 0;
+    longest_match.from_cache = false;
     longest_match.limit = limit;
     longest_match
 }
@@ -670,7 +670,7 @@ impl Cache for ZopfliLongestMatchCache {
                 }
                 longest_match.distance = distance;
                 longest_match.length = length;
-                longest_match.from_cache = 1;
+                longest_match.from_cache = true;
                 return longest_match;
             }
             /* Can't use much of the cache, since the "sublens" need to be calculated,
