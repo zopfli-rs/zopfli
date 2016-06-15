@@ -1,7 +1,7 @@
 use std::cmp;
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
-use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store};
+use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store, LitLen};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols};
@@ -200,18 +200,20 @@ fn calculate_block_symbol_size_small(ll_lengths: &[u32], d_lengths: &[u32], lz77
     assert!(lend - 1 < lz77.size());
 
     for i in lstart..lend {
-        let litlens_i = lz77.litlens[i];
-        let dists_i = lz77.dists[i];
-        assert!(litlens_i < 259);
-        if dists_i == 0 {
-            result += ll_lengths[litlens_i as usize];
-        } else {
-            let ll_symbol = get_length_symbol(litlens_i as usize);
-            let d_symbol = get_dist_symbol(dists_i as i32);
-            result += ll_lengths[ll_symbol as usize];
-            result += d_lengths[d_symbol as usize];
-            result += get_length_symbol_extra_bits(ll_symbol) as u32;
-            result += get_dist_symbol_extra_bits(d_symbol) as u32;
+        match lz77.litlens[i] {
+            LitLen::Literal(litlens_i) => {
+                assert!(litlens_i < 259);
+                result += ll_lengths[litlens_i as usize]
+            },
+            LitLen::LengthDist(litlens_i, dists_i) => {
+                assert!(litlens_i < 259);
+                let ll_symbol = get_length_symbol(litlens_i as usize);
+                let d_symbol = get_dist_symbol(dists_i as i32);
+                result += ll_lengths[ll_symbol as usize];
+                result += d_lengths[d_symbol as usize];
+                result += get_length_symbol_extra_bits(ll_symbol) as u32;
+                result += get_dist_symbol_extra_bits(d_symbol) as u32;
+            },
         }
     }
     result += ll_lengths[256]; // end symbol
@@ -630,11 +632,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256]);
 
     for i in lstart..lend {
-        uncompressed_size += if lz77.dists[i] == 0 {
-            1
-        } else {
-            lz77.litlens[i] as usize
-        };
+        uncompressed_size += lz77.litlens[i].size();
     }
     compressed_size = bitwise_writer.bytes_written() - detect_block_size;
     if options.verbose {
@@ -725,24 +723,27 @@ fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_siz
     let mut testlength = 0;
 
     for i in lstart..lend {
-        let dist = lz77.dists[i] as u32;
-        let litlen = lz77.litlens[i] as usize;
-        if dist == 0 {
-            assert!(litlen < 256);
-            assert!(ll_lengths[litlen] > 0);
-            bitwise_writer.add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen]);
-            testlength += 1;
-        } else {
-            let lls = get_length_symbol(litlen) as u32;
-            let ds = get_dist_symbol(dist as i32) as u32;
-            assert!(litlen >= 3 && litlen <= 288);
-            assert!(ll_lengths[lls as usize] > 0);
-            assert!(d_lengths[ds as usize] > 0);
-            bitwise_writer.add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize]);
-            bitwise_writer.add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32);
-            bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize]);
-            bitwise_writer.add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32);
-            testlength += litlen;
+        match lz77.litlens[i] {
+            LitLen::Literal(lit) => {
+                let litlen = lit as usize;
+                assert!(litlen < 256);
+                assert!(ll_lengths[litlen] > 0);
+                bitwise_writer.add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen]);
+                testlength += 1;
+            },
+            LitLen::LengthDist(len, dist) => {
+                let litlen = len as usize;
+                let lls = get_length_symbol(litlen) as u32;
+                let ds = get_dist_symbol(dist as i32) as u32;
+                assert!(litlen >= 3 && litlen <= 288);
+                assert!(ll_lengths[lls as usize] > 0);
+                assert!(d_lengths[ds as usize] > 0);
+                bitwise_writer.add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize]);
+                bitwise_writer.add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32);
+                bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize]);
+                bitwise_writer.add_bits(get_dist_extra_bits_value(dist as i32) as u32, get_dist_extra_bits(dist as i32) as u32);
+                testlength += litlen;
+            },
         }
     }
     assert!(expected_data_size == 0 || testlength == expected_data_size);
@@ -833,7 +834,7 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
         // ZopfliAppendLZ77Store(&store, &lz77);
         assert!(store.size() > 0);
         for j in 0..store.size() {
-            lz77.lit_len_dist(store.litlens[j], store.dists[j], store.pos[j]);
+            lz77.append_store_item(store.litlens[j], store.pos[j]);
         }
 
         splitpoints.push(lz77.size());
@@ -849,7 +850,7 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
     // ZopfliAppendLZ77Store(&store, &lz77);
     assert!(store.size() > 0);
     for j in 0..store.size() {
-        lz77.lit_len_dist(store.litlens[j], store.dists[j], store.pos[j]);
+        lz77.append_store_item(store.litlens[j], store.pos[j]);
     }
 
     /* Second block splitting attempt */
