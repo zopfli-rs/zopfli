@@ -265,6 +265,37 @@ impl Lz77Store {
             pos += length as usize;
         }
     }
+
+    pub fn get_histogram_at(&self, lpos: usize) -> (Vec<usize>, Vec<usize>) {
+        let mut ll = vec![0; ZOPFLI_NUM_LL];
+        let mut d = vec![0; ZOPFLI_NUM_D];
+
+        /* The real histogram is created by using the histogram for this chunk, but
+        all superfluous values of this chunk subtracted. */
+        let llpos = ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL);
+        let dpos = ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D);
+
+        for (i, item) in ll.iter_mut().enumerate() {
+            *item = self.ll_counts[llpos + i];
+        }
+        let end = cmp::min(llpos + ZOPFLI_NUM_LL, self.size());
+        for i in (lpos + 1)..end {
+            ll[self.ll_symbol[i] as usize] -= 1;
+        }
+
+        for (i, item) in d.iter_mut().enumerate() {
+            *item = self.d_counts[dpos + i];
+        }
+        let end = cmp::min(dpos + ZOPFLI_NUM_D, self.size());
+        for i in (lpos + 1)..end {
+            match self.litlens[i] {
+                LitLen::LengthDist(_, _) => d[self.d_symbol[i] as usize] -= 1,
+                _ => {},
+            }
+        }
+
+        (ll, d)
+    }
 }
 
 /// Some state information for compressing a block.
@@ -547,37 +578,6 @@ pub fn get_byte_range(lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
     lz77.pos[l] + lz77.litlens[l].size() - lz77.pos[lstart]
 }
 
-fn get_histogram_at(lz77: &Lz77Store, lpos: usize) -> (Vec<usize>, Vec<usize>) {
-    let mut ll = vec![0; ZOPFLI_NUM_LL];
-    let mut d = vec![0; ZOPFLI_NUM_D];
-
-    /* The real histogram is created by using the histogram for this chunk, but
-    all superfluous values of this chunk subtracted. */
-    let llpos = ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL);
-    let dpos = ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D);
-
-    for (i, item) in ll.iter_mut().enumerate() {
-        *item = lz77.ll_counts[llpos + i];
-    }
-    let end = cmp::min(llpos + ZOPFLI_NUM_LL, lz77.size());
-    for i in (lpos + 1)..end {
-        ll[lz77.ll_symbol[i] as usize] -= 1;
-    }
-
-    for (i, item) in d.iter_mut().enumerate() {
-        *item = lz77.d_counts[dpos + i];
-    }
-    let end = cmp::min(dpos + ZOPFLI_NUM_D, lz77.size());
-    for i in (lpos + 1)..end {
-        match lz77.litlens[i] {
-            LitLen::LengthDist(_, _) => d[lz77.d_symbol[i] as usize] -= 1,
-            _ => {},
-        }
-    }
-
-    (ll, d)
-}
-
 /// Gets the histogram of lit/len and dist symbols in the given range, using the
 /// cumulative histograms, so faster than adding one by one for large range. Does
 /// not add the one end symbol of value 256.
@@ -596,10 +596,10 @@ pub fn get_histogram(lz77: &Lz77Store, lstart: usize, lend: usize) -> (Vec<usize
     } else {
         /* Subtract the cumulative histograms at the end and the start to get the
         histogram for this range. */
-        let (ll, d) = get_histogram_at(lz77, lend - 1);
+        let (ll, d) = lz77.get_histogram_at(lend - 1);
 
         if lstart > 0 {
-            let (ll2, d2) = get_histogram_at(lz77, lstart - 1);
+            let (ll2, d2) = lz77.get_histogram_at(lstart - 1);
 
             (
                 ll.iter().zip(ll2.iter()).map(|(&ll_item1, &ll_item2)|
