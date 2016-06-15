@@ -584,9 +584,6 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bitwise_writer: &mut 
 ///   set it to `0` to not do the assertion.
 /// `bitwise_writer`: writer responsible for appending bits
 fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bitwise_writer: &mut BitwiseWriter) {
-    let compressed_size;
-    let mut uncompressed_size = 0;
-
     if btype == BlockType::Uncompressed {
         let length = get_byte_range(lz77, lstart, lend);
         let pos = if lstart == lend {
@@ -631,11 +628,9 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     /* End symbol. */
     bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256]);
 
-    for &item in &lz77.litlens[lstart..lend] {
-        uncompressed_size += item.size();
-    }
-    compressed_size = bitwise_writer.bytes_written() - detect_block_size;
     if options.verbose {
+        let uncompressed_size = lz77.litlens[lstart..lend].iter().fold(0, |acc, &x| acc + x.size());
+        let compressed_size = bitwise_writer.bytes_written() - detect_block_size;
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
 }
