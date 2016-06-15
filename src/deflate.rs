@@ -222,11 +222,10 @@ fn calculate_block_symbol_size_small(ll_lengths: &[u32], d_lengths: &[u32], lz77
 
 /// Same as `calculate_block_symbol_size`, but with the histogram provided by the caller.
 fn calculate_block_symbol_size_given_counts(ll_counts: &[usize], d_counts: &[usize], ll_lengths: &[u32], d_lengths: &[u32], lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
-    let mut result = 0;
-
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
+        let mut result = 0;
         for i in 0..256 {
             result += ll_lengths[i] * ll_counts[i] as u32;
         }
@@ -402,7 +401,6 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
         16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
     ];
     let mut result_size = 0;
-
 
     let mut rle = vec![];
     let mut rle_bits = vec![];
@@ -699,7 +697,6 @@ fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
 fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Vec<u32>, Vec<u32>) {
-
     let (mut ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 

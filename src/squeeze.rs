@@ -260,19 +260,14 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     if instart == inend {
         return (0.0, length_array);
     }
-    let mut leng;
-    let mut longest_match;
-    let sublen = unsafe { malloc(mem::size_of::<u16>() * 259) as *mut u16 };
+
     let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
         instart - ZOPFLI_WINDOW_SIZE
     } else {
         0
     };
 
-    let mincost = get_cost_model_min_cost(&costmodel);
-
     h.reset(ZOPFLI_WINDOW_SIZE);
-
     let arr = &in_data[..inend];
     h.warmup(arr, windowstart, inend);
     for i in windowstart..instart {
@@ -280,14 +275,18 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     }
 
     costs.resize(blocksize + 1, 0.0);
-
     for cost in costs.iter_mut().take(blocksize + 1).skip(1) {
         *cost = f32::MAX;
     }
     costs[0] = 0.0; /* Because it's the start. */
+
     length_array[0] = 0;
 
     let mut i = instart;
+    let mut leng;
+    let mut longest_match;
+    let sublen = unsafe { malloc(mem::size_of::<u16>() * 259) as *mut u16 };
+    let mincost = get_cost_model_min_cost(&costmodel);
     while i < inend {
         let mut j = i - instart;  // Index in the costs array and length_array.
         h.update(arr, i);
@@ -350,7 +349,6 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     assert!(costs[blocksize] >= 0.0);
     (costs[blocksize] as f64, length_array)
 }
-
 
 /// Calculates the optimal path of lz77 lengths to use, from the calculated
 /// `length_array`. The `length_array` must contain the optimal length to reach that
@@ -424,15 +422,18 @@ pub fn lz77_optimal_fixed<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instar
 pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, numiterations: i32) -> Lz77Store
     where C: Cache,
 {
-
-    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
-    let mut costs = Vec::with_capacity(inend - instart + 1);
-
     /* Dist to get to here with smallest cost. */
     let mut currentstore = Lz77Store::new();
     let mut outputstore = currentstore.clone();
 
+    /* Initial run. */
+    currentstore.greedy(s, in_data, instart, inend);
     let mut stats = SymbolStats::default();
+    stats.get_statistics(&currentstore);
+
+    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+    let mut costs = Vec::with_capacity(inend - instart + 1);
+
     let mut beststats = SymbolStats::default();
 
     let mut bestcost = f64::MAX;
@@ -443,11 +444,6 @@ pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usi
 
     /* Do regular deflate, then loop multiple shortest path runs, each time using
     the statistics of the previous run. */
-
-    /* Initial run. */
-    currentstore.greedy(s, in_data, instart, inend);
-    stats.get_statistics(&currentstore);
-
     /* Repeat statistics with each time the cost model from the previous stat
     run. */
     for i in 0..numiterations {

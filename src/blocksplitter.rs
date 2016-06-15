@@ -136,29 +136,27 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
 /// The output splitpoints are indices in the LZ77 data.
 /// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
 pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, splitpoints: &mut Vec<usize>) {
-
     if lz77.size() < 10 {
         return;  /* This code fails on tiny files. */
     }
 
-    let mut llpos;
     let mut numblocks = 1;
-    let mut splitcost;
-    let mut origcost;
     let mut done = vec![0; lz77.size()];
     let mut lstart = 0;
     let mut lend = lz77.size();
 
     while maxblocks != 0 && numblocks < maxblocks {
         assert!(lstart < lend);
-        let find_minimum_result = find_minimum(|i| estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend);
-        llpos = find_minimum_result.0;
-        splitcost = find_minimum_result.1;
+        let find_minimum_result = find_minimum(|i|
+            estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend
+        );
+        let llpos = find_minimum_result.0;
+        let splitcost = find_minimum_result.1;
 
         assert!(llpos > lstart);
         assert!(llpos < lend);
 
-        origcost = estimate_cost(lz77, lstart, lend);
+        let origcost = estimate_cost(lz77, lstart, lend);
 
         if splitcost > origcost || llpos == lstart + 1 || llpos == lend {
             done[lstart] = 1;
@@ -198,9 +196,8 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
 pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usize, maxblocks: usize, splitpoints: &mut Vec<usize>) {
-    let mut lz77splitpoints = Vec::with_capacity(maxblocks);
-    let mut store = Lz77Store::new();
     splitpoints.clear();
+    let mut store = Lz77Store::new();
 
     /* Unintuitively, Using a simple LZ77 method here instead of lz77_optimal
     results in better blocks. */
@@ -209,6 +206,7 @@ pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usiz
         store.greedy(&mut state, in_data, instart, inend);
     }
 
+    let mut lz77splitpoints = Vec::with_capacity(maxblocks);
     blocksplit_lz77(options, &store, maxblocks, &mut lz77splitpoints);
 
     let nlz77points = lz77splitpoints.len();

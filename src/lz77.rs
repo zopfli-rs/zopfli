@@ -132,22 +132,11 @@ impl Lz77Store {
     pub fn greedy<C>(&mut self, s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize)
         where C: Cache,
     {
-        let mut leng;
-        let mut dist;
-        let mut lengthscore;
         let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
             instart - ZOPFLI_WINDOW_SIZE
         } else {
             0
         };
-
-        let mut longest_match;
-
-        /* Lazy matching. */
-        let mut prev_length = 0;
-        let mut prev_match = 0;
-        let mut prevlengthscore;
-        let mut match_available = false;
 
         if instart == inend {
             return;
@@ -163,10 +152,19 @@ impl Lz77Store {
         }
 
         let mut i = instart;
+        let mut leng;
+        let mut dist;
+        let mut lengthscore;
+
+        /* Lazy matching. */
+        let mut prev_length = 0;
+        let mut prev_match = 0;
+        let mut prevlengthscore;
+        let mut match_available = false;
         while i < inend {
             h.update(arr, i);
 
-            longest_match = find_longest_match(s, &mut h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
+            let longest_match = find_longest_match(s, &mut h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
             dist = longest_match.distance;
             leng = longest_match.length;
             lengthscore = get_length_score(leng as i32, dist as i32);
@@ -415,20 +413,12 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
 }
 
 fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: *mut u16) -> (i32, usize) {
-    let hpos = pos & ZOPFLI_WINDOW_MASK;
     let mut which_hash = Which::Hash1;
-
-    let mut bestlength = 1;
-    let mut bestdist = 0;
-    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
-
-    let arrayend = pos + limit;
-
     assert!(h.val(which_hash) < 65536);
-
     let mut pp = h.head_at(h.val(which_hash) as usize, which_hash);  /* During the whole loop, p == hprev[pp]. */
     let mut p = h.prev_at(pp as usize, which_hash);
 
+    let hpos = pos & ZOPFLI_WINDOW_MASK;
     assert!(pp as usize == hpos);
 
     let mut dist = if (p as i32) < pp {
@@ -437,6 +427,10 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
         (ZOPFLI_WINDOW_SIZE - (p as usize)) as i32 + pp
     };
 
+    let mut bestlength = 1;
+    let mut bestdist = 0;
+    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
+    let arrayend = pos + limit;
     let mut scan_offset;
     let mut match_offset;
 
@@ -551,11 +545,11 @@ fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
 }
 
 pub fn get_byte_range(lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
-    let l = lend - 1;
     if lstart == lend {
         return 0;
     }
 
+    let l = lend - 1;
     lz77.pos[l] + lz77.litlens[l].size() - lz77.pos[lstart]
 }
 
