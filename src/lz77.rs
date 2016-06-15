@@ -6,6 +6,21 @@ use symbols::{get_dist_symbol, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
 use Options;
 
+#[derive(Clone, Debug, Copy)]
+pub enum LitLen {
+    Literal(u16),
+    LengthDist(u16, u16),
+}
+
+impl LitLen {
+    pub fn size(&self) -> usize {
+        match *self {
+            LitLen::Literal(_) => 1,
+            LitLen::LengthDist(len, _) => len as usize,
+        }
+    }
+}
+
 /// Stores lit/length and dist pairs for LZ77.
 /// Parameter litlens: Contains the literal symbols or length values.
 /// Parameter dists: Contains the distances. A value is 0 to indicate that there is
@@ -13,8 +28,7 @@ use Options;
 /// Parameter size: The size of both the litlens and dists arrays.
 #[derive(Debug, Clone, Default)]
 pub struct Lz77Store {
-   pub litlens: Vec<u16>,
-   pub dists: Vec<u16>,
+   pub litlens: Vec<LitLen>,
 
    pub pos: Vec<usize>,
 
@@ -29,7 +43,6 @@ impl Lz77Store {
     pub fn new() -> Lz77Store {
         Lz77Store {
           litlens: vec![],
-          dists: vec![],
 
           pos: vec![],
 
@@ -43,7 +56,6 @@ impl Lz77Store {
 
     pub fn reset(&mut self) {
         self.litlens.clear();
-        self.dists.clear();
         self.pos.clear();
         self.ll_symbol.clear();
         self.d_symbol.clear();
@@ -55,7 +67,7 @@ impl Lz77Store {
         self.litlens.len()
     }
 
-    pub fn lit_len_dist(&mut self, length: u16, dist: u16, pos: usize) {
+    pub fn append_store_item(&mut self, litlen: LitLen, pos: usize) {
         let origsize = self.litlens.len();
         let llstart = ZOPFLI_NUM_LL * (origsize / ZOPFLI_NUM_LL);
         let dstart = ZOPFLI_NUM_D * (origsize / ZOPFLI_NUM_D);
@@ -80,24 +92,36 @@ impl Lz77Store {
             }
         }
 
-        self.litlens.push(length);
-        self.dists.push(dist);
         self.pos.push(pos);
 
         // Why isn't this at the beginning of this function?
         // assert(length < 259);
 
-        if dist == 0 {
-            self.ll_symbol.push(length);
-            self.d_symbol.push(0);
-            self.ll_counts[llstart + length as usize] += 1;
-        } else {
-            let len_sym = get_length_symbol(length as usize);
-            self.ll_symbol.push(len_sym as u16);
-            self.d_symbol.push(get_dist_symbol(dist as i32) as u16);
-            self.ll_counts[llstart + len_sym as usize] += 1;
-            self.d_counts[dstart + get_dist_symbol(dist as i32) as usize] += 1;
+        self.litlens.push(litlen);
+        match litlen {
+            LitLen::Literal(length) => {
+                self.ll_symbol.push(length);
+                self.d_symbol.push(0);
+                self.ll_counts[llstart + length as usize] += 1;
+            },
+            LitLen::LengthDist(length, dist) => {
+                let len_sym = get_length_symbol(length as usize);
+                self.ll_symbol.push(len_sym as u16);
+                self.d_symbol.push(get_dist_symbol(dist as i32) as u16);
+                self.ll_counts[llstart + len_sym as usize] += 1;
+                self.d_counts[dstart + get_dist_symbol(dist as i32) as usize] += 1;
+            },
         }
+    }
+
+    pub fn lit_len_dist(&mut self, length: u16, dist: u16, pos: usize) {
+        let litlen = if dist == 0 {
+            LitLen::Literal(length)
+        } else {
+            LitLen::LengthDist(length, dist)
+        };
+
+        self.append_store_item(litlen, pos);
     }
 
     /// Does LZ77 using an algorithm similar to gzip, with lazy matching, rather than
@@ -532,7 +556,7 @@ pub fn get_byte_range(lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
         return 0;
     }
 
-    lz77.pos[l] + (if lz77.dists[l] == 0 { 1 } else { lz77.litlens[l] }) as usize - lz77.pos[lstart]
+    lz77.pos[l] + lz77.litlens[l].size() - lz77.pos[lstart]
 }
 
 fn get_histogram_at(lz77: &Lz77Store, lpos: usize) -> (Vec<usize>, Vec<usize>) {
@@ -557,8 +581,9 @@ fn get_histogram_at(lz77: &Lz77Store, lpos: usize) -> (Vec<usize>, Vec<usize>) {
     }
     let end = cmp::min(dpos + ZOPFLI_NUM_D, lz77.size());
     for i in (lpos + 1)..end {
-        if lz77.dists[i] != 0 {
-            d[lz77.d_symbol[i] as usize] -= 1;
+        match lz77.litlens[i] {
+            LitLen::LengthDist(_, _) => d[lz77.d_symbol[i] as usize] -= 1,
+            _ => {},
         }
     }
 
@@ -574,8 +599,9 @@ pub fn get_histogram(lz77: &Lz77Store, lstart: usize, lend: usize) -> (Vec<usize
         let mut d_counts = vec![0; ZOPFLI_NUM_D];
         for i in lstart..lend  {
             ll_counts[lz77.ll_symbol[i] as usize] += 1;
-            if lz77.dists[i] != 0 {
-                d_counts[lz77.d_symbol[i] as usize] += 1;
+            match lz77.litlens[i] {
+                LitLen::LengthDist(_, _) => d_counts[lz77.d_symbol[i] as usize] += 1,
+                _ => {},
             }
         }
         (ll_counts, d_counts)

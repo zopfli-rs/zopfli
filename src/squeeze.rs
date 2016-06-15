@@ -13,7 +13,7 @@ use libc::malloc;
 
 use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
-use lz77::{Lz77Store, ZopfliBlockState, Cache, find_longest_match};
+use lz77::{Lz77Store, ZopfliBlockState, Cache, find_longest_match, LitLen};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
@@ -169,13 +169,13 @@ impl SymbolStats {
 
     /// Appends the symbol statistics from the store.
     fn get_statistics(&mut self, store: &Lz77Store) {
-        for i in 0..store.dists.len() {
-            let store_litlens_usize = store.litlens[i] as usize;
-            if store.dists[i] == 0 {
-                self.litlens[store_litlens_usize] += 1;
-            } else {
-                self.litlens[get_length_symbol(store_litlens_usize) as usize] +=1 ;
-                self.dists[get_dist_symbol(store.dists[i] as i32) as usize] += 1;
+        for &litlen in store.litlens.iter() {
+            match litlen {
+                LitLen::Literal(lit) => self.litlens[lit as usize] += 1,
+                LitLen::LengthDist(len, dist) => {
+                    self.litlens[get_length_symbol(len as usize) as usize] += 1;
+                    self.dists[get_dist_symbol(dist as i32) as usize] += 1;
+                }
             }
         }
         self.litlens[256] = 1;  /* End symbol. */

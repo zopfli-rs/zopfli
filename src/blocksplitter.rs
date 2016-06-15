@@ -117,11 +117,7 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
     let mut pos = 0;
     if nlz77points > 0 {
         for i in 0..lz77.size() {
-            let length = if lz77.dists[i] == 0 {
-                1
-            } else {
-                lz77.litlens[i]
-            };
+            let length = lz77.litlens[i].size();
             if lz77splitpoints[splitpoints.len()] == i {
                 splitpoints.push(pos);
                 if splitpoints.len() == nlz77points {
@@ -221,14 +217,14 @@ pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usiz
     let mut pos = instart;
     if nlz77points > 0 {
         for i in 0..store.size() {
-            let length = if store.dists[i] == 0 { 1 } else { store.litlens[i] };
+            let length = store.litlens[i].size();
             if lz77splitpoints[splitpoints.len()] == i {
                 splitpoints.push(pos);
                 if splitpoints.len() == nlz77points {
                     break;
                 }
             }
-            pos += length as usize;
+            pos += length;
         }
     }
     assert!(splitpoints.len() == nlz77points);
