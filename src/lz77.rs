@@ -132,27 +132,10 @@ impl Lz77Store {
     pub fn greedy<C>(&mut self, s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize)
         where C: Cache,
     {
-        let mut leng;
-        let mut dist;
-        let mut lengthscore;
-        let windowstart = if instart > ZOPFLI_WINDOW_SIZE {
-            instart - ZOPFLI_WINDOW_SIZE
-        } else {
-            0
-        };
-
-        let mut longest_match;
-
-        /* Lazy matching. */
-        let mut prev_length = 0;
-        let mut prev_match = 0;
-        let mut prevlengthscore;
-        let mut match_available = false;
-
         if instart == inend {
             return;
         }
-
+        let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
         let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
 
         let arr = &in_data[..inend];
@@ -163,10 +146,19 @@ impl Lz77Store {
         }
 
         let mut i = instart;
+        let mut leng;
+        let mut dist;
+        let mut lengthscore;
+
+        /* Lazy matching. */
+        let mut prev_length = 0;
+        let mut prev_match = 0;
+        let mut prevlengthscore;
+        let mut match_available = false;
         while i < inend {
             h.update(arr, i);
 
-            longest_match = find_longest_match(s, &mut h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
+            let longest_match = find_longest_match(s, &mut h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
             dist = longest_match.distance;
             leng = longest_match.length;
             lengthscore = get_length_score(leng as i32, dist as i32);
@@ -273,6 +265,83 @@ impl Lz77Store {
             pos += length as usize;
         }
     }
+
+    fn get_histogram_at(&self, lpos: usize) -> (Vec<usize>, Vec<usize>) {
+        let mut ll = vec![0; ZOPFLI_NUM_LL];
+        let mut d = vec![0; ZOPFLI_NUM_D];
+
+        /* The real histogram is created by using the histogram for this chunk, but
+        all superfluous values of this chunk subtracted. */
+        let llpos = ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL);
+        let dpos = ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D);
+
+        for (i, item) in ll.iter_mut().enumerate() {
+            *item = self.ll_counts[llpos + i];
+        }
+        let end = cmp::min(llpos + ZOPFLI_NUM_LL, self.size());
+        for i in (lpos + 1)..end {
+            ll[self.ll_symbol[i] as usize] -= 1;
+        }
+
+        for (i, item) in d.iter_mut().enumerate() {
+            *item = self.d_counts[dpos + i];
+        }
+        let end = cmp::min(dpos + ZOPFLI_NUM_D, self.size());
+        for i in (lpos + 1)..end {
+            match self.litlens[i] {
+                LitLen::LengthDist(_, _) => d[self.d_symbol[i] as usize] -= 1,
+                _ => {},
+            }
+        }
+
+        (ll, d)
+    }
+
+    /// Gets the histogram of lit/len and dist symbols in the given range, using the
+    /// cumulative histograms, so faster than adding one by one for large range. Does
+    /// not add the one end symbol of value 256.
+    pub fn get_histogram(&self, lstart: usize, lend: usize) -> (Vec<usize>, Vec<usize>) {
+        if lstart + ZOPFLI_NUM_LL * 3 > lend {
+            let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
+            let mut d_counts = vec![0; ZOPFLI_NUM_D];
+            for i in lstart..lend  {
+                ll_counts[self.ll_symbol[i] as usize] += 1;
+                match self.litlens[i] {
+                    LitLen::LengthDist(_, _) => d_counts[self.d_symbol[i] as usize] += 1,
+                    _ => {},
+                }
+            }
+            (ll_counts, d_counts)
+        } else {
+            /* Subtract the cumulative histograms at the end and the start to get the
+            histogram for this range. */
+            let (ll, d) = self.get_histogram_at(lend - 1);
+
+            if lstart > 0 {
+                let (ll2, d2) = self.get_histogram_at(lstart - 1);
+
+                (
+                    ll.iter().zip(ll2.iter()).map(|(&ll_item1, &ll_item2)|
+                        ll_item1 - ll_item2
+                    ).collect(),
+                    d.iter().zip(d2.iter()).map(|(&d_item1, &d_item2)|
+                        d_item1 - d_item2
+                    ).collect(),
+                )
+            } else {
+                (ll, d)
+            }
+        }
+    }
+
+    pub fn get_byte_range(&self, lstart: usize, lend: usize) -> usize {
+        if lstart == lend {
+            return 0;
+        }
+
+        let l = lend - 1;
+        self.pos[l] + self.litlens[l].size() - self.pos[lstart]
+    }
 }
 
 /// Some state information for compressing a block.
@@ -330,7 +399,7 @@ impl<'a, C> ZopfliBlockState<'a, C>
 pub struct LongestMatch {
     distance: u16,
     pub length: u16,
-    from_cache: i32,
+    from_cache: bool,
     limit: usize,
 }
 
@@ -339,7 +408,7 @@ impl LongestMatch {
         LongestMatch {
             distance: 0,
             length: 0,
-            from_cache: 0,
+            from_cache: false,
             limit: limit,
         }
     }
@@ -375,7 +444,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
 {
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
-    if longest_match.from_cache == 1 {
+    if longest_match.from_cache {
         assert!(pos + (longest_match.length as usize) <= size);
         return longest_match;
     }
@@ -391,7 +460,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
         try. */
         longest_match.distance = 0;
         longest_match.length = 0;
-        longest_match.from_cache = 0;
+        longest_match.from_cache = false;
         longest_match.limit = 0;
         return longest_match;
     }
@@ -409,26 +478,18 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
     assert!(pos + bestlength <= size);
     longest_match.distance = bestdist as u16;
     longest_match.length = bestlength as u16;
-    longest_match.from_cache = 0;
+    longest_match.from_cache = false;
     longest_match.limit = limit;
     longest_match
 }
 
 fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: *mut u16) -> (i32, usize) {
-    let hpos = pos & ZOPFLI_WINDOW_MASK;
     let mut which_hash = Which::Hash1;
-
-    let mut bestlength = 1;
-    let mut bestdist = 0;
-    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
-
-    let arrayend = pos + limit;
-
     assert!(h.val(which_hash) < 65536);
-
     let mut pp = h.head_at(h.val(which_hash) as usize, which_hash);  /* During the whole loop, p == hprev[pp]. */
     let mut p = h.prev_at(pp as usize, which_hash);
 
+    let hpos = pos & ZOPFLI_WINDOW_MASK;
     assert!(pp as usize == hpos);
 
     let mut dist = if (p as i32) < pp {
@@ -437,6 +498,10 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
         (ZOPFLI_WINDOW_SIZE - (p as usize)) as i32 + pp
     };
 
+    let mut bestlength = 1;
+    let mut bestdist = 0;
+    let mut chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
+    let arrayend = pos + limit;
     let mut scan_offset;
     let mut match_offset;
 
@@ -550,83 +615,6 @@ fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
     }
 }
 
-pub fn get_byte_range(lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
-    let l = lend - 1;
-    if lstart == lend {
-        return 0;
-    }
-
-    lz77.pos[l] + lz77.litlens[l].size() - lz77.pos[lstart]
-}
-
-fn get_histogram_at(lz77: &Lz77Store, lpos: usize) -> (Vec<usize>, Vec<usize>) {
-    let mut ll = vec![0; ZOPFLI_NUM_LL];
-    let mut d = vec![0; ZOPFLI_NUM_D];
-
-    /* The real histogram is created by using the histogram for this chunk, but
-    all superfluous values of this chunk subtracted. */
-    let llpos = ZOPFLI_NUM_LL * (lpos / ZOPFLI_NUM_LL);
-    let dpos = ZOPFLI_NUM_D * (lpos / ZOPFLI_NUM_D);
-
-    for (i, item) in ll.iter_mut().enumerate() {
-        *item = lz77.ll_counts[llpos + i];
-    }
-    let end = cmp::min(llpos + ZOPFLI_NUM_LL, lz77.size());
-    for i in (lpos + 1)..end {
-        ll[lz77.ll_symbol[i] as usize] -= 1;
-    }
-
-    for (i, item) in d.iter_mut().enumerate() {
-        *item = lz77.d_counts[dpos + i];
-    }
-    let end = cmp::min(dpos + ZOPFLI_NUM_D, lz77.size());
-    for i in (lpos + 1)..end {
-        match lz77.litlens[i] {
-            LitLen::LengthDist(_, _) => d[lz77.d_symbol[i] as usize] -= 1,
-            _ => {},
-        }
-    }
-
-    (ll, d)
-}
-
-/// Gets the histogram of lit/len and dist symbols in the given range, using the
-/// cumulative histograms, so faster than adding one by one for large range. Does
-/// not add the one end symbol of value 256.
-pub fn get_histogram(lz77: &Lz77Store, lstart: usize, lend: usize) -> (Vec<usize>, Vec<usize>) {
-    if lstart + ZOPFLI_NUM_LL * 3 > lend {
-        let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
-        let mut d_counts = vec![0; ZOPFLI_NUM_D];
-        for i in lstart..lend  {
-            ll_counts[lz77.ll_symbol[i] as usize] += 1;
-            match lz77.litlens[i] {
-                LitLen::LengthDist(_, _) => d_counts[lz77.d_symbol[i] as usize] += 1,
-                _ => {},
-            }
-        }
-        (ll_counts, d_counts)
-    } else {
-        /* Subtract the cumulative histograms at the end and the start to get the
-        histogram for this range. */
-        let (ll, d) = get_histogram_at(lz77, lend - 1);
-
-        if lstart > 0 {
-            let (ll2, d2) = get_histogram_at(lz77, lstart - 1);
-
-            (
-                ll.iter().zip(ll2.iter()).map(|(&ll_item1, &ll_item2)|
-                    ll_item1 - ll_item2
-                ).collect(),
-                d.iter().zip(d2.iter()).map(|(&d_item1, &d_item2)|
-                    d_item1 - d_item2
-                ).collect(),
-            )
-        } else {
-            (ll, d)
-        }
-    }
-}
-
 pub trait Cache {
     fn try_get(&self, pos: usize, limit: usize, sublen: *mut u16, blockstart: usize) -> LongestMatch;
     fn store(&mut self, pos: usize, limit: usize, sublen: *mut u16, distance: u16, length: u16, blockstart: usize);
@@ -682,7 +670,7 @@ impl Cache for ZopfliLongestMatchCache {
                 }
                 longest_match.distance = distance;
                 longest_match.length = length;
-                longest_match.from_cache = 1;
+                longest_match.from_cache = true;
                 return longest_match;
             }
             /* Can't use much of the cache, since the "sublens" need to be calculated,

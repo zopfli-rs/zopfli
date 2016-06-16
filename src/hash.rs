@@ -75,25 +75,22 @@ impl ZopfliHash {
     }
 
     pub fn update(&mut self, array: &[u8], pos: usize) {
-        let hpos = pos & ZOPFLI_WINDOW_MASK;
-        let mut amount = 0;
-
         let hash_value = array.get(pos + ZOPFLI_MIN_MATCH - 1).cloned().unwrap_or(0);
         self.update_val(hash_value);
 
+        let hpos = pos & ZOPFLI_WINDOW_MASK;
         self.hashval[hpos] = self.val;
 
         let index = self.val as usize;
-
         if self.head[index] != -1 && self.hashval[self.head[index] as usize] == self.val {
             self.prev[hpos] = self.head[index] as u16;
         } else {
             self.prev[hpos] = hpos as u16;
         }
-
         self.head[index] = hpos as i32;
 
         // Update "same".
+        let mut amount = 0;
         if self.same[pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK] > 1 {
             amount = self.same[pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK] as i32 - 1;
         }

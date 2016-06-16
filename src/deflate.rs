@@ -1,7 +1,7 @@
 use std::cmp;
 use blocksplitter::{blocksplit, blocksplit_lz77};
 use katajainen::length_limited_code_lengths;
-use lz77::{get_histogram, get_byte_range, ZopfliBlockState, Lz77Store, LitLen};
+use lz77::{ZopfliBlockState, Lz77Store, LitLen};
 use squeeze::{lz77_optimal_fixed, lz77_optimal};
 use symbols::{get_length_symbol, get_dist_symbol, get_length_symbol_extra_bits, get_dist_symbol_extra_bits, get_length_extra_bits_value, get_length_extra_bits, get_dist_extra_bits_value, get_dist_extra_bits};
 use tree::{lengths_to_symbols};
@@ -199,8 +199,8 @@ fn calculate_block_symbol_size_small(ll_lengths: &[u32], d_lengths: &[u32], lz77
 
     assert!(lend - 1 < lz77.size());
 
-    for i in lstart..lend {
-        match lz77.litlens[i] {
+    for &item in &lz77.litlens[lstart..lend] {
+        match item {
             LitLen::Literal(litlens_i) => {
                 assert!(litlens_i < 259);
                 result += ll_lengths[litlens_i as usize]
@@ -222,11 +222,10 @@ fn calculate_block_symbol_size_small(ll_lengths: &[u32], d_lengths: &[u32], lz77
 
 /// Same as `calculate_block_symbol_size`, but with the histogram provided by the caller.
 fn calculate_block_symbol_size_given_counts(ll_counts: &[usize], d_counts: &[usize], ll_lengths: &[u32], d_lengths: &[u32], lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
-    let mut result = 0;
-
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
+        let mut result = 0;
         for i in 0..256 {
             result += ll_lengths[i] * ll_counts[i] as u32;
         }
@@ -248,7 +247,7 @@ fn calculate_block_symbol_size(ll_lengths: &[u32], d_lengths: &[u32], lz77: &Lz7
     if lstart + ZOPFLI_NUM_LL * 3 > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, lz77, lstart, lend)
     } else {
-        let (ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
+        let (ll_counts, d_counts) = lz77.get_histogram(lstart, lend);
         calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, ll_lengths, d_lengths, lz77, lstart, lend)
     }
 }
@@ -402,7 +401,6 @@ fn encode_tree(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, use_17: bool
         16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
     ];
     let mut result_size = 0;
-
 
     let mut rle = vec![];
     let mut rle_bits = vec![];
@@ -584,11 +582,8 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bitwise_writer: &mut 
 ///   set it to `0` to not do the assertion.
 /// `bitwise_writer`: writer responsible for appending bits
 fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_data: &[u8], lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize, bitwise_writer: &mut BitwiseWriter) {
-    let compressed_size;
-    let mut uncompressed_size = 0;
-
     if btype == BlockType::Uncompressed {
-        let length = get_byte_range(lz77, lstart, lend);
+        let length = lz77.get_byte_range(lstart, lend);
         let pos = if lstart == lend {
             0
         } else {
@@ -631,11 +626,9 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
     /* End symbol. */
     bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256]);
 
-    for i in lstart..lend {
-        uncompressed_size += lz77.litlens[i].size();
-    }
-    compressed_size = bitwise_writer.bytes_written() - detect_block_size;
     if options.verbose {
+        let uncompressed_size = lz77.litlens[lstart..lend].iter().fold(0, |acc, &x| acc + x.size());
+        let compressed_size = bitwise_writer.bytes_written() - detect_block_size;
         println!("compressed block size: {} ({}k) (unc: {})", compressed_size, compressed_size / 1024, uncompressed_size);
     }
 }
@@ -648,7 +641,7 @@ fn add_lz77_block(options: &Options, btype: BlockType, final_block: bool, in_dat
 pub fn calculate_block_size(lz77: &Lz77Store, lstart: usize, lend: usize, btype: BlockType) -> f64 {
     match btype {
         BlockType::Uncompressed => {
-            let length = get_byte_range(lz77, lstart, lend);
+            let length = lz77.get_byte_range(lstart, lend);
             let rem = length % 65535;
             let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
             /* An uncompressed block must actually be split into multiple blocks if it's
@@ -704,8 +697,7 @@ fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll
 /// bit lengths. Returns size of encoded tree and data in bits, not including the
 /// 3-bit block header.
 fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Vec<u32>, Vec<u32>) {
-
-    let (mut ll_counts, d_counts) = get_histogram(lz77, lstart, lend);
+    let (mut ll_counts, d_counts) = lz77.get_histogram(lstart, lend);
     ll_counts[256] = 1;  /* End symbol. */
 
     let ll_lengths = length_limited_code_lengths(&ll_counts, 15);
@@ -722,8 +714,8 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 fn add_lz77_data(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_size: usize , ll_symbols: &[u32], ll_lengths: &[u32], d_symbols: &[u32], d_lengths: &[u32], bitwise_writer: &mut BitwiseWriter) {
     let mut testlength = 0;
 
-    for i in lstart..lend {
-        match lz77.litlens[i] {
+    for &item in &lz77.litlens[lstart..lend] {
+        match item {
             LitLen::Literal(lit) => {
                 let litlen = lit as usize;
                 assert!(litlen < 256);
@@ -770,7 +762,7 @@ fn add_lz77_block_auto_type(options: &Options, final_block: bool, in_data: &[u8]
     if expensivefixed {
         /* Recalculate the LZ77 with lz77_optimal_fixed */
         let instart = lz77.pos[lstart];
-        let inend = instart + get_byte_range(lz77, lstart, lend);
+        let inend = instart + lz77.get_byte_range(lstart, lend);
 
         let mut s = ZopfliBlockState::new(options, instart, inend);
         lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut fixedstore);
@@ -833,8 +825,8 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
 
         // ZopfliAppendLZ77Store(&store, &lz77);
         assert!(store.size() > 0);
-        for j in 0..store.size() {
-            lz77.append_store_item(store.litlens[j], store.pos[j]);
+        for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
+            lz77.append_store_item(litlens, pos);
         }
 
         splitpoints.push(lz77.size());
@@ -849,8 +841,8 @@ fn blocksplit_attempt(options: &Options, final_block: bool, in_data: &[u8], inst
 
     // ZopfliAppendLZ77Store(&store, &lz77);
     assert!(store.size() > 0);
-    for j in 0..store.size() {
-        lz77.append_store_item(store.litlens[j], store.pos[j]);
+    for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
+        lz77.append_store_item(litlens, pos);
     }
 
     /* Second block splitting attempt */
