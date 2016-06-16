@@ -22,17 +22,19 @@ use iter::IsFinalIterator;
 /// in_data: the input bytes
 /// out: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
-pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Vec<u8>) {
+pub fn deflate<W>(options: &Options, btype: BlockType, in_data: &[u8], out: W) -> io::Result<()>
+    where W: Write
+{
     let mut bitwise_writer = BitwiseWriter::new(out);
     let mut i = 0;
     let insize = in_data.len();
     while i < insize {
         let final_block = i + ZOPFLI_MASTER_BLOCK_SIZE >= insize;
         let size = if final_block { insize - i } else { ZOPFLI_MASTER_BLOCK_SIZE };
-        deflate_part(options, btype, final_block, in_data, i, i + size, &mut bitwise_writer).expect("Can't write");
+        try!(deflate_part(options, btype, final_block, in_data, i, i + size, &mut bitwise_writer));
         i += size;
     }
-    bitwise_writer.finish_partial_bits().expect("Can't write");
+    bitwise_writer.finish_partial_bits()
 }
 
 /// Deflate a part, to allow deflate() to use multiple master blocks if
