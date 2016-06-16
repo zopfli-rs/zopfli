@@ -7,7 +7,7 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
-use std::{mem, cmp, f64, f32};
+use std::{mem, cmp, f64, f32, slice};
 
 use libc::malloc;
 
@@ -307,7 +307,11 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
             }
         }
 
-        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, sublen);
+        let mut sublen_slice: &mut [u16] = unsafe {
+            slice::from_raw_parts_mut(sublen, ZOPFLI_MAX_MATCH + 1)
+        };
+
+        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, &mut Some(&mut sublen_slice));
         leng = longest_match.length;
 
         // Literal.
