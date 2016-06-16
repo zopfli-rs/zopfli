@@ -3,6 +3,7 @@
 extern crate libc;
 extern crate crc;
 extern crate adler32;
+extern crate byteorder;
 
 mod iter;
 mod blocksplitter;
@@ -17,6 +18,8 @@ mod symbols;
 mod tree;
 mod util;
 mod zlib;
+
+use std::io::{self, Write};
 
 use deflate::{deflate, BlockType};
 use gzip::gzip_compress;
@@ -58,7 +61,9 @@ pub enum Format {
     Deflate,
 }
 
-pub fn compress(options: &Options, output_type: &Format, in_data: &[u8], out: &mut Vec<u8>) {
+pub fn compress<W>(options: &Options, output_type: &Format, in_data: &[u8], out: W) -> io::Result<()>
+    where W: Write
+{
     match *output_type {
         Format::Gzip => gzip_compress(options, in_data, out),
         Format::Zlib => zlib_compress(options, in_data, out),

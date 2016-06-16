@@ -1,5 +1,6 @@
 use std::env;
 use std::io::prelude::*;
+use std::io::{self, BufWriter};
 use std::fs::File;
 
 extern crate zopfli;
@@ -27,22 +28,49 @@ fn main() {
         file.read_to_end(&mut data)
             .unwrap_or_else(|why| panic!("couldn't read {}: {}", filename, why));
 
-        let mut out_data = vec![];
         let out_filename = format!("{}{}", filename, extension);
 
         // Attempt to create the output file, panic if the output file could not be opened
-        let mut out_file = File::create(&out_filename)
+        let out_file = File::create(&out_filename)
             .unwrap_or_else(|why| panic!("couldn't create output file {}: {}", out_filename, why));
+        let mut out_file = WriteStatistics::new(BufWriter::new(out_file));
 
-        zopfli::compress(&options, &output_type, &data, &mut out_data);
+        zopfli::compress(&options, &output_type, &data, &mut out_file)
+            .unwrap_or_else(|why| panic!("couldn't write to output file {}: {}", out_filename, why));
 
         if options.verbose {
-            let out_size = out_data.len();
+            let out_size = out_file.count;
             println!("Original Size: {}, Compressed: {}, Compression: {}% Removed", filesize, out_size, 100.0 * (filesize - out_size) as f64 / filesize as f64);
         }
+    }
+}
 
-        // Write the `out_data` into the newly created file.
-        out_file.write_all(&out_data)
-            .unwrap_or_else(|why| panic!("couldn't write to output file {}: {}", out_filename, why));
+struct WriteStatistics<W> {
+    inner: W,
+    count: usize,
+}
+
+impl<W> WriteStatistics<W> {
+    fn new(inner: W) -> Self {
+        WriteStatistics {
+            inner: inner,
+            count: 0,
+        }
+    }
+}
+
+impl<W> Write for WriteStatistics<W>
+    where W: Write
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let res = self.inner.write(buf);
+        if let Ok(size) = res {
+            self.count += size;
+        }
+        res
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
     }
 }

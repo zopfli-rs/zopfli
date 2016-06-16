@@ -1,35 +1,33 @@
+use std::io::{self, Write};
 use crc::crc32;
+use byteorder::{LittleEndian, WriteBytesExt};
 
 use deflate::{deflate, BlockType};
 use Options;
 
+static HEADER: &'static [u8] = &[
+    31,  // ID1
+    139, // ID2
+    8,   // CM
+    0,   // FLG
+
+    0,   // MTIME
+    0,
+    0,
+    0,
+
+    2,   // XFL, 2 indicates best compression.
+    3,   // OS follows Unix conventions.
+];
+
 /// Compresses the data according to the gzip specification, RFC 1952.
-pub fn gzip_compress(options: &Options, in_data: &[u8], out: &mut Vec<u8>) {
-    out.push(31);  /* ID1 */
-    out.push(139);  /* ID2 */
-    out.push(8);  /* CM */
-    out.push(0);  /* FLG */
-    /* MTIME */
-    out.push(0);
-    out.push(0);
-    out.push(0);
-    out.push(0);
+pub fn gzip_compress<W>(options: &Options, in_data: &[u8], mut out: W) -> io::Result<()>
+    where W: Write
+{
+    try!(out.by_ref().write_all(HEADER));
 
-    out.push(2);  /* XFL, 2 indicates best compression. */
-    out.push(3);  /* OS follows Unix conventions. */
+    try!(deflate(options, BlockType::Dynamic, in_data, out.by_ref()));
 
-    deflate(options, BlockType::Dynamic, in_data, out);
-
-    let crc = crc32::checksum_ieee(in_data);
-
-    out.push(crc as u8);
-    out.push((crc >> 8) as u8);
-    out.push((crc >> 16) as u8);
-    out.push((crc >> 24) as u8);
-
-    let input_size = in_data.len() as u32;
-    out.push(input_size as u8);
-    out.push((input_size >> 8) as u8);
-    out.push((input_size >> 16) as u8);
-    out.push((input_size >> 24) as u8);
+    try!(out.by_ref().write_u32::<LittleEndian>(crc32::checksum_ieee(in_data)));
+    out.write_u32::<LittleEndian>(in_data.len() as u32)
 }
