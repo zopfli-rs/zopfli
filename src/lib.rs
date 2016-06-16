@@ -1,6 +1,5 @@
 #![deny(trivial_casts, trivial_numeric_casts)]
 
-extern crate libc;
 extern crate crc;
 extern crate adler32;
 extern crate byteorder;
