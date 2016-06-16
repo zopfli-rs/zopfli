@@ -653,7 +653,16 @@ impl Cache for ZopfliLongestMatchCache {
                 let length = cmp::min(length_lmcpos, limit as u16);
                 let distance;
                 if !sublen.is_null() {
-                    self.fetch_sublen(lmcpos, length as usize, sublen);
+                    let cache_fetch_attempt = self.fetch_sublen(lmcpos, length as usize);
+
+                    if let Some(cached_sublen) = cache_fetch_attempt {
+                        for (i, &cs) in cached_sublen.iter().enumerate() {
+                            unsafe {
+                                *sublen.offset(i as isize) = cs;
+                            }
+                        }
+                    }
+
                     unsafe {
                         distance = *sublen.offset(length as isize);
                     }
