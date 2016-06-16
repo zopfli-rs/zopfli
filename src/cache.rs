@@ -1,4 +1,7 @@
-use util::{ZOPFLI_CACHE_LENGTH};
+use std::cmp;
+
+use lz77::LongestMatch;
+use util::{ZOPFLI_CACHE_LENGTH, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
 
 // Cache used by ZopfliFindLongestMatch to remember previously found length/dist
 // values.
@@ -105,6 +108,92 @@ impl ZopfliLongestMatchCache {
                 break;
             }
             prevlength = length + 1;
+        }
+    }
+}
+
+pub trait Cache {
+    fn try_get(&self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, blockstart: usize) -> LongestMatch;
+    fn store(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16, blockstart: usize);
+}
+
+pub struct NoCache;
+
+impl Cache for NoCache {
+    fn try_get(&self, _: usize, limit: usize, _: &mut Option<&mut [u16]>, _: usize) -> LongestMatch {
+        LongestMatch::new(limit)
+    }
+
+    fn store(&mut self, _: usize, _: usize, _: &mut Option<&mut [u16]>, _: u16, _: u16, _: usize) {
+        // Nowhere to store
+    }
+}
+
+impl Cache for ZopfliLongestMatchCache {
+    fn try_get(&self, pos: usize, mut limit: usize, sublen: &mut Option<&mut [u16]>, blockstart: usize) -> LongestMatch {
+        let mut longest_match = LongestMatch::new(limit);
+
+        /* The LMC cache starts at the beginning of the block rather than the
+        beginning of the whole array. */
+        let lmcpos = pos - blockstart;
+
+        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
+        that this cache value is not filled in yet. */
+        let length_lmcpos = self.length_at(lmcpos);
+        let dist_lmcpos = self.dist_at(lmcpos);
+        let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
+        let max_sublen = self.max_sublen(lmcpos);
+        let limit_ok_for_cache = cache_available &&
+            (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as u16 ||
+             (sublen.is_some() && max_sublen >= limit as u32));
+
+        if limit_ok_for_cache && cache_available {
+            if sublen.is_none() || length_lmcpos as u32 <= max_sublen {
+                let length = cmp::min(length_lmcpos, limit as u16);
+                let distance;
+                if let &mut Some(ref mut subl) = sublen {
+                    self.fetch_sublen(lmcpos, length as usize, subl);
+                    distance = subl[length as usize];
+
+                    if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as u16 {
+                        assert!(subl[length as usize] == dist_lmcpos);
+                    }
+                } else {
+                    distance = dist_lmcpos;
+                }
+                longest_match.distance = distance;
+                longest_match.length = length;
+                longest_match.from_cache = true;
+                return longest_match;
+            }
+            /* Can't use much of the cache, since the "sublens" need to be calculated,
+            but at least we already know when to stop. */
+            limit = length_lmcpos as usize;
+            longest_match.limit = limit;
+        }
+
+        longest_match
+    }
+
+    fn store(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16, blockstart: usize) {
+        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
+        that this cache value is not filled in yet. */
+        let lmcpos = pos - blockstart;
+        let cache_available = self.length_at(lmcpos) == 0 || self.dist_at(lmcpos) != 0;
+
+        if limit == ZOPFLI_MAX_MATCH && sublen.is_some() && !cache_available {
+            assert!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0);
+            if length < ZOPFLI_MIN_MATCH as u16 {
+                self.store_dist_at(lmcpos, 0);
+                self.store_length_at(lmcpos, 0);
+            } else {
+                self.store_dist_at(lmcpos, distance);
+                self.store_length_at(lmcpos, length);
+            }
+            assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
+            if let &mut Some(ref mut subl) = sublen {
+                self.store_sublen(subl, lmcpos, length as usize);
+            }
         }
     }
 }

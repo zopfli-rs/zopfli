@@ -9,9 +9,10 @@
 
 use std::{cmp, f64, f32};
 
+use cache::Cache;
 use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
-use lz77::{Lz77Store, ZopfliBlockState, Cache, find_longest_match, LitLen};
+use lz77::{Lz77Store, ZopfliBlockState, find_longest_match, LitLen};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
 
