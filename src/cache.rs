@@ -176,22 +176,22 @@ impl Cache for ZopfliLongestMatchCache {
     }
 
     fn store(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16, blockstart: usize) {
-        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
-        that this cache value is not filled in yet. */
-        let lmcpos = pos - blockstart;
-        let cache_available = self.length_at(lmcpos) == 0 || self.dist_at(lmcpos) != 0;
+        if let &mut Some(ref mut subl) = sublen {
+            /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
+            that this cache value is not filled in yet. */
+            let lmcpos = pos - blockstart;
+            let cache_available = self.length_at(lmcpos) == 0 || self.dist_at(lmcpos) != 0;
 
-        if limit == ZOPFLI_MAX_MATCH && sublen.is_some() && !cache_available {
-            assert!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0);
-            if length < ZOPFLI_MIN_MATCH as u16 {
-                self.store_dist_at(lmcpos, 0);
-                self.store_length_at(lmcpos, 0);
-            } else {
-                self.store_dist_at(lmcpos, distance);
-                self.store_length_at(lmcpos, length);
-            }
-            assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
-            if let &mut Some(ref mut subl) = sublen {
+            if limit == ZOPFLI_MAX_MATCH && !cache_available {
+                assert!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0);
+                if length < ZOPFLI_MIN_MATCH as u16 {
+                    self.store_dist_at(lmcpos, 0);
+                    self.store_length_at(lmcpos, 0);
+                } else {
+                    self.store_dist_at(lmcpos, distance);
+                    self.store_length_at(lmcpos, length);
+                }
+                assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
                 self.store_sublen(subl, lmcpos, length as usize);
             }
         }
