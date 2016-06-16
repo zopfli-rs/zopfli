@@ -83,14 +83,13 @@ impl ZopfliLongestMatchCache {
     }
 
     /// Extracts sublen array from the cache.
-    pub fn fetch_sublen(&self, pos: usize, length: usize) -> Option<Vec<u16>> {
+    pub fn fetch_sublen(&self, pos: usize, length: usize, sublen: &mut [u16]) {
         if length < 3 {
-            return None;
+            return;
         }
 
         let start = ZOPFLI_CACHE_LENGTH * pos * 3;
         let maxlength = self.max_sublen(pos) as usize;
-        let mut sublen = vec![0; maxlength + 1];
         let mut prevlength = 0;
 
         for j in 0..ZOPFLI_CACHE_LENGTH {
@@ -107,6 +106,5 @@ impl ZopfliLongestMatchCache {
             }
             prevlength = length + 1;
         }
-        Some(sublen)
     }
 }
