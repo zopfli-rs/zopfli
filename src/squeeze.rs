@@ -7,9 +7,7 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
-use std::{mem, cmp, f64, f32, slice};
-
-use libc::malloc;
+use std::{cmp, f64, f32};
 
 use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
@@ -280,7 +278,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     let mut i = instart;
     let mut leng;
     let mut longest_match;
-    let sublen = unsafe { malloc(mem::size_of::<u16>() * 259) as *mut u16 };
+    let mut sublen = vec![0; ZOPFLI_MAX_MATCH + 1];
     let mincost = get_cost_model_min_cost(&costmodel);
     while i < inend {
         let mut j = i - instart;  // Index in the costs array and length_array.
@@ -307,11 +305,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
             }
         }
 
-        let mut sublen_slice: &mut [u16] = unsafe {
-            slice::from_raw_parts_mut(sublen, ZOPFLI_MAX_MATCH + 1)
-        };
-
-        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, &mut Some(&mut sublen_slice));
+        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, &mut Some(&mut sublen));
         leng = longest_match.length;
 
         // Literal.
@@ -334,7 +328,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
                 continue;
             }
 
-            let new_cost = costmodel(k as u32, unsafe { *sublen.offset(k as isize) } as u32) + costs[j] as f64;
+            let new_cost = costmodel(k as u32, sublen[k] as u32) + costs[j] as f64;
             assert!(new_cost >= 0.0);
             if new_cost < costs[j + k] as f64 {
                 assert!(k <= ZOPFLI_MAX_MATCH);
