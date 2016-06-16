@@ -116,8 +116,8 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
     let mut bitlength_value = 1;
     while let Some(leaf_count) = a.next() {
         let next_count = *a.peek().unwrap_or(&0);
-        for i in next_count..leaf_count {
-            result[leaves[i as usize].index] = bitlength_value;
+        for leaf in &leaves[next_count as usize..leaf_count as usize] {
+            result[leaf.index] = bitlength_value;
         }
         bitlength_value += 1;
     }
