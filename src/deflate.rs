@@ -30,6 +30,7 @@ pub fn deflate(options: &Options, btype: BlockType, in_data: &[u8], out: &mut Ve
         deflate_part(options, btype, final_block, in_data, i, i + size, &mut bitwise_writer);
         i += size;
     }
+    bitwise_writer.finish_partial_bits();
 }
 
 /// Deflate a part, to allow deflate() to use multiple master blocks if
@@ -881,8 +882,7 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
         bitwise_writer.add_bit(0);
         bitwise_writer.add_bit(0);
 
-        /* Any bits of input up to the next byte boundary are ignored. */
-        bitwise_writer.reset_bp();
+        bitwise_writer.finish_partial_bits();
 
         bitwise_writer.add_byte((blocksize % 256) as u8);
         bitwise_writer.add_byte(((blocksize / 256) % 256) as u8);
@@ -894,6 +894,7 @@ fn add_non_compressed_block(final_block: bool, in_data: &[u8], instart: usize, i
 }
 
 pub struct BitwiseWriter<'a> {
+    bit: u8,
     bp: u8,
     out: &'a mut Vec<u8>,
 }
@@ -901,13 +902,14 @@ pub struct BitwiseWriter<'a> {
 impl<'a> BitwiseWriter<'a> {
     fn new(out: &mut Vec<u8>) -> BitwiseWriter {
         BitwiseWriter {
+            bit: 0,
             bp: 0,
             out: out,
         }
     }
 
     fn bytes_written(&self) -> usize {
-        self.out.len()
+        self.out.len() + if self.bp > 0 { 1 } else { 0 }
     }
 
     /// For when you want to add a full byte.
@@ -920,21 +922,16 @@ impl<'a> BitwiseWriter<'a> {
         self.out.extend_from_slice(bytes);
     }
 
-    /// The outsize is number of necessary bytes to encode the bits.
-    /// Given the value of bp and the amount of bytes, the amount of bits represented
-    /// is not simply bytesize * 8 + bp because even representing one bit requires a
-    /// whole byte. It is: (bp == 0) ? (bytesize * 8) : ((bytesize - 1) * 8 + bp)
     fn add_bit(&mut self, bit: u8) {
-        if self.bp == 0 {
-            self.out.push(0);
+        self.bit |= bit << self.bp;
+        self.bp += 1;
+        if self.bp == 8 {
+            self.finish_partial_bits();
         }
-        let outsize = self.out.len();
-        self.out[outsize - 1] |= bit << self.bp;
-        self.bp = (self.bp + 1) & 7;
     }
 
     fn add_bits(&mut self, symbol: u32, length: u32) {
-        /* TODO(lode): make more efficient (add more bits at once). */
+        // TODO: make more efficient (add more bits at once)
         for i in 0..length {
             let bit = ((symbol >> i) & 1) as u8;
             self.add_bit(bit);
@@ -944,14 +941,18 @@ impl<'a> BitwiseWriter<'a> {
     /// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
     /// uses both orders in one standard.
     fn add_huffman_bits(&mut self, symbol: u32, length: u32) {
-        /* TODO(lode): make more efficient (add more bits at once). */
+        // TODO: make more efficient (add more bits at once)
         for i in 0..length {
             let bit = ((symbol >> (length - i - 1)) & 1) as u8;
             self.add_bit(bit);
         }
     }
 
-    fn reset_bp(&mut self) {
-        self.bp = 0;
+    fn finish_partial_bits(&mut self) {
+        if self.bp != 0 {
+            self.out.push(self.bit);
+            self.bit = 0;
+            self.bp = 0;
+        }
     }
 }
