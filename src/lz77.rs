@@ -82,10 +82,10 @@ impl Lz77Store {
         }
 
         if origsize % ZOPFLI_NUM_D == 0 {
-            for i in 0..ZOPFLI_NUM_D {
-                if origsize == 0 {
-                    self.d_counts.push(0);
-                } else {
+            if origsize == 0 {
+                self.d_counts.resize(ZOPFLI_NUM_D, 0);
+            } else {
+                for i in 0..ZOPFLI_NUM_D {
                     let last_histogram_value = self.d_counts[origsize - ZOPFLI_NUM_D + i];
                     self.d_counts.push(last_histogram_value);
                 }
