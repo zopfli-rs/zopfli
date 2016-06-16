@@ -50,7 +50,7 @@ impl ZopfliLongestMatchCache {
     }
 
     /// Stores sublen array in the cache.
-    pub fn store_sublen(&mut self, sublen: *mut u16, pos: usize, length: usize) {
+    pub fn store_sublen(&mut self, sublen: &[u16], pos: usize, length: usize) {
         if length < 3 {
             return;
         }
@@ -59,17 +59,15 @@ impl ZopfliLongestMatchCache {
         let mut i = 3;
         let mut j = 0;
         let mut bestlength = 0;
-        while i <= length as isize {
-            unsafe {
-                if i == length as isize || *sublen.offset(i) != *sublen.offset(i + 1) {
-                    self.sublen[start + (j * 3)] = (i - 3) as u8;
-                    self.sublen[start + (j * 3 + 1)] = (*sublen.offset(i)).wrapping_rem(256) as u8;
-                    self.sublen[start + (j * 3 + 2)] = ((*sublen.offset(i) >> 8)).wrapping_rem(256) as u8;
-                    bestlength = i as u32;
-                    j += 1;
-                    if j >= ZOPFLI_CACHE_LENGTH {
-                        break;
-                    }
+        while i <= length {
+            if i == length || sublen[i] != sublen[i + 1] {
+                self.sublen[start + (j * 3)] = (i - 3) as u8;
+                self.sublen[start + (j * 3 + 1)] = sublen[i].wrapping_rem(256) as u8;
+                self.sublen[start + (j * 3 + 2)] = ((sublen[i] >> 8)).wrapping_rem(256) as u8;
+                bestlength = i as u32;
+                j += 1;
+                if j >= ZOPFLI_CACHE_LENGTH {
+                    break;
                 }
             }
             i += 1;

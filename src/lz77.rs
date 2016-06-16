@@ -1,4 +1,4 @@
-use std::{ptr, cmp};
+use std::{ptr, cmp, slice};
 
 use cache::{ZopfliLongestMatchCache};
 use hash::{ZopfliHash, Which};
@@ -696,7 +696,8 @@ impl Cache for ZopfliLongestMatchCache {
                 self.store_length_at(lmcpos, length);
             }
             assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
-            self.store_sublen(sublen, lmcpos, length as usize);
+            let sublen_slice = unsafe { slice::from_raw_parts(sublen, ZOPFLI_MAX_MATCH + 1) };
+            self.store_sublen(sublen_slice, lmcpos, length as usize);
         }
     }
 }
