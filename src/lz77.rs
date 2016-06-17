@@ -1,6 +1,6 @@
-use std::{ptr, cmp};
+use std::cmp;
 
-use cache::{ZopfliLongestMatchCache};
+use cache::{ZopfliLongestMatchCache, Cache, NoCache};
 use hash::{ZopfliHash, Which};
 use symbols::{get_dist_symbol, get_length_symbol};
 use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_WINDOW_SIZE};
@@ -156,7 +156,7 @@ impl Lz77Store {
         while i < inend {
             h.update(arr, i);
 
-            let longest_match = find_longest_match(s, &mut h, arr, i, inend, ZOPFLI_MAX_MATCH, ptr::null_mut());
+            let longest_match = find_longest_match(s, &mut h, arr, i, inend, ZOPFLI_MAX_MATCH, &mut None);
             dist = longest_match.distance;
             leng = longest_match.length;
             lengthscore = get_length_score(leng as i32, dist as i32);
@@ -244,7 +244,7 @@ impl Lz77Store {
             if length >= ZOPFLI_MIN_MATCH as u16 {
                 // Get the distance by recalculating longest match. The found length
                 // should match the length from the path.
-                let longest_match = find_longest_match(s, &mut h, arr, pos, inend, length as usize, ptr::null_mut());
+                let longest_match = find_longest_match(s, &mut h, arr, pos, inend, length as usize, &mut None);
                 let dist = longest_match.distance;
                 let dummy_length = longest_match.length;
                 assert!(!(dummy_length != length && length > 2 && dummy_length > 2));
@@ -383,26 +383,26 @@ impl<'a, C> ZopfliBlockState<'a, C>
     /// Returns 1 if it got the values from the cache, 0 if not.
     /// Updates the limit value to a smaller one if possible with more limited
     /// information from the cache.
-    fn try_get_from_longest_match_cache(&self, pos: usize, limit: usize, sublen: *mut u16) -> LongestMatch {
+    fn try_get_from_longest_match_cache(&self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>) -> LongestMatch {
         self.lmc.try_get(pos, limit, sublen, self.blockstart)
     }
 
     /// Stores the found sublen, distance and length in the longest match cache, if
     /// possible.
-    fn store_in_longest_match_cache(&mut self, pos: usize, limit: usize, sublen: *mut u16, distance: u16, length: u16) {
+    fn store_in_longest_match_cache(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16) {
         self.lmc.store(pos, limit, sublen, distance, length, self.blockstart)
     }
 }
 
 pub struct LongestMatch {
-    distance: u16,
+    pub distance: u16,
     pub length: u16,
-    from_cache: bool,
-    limit: usize,
+    pub from_cache: bool,
+    pub limit: usize,
 }
 
 impl LongestMatch {
-    fn new(limit: usize) -> Self {
+    pub fn new(limit: usize) -> Self {
         LongestMatch {
             distance: 0,
             length: 0,
@@ -437,7 +437,7 @@ fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) 
     scan_offset
 }
 
-pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: *mut u16) -> LongestMatch
+pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, mut sublen: &mut Option<&mut [u16]>) -> LongestMatch
     where C: Cache,
 {
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
@@ -481,7 +481,7 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
     longest_match
 }
 
-fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: *mut u16) -> (i32, usize) {
+fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: &mut Option<&mut [u16]>) -> (i32, usize) {
     let mut which_hash = Which::Hash1;
     assert!(h.val(which_hash) < 65536);
     let mut pp = h.head_at(h.val(which_hash) as usize, which_hash);  /* During the whole loop, p == hprev[pp]. */
@@ -532,11 +532,9 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
             }
 
             if currentlength > bestlength {
-                if !sublen.is_null() {
+                if let &mut Some(ref mut subl) = sublen {
                     for j in (bestlength + 1)..(currentlength + 1) {
-                        unsafe {
-                            *sublen.offset(j as isize) = dist as u16;
-                        }
+                        subl[j] = dist as u16;
                     }
                 }
                 bestdist = dist;
@@ -609,94 +607,6 @@ fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
         if d1 != d2 {
             assert!(d1 == d2);
             break;
-        }
-    }
-}
-
-pub trait Cache {
-    fn try_get(&self, pos: usize, limit: usize, sublen: *mut u16, blockstart: usize) -> LongestMatch;
-    fn store(&mut self, pos: usize, limit: usize, sublen: *mut u16, distance: u16, length: u16, blockstart: usize);
-}
-
-struct NoCache;
-
-impl Cache for NoCache {
-    fn try_get(&self, _: usize, limit: usize, _: *mut u16, _: usize) -> LongestMatch {
-        LongestMatch::new(limit)
-    }
-
-    fn store(&mut self, _: usize, _: usize, _: *mut u16, _: u16, _: u16, _: usize) {
-        // Nowhere to store
-    }
-}
-
-impl Cache for ZopfliLongestMatchCache {
-    fn try_get(&self, pos: usize, mut limit: usize, sublen: *mut u16, blockstart: usize) -> LongestMatch {
-        let mut longest_match = LongestMatch::new(limit);
-
-        /* The LMC cache starts at the beginning of the block rather than the
-        beginning of the whole array. */
-        let lmcpos = pos - blockstart;
-
-        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
-        that this cache value is not filled in yet. */
-        let length_lmcpos = self.length_at(lmcpos);
-        let dist_lmcpos = self.dist_at(lmcpos);
-        let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
-        let max_sublen = self.max_sublen(lmcpos);
-        let limit_ok_for_cache = cache_available &&
-            (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as u16 ||
-             (!sublen.is_null() && max_sublen >= limit as u32));
-
-        if limit_ok_for_cache && cache_available {
-            if sublen.is_null() || length_lmcpos as u32 <= max_sublen {
-                let length = cmp::min(length_lmcpos, limit as u16);
-                let distance;
-                if !sublen.is_null() {
-                    self.fetch_sublen(lmcpos, length as usize, sublen);
-                    unsafe {
-                        distance = *sublen.offset(length as isize);
-                    }
-
-                    if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as u16 {
-                        unsafe {
-                            assert!(*sublen.offset(length as isize) == dist_lmcpos);
-                        }
-                    }
-                } else {
-                    distance = dist_lmcpos;
-                }
-                longest_match.distance = distance;
-                longest_match.length = length;
-                longest_match.from_cache = true;
-                return longest_match;
-            }
-            /* Can't use much of the cache, since the "sublens" need to be calculated,
-            but at least we already know when to stop. */
-            limit = length_lmcpos as usize;
-            longest_match.limit = limit;
-        }
-
-        longest_match
-    }
-
-    fn store(&mut self, pos: usize, limit: usize, sublen: *mut u16, distance: u16, length: u16, blockstart: usize) {
-        /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
-        that this cache value is not filled in yet. */
-        let lmcpos = pos - blockstart;
-        let cache_available = self.length_at(lmcpos) == 0 || self.dist_at(lmcpos) != 0;
-
-        if limit == ZOPFLI_MAX_MATCH && !sublen.is_null() && !cache_available {
-            assert!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0);
-            if length < ZOPFLI_MIN_MATCH as u16 {
-                self.store_dist_at(lmcpos, 0);
-                self.store_length_at(lmcpos, 0);
-            } else {
-                self.store_dist_at(lmcpos, distance);
-                self.store_length_at(lmcpos, length);
-            }
-            assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
-            self.store_sublen(sublen, lmcpos, length as usize);
         }
     }
 }
