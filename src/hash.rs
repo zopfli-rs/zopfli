@@ -1,4 +1,4 @@
-use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH};
+use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_SIZE};
 
 const HASH_SHIFT: i32 = 5;
 const HASH_MASK: i32 = 32767;
@@ -17,20 +17,20 @@ pub struct HashThing {
 }
 
 impl HashThing {
-    fn new(window_size: usize) -> HashThing {
+    fn new() -> HashThing {
         HashThing {
             head: vec![-1; 65536],
-            prev: (0..window_size as u16).collect(),
-            hashval: vec![-1; window_size],
+            prev: (0..ZOPFLI_WINDOW_SIZE as u16).collect(),
+            hashval: vec![-1; ZOPFLI_WINDOW_SIZE],
             val: 0,
         }
     }
 
-    fn reset(&mut self, window_size: usize) {
+    fn reset(&mut self) {
         self.val = 0;
         self.head = vec![-1; 65536];
-        self.prev = (0..window_size as u16).collect();
-        self.hashval = vec![-1; window_size];
+        self.prev = (0..ZOPFLI_WINDOW_SIZE as u16).collect();
+        self.hashval = vec![-1; ZOPFLI_WINDOW_SIZE];
     }
 
     fn update(&mut self, hpos: usize) {
@@ -54,18 +54,18 @@ pub struct ZopfliHash {
 }
 
 impl ZopfliHash {
-    pub fn new(window_size: usize) -> ZopfliHash {
+    pub fn new() -> ZopfliHash {
         ZopfliHash {
-            hash1: HashThing::new(window_size),
-            hash2: HashThing::new(window_size),
-            same: vec![0; window_size],
+            hash1: HashThing::new(),
+            hash2: HashThing::new(),
+            same: vec![0; ZOPFLI_WINDOW_SIZE],
         }
     }
 
-    pub fn reset(&mut self, window_size: usize) {
-        self.hash1.reset(window_size);
-        self.hash2.reset(window_size);
-        self.same = vec![0; window_size];
+    pub fn reset(&mut self) {
+        self.hash1.reset();
+        self.hash2.reset();
+        self.same = vec![0; ZOPFLI_WINDOW_SIZE];
     }
 
     pub fn warmup(&mut self, arr: &[u8], pos: usize, end: usize) {

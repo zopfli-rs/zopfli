@@ -134,7 +134,7 @@ impl Lz77Store {
             return;
         }
         let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
-        let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+        let mut h = ZopfliHash::new();
 
         let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);
@@ -224,7 +224,7 @@ impl Lz77Store {
             return;
         }
 
-        let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+        let mut h = ZopfliHash::new();
 
         let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);

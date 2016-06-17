@@ -261,7 +261,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     }
     let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
 
-    h.reset(ZOPFLI_WINDOW_SIZE);
+    h.reset();
     let arr = &in_data[..inend];
     h.warmup(arr, windowstart, inend);
     for i in windowstart..instart {
@@ -405,7 +405,7 @@ pub fn lz77_optimal_fixed<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instar
 {
     s.blockstart = instart;
     s.blockend = inend;
-    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+    let mut h = ZopfliHash::new();
     let mut costs = Vec::with_capacity(inend - instart - 1);
     lz77_optimal_run(s, in_data, instart, inend, get_cost_fixed, store, &mut h, &mut costs);
 }
@@ -425,7 +425,7 @@ pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usi
     let mut stats = SymbolStats::default();
     stats.get_statistics(&currentstore);
 
-    let mut h = ZopfliHash::new(ZOPFLI_WINDOW_SIZE);
+    let mut h = ZopfliHash::new();
     let mut costs = Vec::with_capacity(inend - instart + 1);
 
     let mut beststats = SymbolStats::default();
