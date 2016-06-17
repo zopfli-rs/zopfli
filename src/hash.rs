@@ -9,52 +9,50 @@ pub enum Which {
     Hash2,
 }
 
-pub struct ZopfliHash {
+pub struct HashThing {
     head: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
     prev: Vec<u16>,  /* Index to index of prev. occurrence of same hash. */
     hashval: Vec<i32>,  /* Index to hash value at this index. */
     val: i32,  /* Current hash value. */
+}
 
-    /* Fields with similar purpose as the above hash, but for the second hash with
-    a value that is calculated differently.  */
-    head2: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
-    prev2: Vec<u16>,  /* Index to index of prev. occurrence of same hash. */
-    hashval2: Vec<i32>,  /* Index to hash value at this index. */
-    val2: i32,  /* Current hash value. */
+impl HashThing {
+    fn new(window_size: usize) -> HashThing {
+        HashThing {
+            head: vec![-1; 65536],
+            prev: (0..window_size as u16).collect(),
+            hashval: vec![-1; window_size],
+            val: 0,
+        }
+    }
 
+    fn reset(&mut self, window_size: usize) {
+        self.val = 0;
+        self.head = vec![-1; 65536];
+        self.prev = (0..window_size as u16).collect();
+        self.hashval = vec![-1; window_size];
+    }
+}
+
+pub struct ZopfliHash {
+    hash1: HashThing,
+    hash2: HashThing,
     pub same: Vec<u16>,  /* Amount of repetitions of same byte after this .*/
 }
 
 impl ZopfliHash {
     pub fn new(window_size: usize) -> ZopfliHash {
         ZopfliHash {
-           head: vec![-1; 65536],
-           prev: (0..window_size as u16).collect(),
-           hashval: vec![-1; window_size],
-           val: 0,
-
-           /* Fields with similar purpose as the above hash, but for the second hash with
-           a value that is calculated differently.  */
-           head2: vec![-1; 65536],
-           prev2: (0..window_size as u16).collect(),
-           hashval2: vec![-1; window_size],
-           val2: 0,
-
-           same: vec![0; window_size],
-       }
+            hash1: HashThing::new(window_size),
+            hash2: HashThing::new(window_size),
+            same: vec![0; window_size],
+        }
     }
 
     pub fn reset(&mut self, window_size: usize) {
-        self.val = 0;
-        self.head = vec![-1; 65536];
-        self.prev = (0..window_size as u16).collect();
-        self.hashval = vec![-1; window_size];
-
+        self.hash1.reset(window_size);
+        self.hash2.reset(window_size);
         self.same = vec![0; window_size];
-        self.val2 = 0;
-        self.head2 = vec![-1; 65536];
-        self.prev2 = (0..window_size as u16).collect();
-        self.hashval2 = vec![-1; window_size];
     }
 
     pub fn warmup(&mut self, arr: &[u8], pos: usize, end: usize) {
@@ -71,7 +69,7 @@ impl ZopfliHash {
     /// must be made on consecutive input characters. Since the hash value exists out
     /// of multiple input bytes, a few warmups with this function are needed initially.
     fn update_val(&mut self, c: u8) {
-        self.val = ((self.val << HASH_SHIFT) ^ c as i32) & HASH_MASK;
+        self.hash1.val = ((self.hash1.val << HASH_SHIFT) ^ c as i32) & HASH_MASK;
     }
 
     pub fn update(&mut self, array: &[u8], pos: usize) {
@@ -79,15 +77,15 @@ impl ZopfliHash {
         self.update_val(hash_value);
 
         let hpos = pos & ZOPFLI_WINDOW_MASK;
-        self.hashval[hpos] = self.val;
+        self.hash1.hashval[hpos] = self.hash1.val;
 
-        let index = self.val as usize;
-        if self.head[index] != -1 && self.hashval[self.head[index] as usize] == self.val {
-            self.prev[hpos] = self.head[index] as u16;
+        let index = self.hash1.val as usize;
+        if self.hash1.head[index] != -1 && self.hash1.hashval[self.hash1.head[index] as usize] == self.hash1.val {
+            self.hash1.prev[hpos] = self.hash1.head[index] as u16;
         } else {
-            self.prev[hpos] = hpos as u16;
+            self.hash1.prev[hpos] = hpos as u16;
         }
-        self.head[index] = hpos as i32;
+        self.hash1.head[index] = hpos as i32;
 
         // Update "same".
         let mut amount = 0;
@@ -104,43 +102,43 @@ impl ZopfliHash {
         }
         self.same[hpos] = amount as u16;
 
-        self.val2 = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.val as u16) as i32;
-        self.hashval2[hpos] = self.val2;
+        self.hash2.val = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
+        self.hash2.hashval[hpos] = self.hash2.val;
 
-        let index2 = self.val2 as usize;
-        if self.head2[index2] != -1 && self.hashval2[self.head2[index2] as usize] == self.val2 {
-            self.prev2[hpos] = self.head2[index2] as u16;
+        let index2 = self.hash2.val as usize;
+        if self.hash2.head[index2] != -1 && self.hash2.hashval[self.hash2.head[index2] as usize] == self.hash2.val {
+            self.hash2.prev[hpos] = self.hash2.head[index2] as u16;
         } else {
-            self.prev2[hpos] = hpos as u16;
+            self.hash2.prev[hpos] = hpos as u16;
         }
-        self.head2[index2] = hpos as i32;
+        self.hash2.head[index2] = hpos as i32;
     }
 
     pub fn head_at(&self, index: usize, which: Which) -> i32 {
         match which {
-            Which::Hash1 => self.head[index],
-            Which::Hash2 => self.head2[index],
+            Which::Hash1 => self.hash1.head[index],
+            Which::Hash2 => self.hash2.head[index],
         }
     }
 
     pub fn prev_at(&self, index: usize, which: Which) -> u16 {
         match which {
-            Which::Hash1 => self.prev[index],
-            Which::Hash2 => self.prev2[index],
+            Which::Hash1 => self.hash1.prev[index],
+            Which::Hash2 => self.hash2.prev[index],
         }
     }
 
     pub fn hash_val_at(&self, index: usize, which: Which) -> i32 {
         match which {
-            Which::Hash1 => self.hashval[index],
-            Which::Hash2 => self.hashval2[index],
+            Which::Hash1 => self.hash1.hashval[index],
+            Which::Hash2 => self.hash2.hashval[index],
         }
     }
 
     pub fn val(&self, which: Which) -> i32 {
         match which {
-            Which::Hash1 => self.val,
-            Which::Hash2 => self.val2,
+            Which::Hash1 => self.hash1.val,
+            Which::Hash2 => self.hash2.val,
         }
     }
 }
