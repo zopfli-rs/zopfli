@@ -96,8 +96,10 @@ impl ZopfliHash {
             amount = self.same[same_index] as i32 - 1;
         }
 
-        while pos + amount as usize + 1 < array.len() && array[pos] == array[pos + amount as usize + 1] && amount < -1 {
+        let mut another_index = pos + amount as usize + 1;
+        while another_index < array.len() && array[pos] == array[another_index] && amount < -1 {
             amount += 1;
+            another_index += 1;
         }
         self.same[hpos] = amount as u16;
 
