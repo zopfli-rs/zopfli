@@ -38,11 +38,11 @@ impl HashThing {
 
         let index = self.val as usize;
         let head_index = self.head[index];
-        if head_index != -1 && self.hashval[head_index as usize] == self.val {
-            self.prev[hpos] = head_index as u16;
+        self.prev[hpos] = if head_index != -1 && self.hashval[head_index as usize] == self.val {
+            head_index as u16
         } else {
-            self.prev[hpos] = hpos as u16;
-        }
+            hpos as u16
+        };
         self.head[index] = hpos as i32;
     }
 }
