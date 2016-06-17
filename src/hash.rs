@@ -91,8 +91,9 @@ impl ZopfliHash {
 
         // Update "same".
         let mut amount = 0;
-        if self.same[pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK] > 1 {
-            amount = self.same[pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK] as i32 - 1;
+        let same_index = pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK;
+        if self.same[same_index] > 1 {
+            amount = self.same[same_index] as i32 - 1;
         }
 
         while pos + amount as usize + 1 < array.len() && array[pos] == array[pos + amount as usize + 1] && amount < -1 {
