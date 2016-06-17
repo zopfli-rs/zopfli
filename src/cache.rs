@@ -27,24 +27,24 @@ impl ZopfliLongestMatchCache {
         }
     }
 
-    pub fn length_at(&self, pos: usize) -> u16 {
+    fn length_at(&self, pos: usize) -> u16 {
         self.length[pos]
     }
 
-    pub fn dist_at(&self, pos: usize) -> u16 {
+    fn dist_at(&self, pos: usize) -> u16 {
         self.dist[pos]
     }
 
-    pub fn store_length_at(&mut self, pos: usize, val: u16) {
+    fn store_length_at(&mut self, pos: usize, val: u16) {
         self.length[pos] = val;
     }
 
-    pub fn store_dist_at(&mut self, pos: usize, val: u16) {
+    fn store_dist_at(&mut self, pos: usize, val: u16) {
         self.dist[pos] = val;
     }
 
     /// Returns the length up to which could be stored in the cache.
-    pub fn max_sublen(&self, pos: usize) -> u32 {
+    fn max_sublen(&self, pos: usize) -> u32 {
         let start = ZOPFLI_CACHE_LENGTH * pos * 3;
         if self.sublen[start + 1] == 0 && self.sublen[start + 2] == 0 {
             return 0;  // No sublen cached.
@@ -53,7 +53,7 @@ impl ZopfliLongestMatchCache {
     }
 
     /// Stores sublen array in the cache.
-    pub fn store_sublen(&mut self, sublen: &[u16], pos: usize, length: usize) {
+    fn store_sublen(&mut self, sublen: &[u16], pos: usize, length: usize) {
         if length < 3 {
             return;
         }
