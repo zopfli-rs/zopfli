@@ -106,9 +106,10 @@ impl ZopfliHash {
             amount += 1;
             another_index += 1;
         }
-        self.same[hpos] = amount as u16;
+        let amount_u16 = amount as u16;
+        self.same[hpos] = amount_u16;
 
-        self.hash2.val = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
+        self.hash2.val = ((amount_u16.wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
 
         self.hash2.update(hpos);
     }
