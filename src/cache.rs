@@ -86,7 +86,7 @@ impl ZopfliLongestMatchCache {
     }
 
     /// Extracts sublen array from the cache.
-    pub fn fetch_sublen(&self, pos: usize, length: usize, sublen: &mut [u16]) {
+    fn fetch_sublen(&self, pos: usize, length: usize, sublen: &mut [u16]) {
         if length < 3 {
             return;
         }
