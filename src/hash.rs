@@ -32,6 +32,18 @@ impl HashThing {
         self.prev = (0..window_size as u16).collect();
         self.hashval = vec![-1; window_size];
     }
+
+    fn update(&mut self, hpos: usize) {
+        self.hashval[hpos] = self.val;
+
+        let index = self.val as usize;
+        if self.head[index] != -1 && self.hashval[self.head[index] as usize] == self.val {
+            self.prev[hpos] = self.head[index] as u16;
+        } else {
+            self.prev[hpos] = hpos as u16;
+        }
+        self.head[index] = hpos as i32;
+    }
 }
 
 pub struct ZopfliHash {
@@ -77,15 +89,8 @@ impl ZopfliHash {
         self.update_val(hash_value);
 
         let hpos = pos & ZOPFLI_WINDOW_MASK;
-        self.hash1.hashval[hpos] = self.hash1.val;
 
-        let index = self.hash1.val as usize;
-        if self.hash1.head[index] != -1 && self.hash1.hashval[self.hash1.head[index] as usize] == self.hash1.val {
-            self.hash1.prev[hpos] = self.hash1.head[index] as u16;
-        } else {
-            self.hash1.prev[hpos] = hpos as u16;
-        }
-        self.hash1.head[index] = hpos as i32;
+        self.hash1.update(hpos);
 
         // Update "same".
         let mut amount = 0;
@@ -103,15 +108,8 @@ impl ZopfliHash {
         self.same[hpos] = amount as u16;
 
         self.hash2.val = ((self.same[hpos].wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
-        self.hash2.hashval[hpos] = self.hash2.val;
 
-        let index2 = self.hash2.val as usize;
-        if self.hash2.head[index2] != -1 && self.hash2.hashval[self.hash2.head[index2] as usize] == self.hash2.val {
-            self.hash2.prev[hpos] = self.hash2.head[index2] as u16;
-        } else {
-            self.hash2.prev[hpos] = hpos as u16;
-        }
-        self.hash2.head[index2] = hpos as i32;
+        self.hash2.update(hpos);
     }
 
     pub fn head_at(&self, index: usize, which: Which) -> i32 {
