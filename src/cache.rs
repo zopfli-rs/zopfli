@@ -143,9 +143,7 @@ impl Cache for ZopfliLongestMatchCache {
         let dist_lmcpos = self.dist_at(lmcpos);
         let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
         let max_sublen = self.max_sublen(lmcpos);
-        let limit_ok_for_cache = cache_available &&
-            (limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as u16 ||
-             (sublen.is_some() && max_sublen >= limit as u32));
+        let limit_ok_for_cache = limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as u16 || ( sublen.is_some() && max_sublen >= limit as u32);
 
         if limit_ok_for_cache && cache_available {
             if sublen.is_none() || length_lmcpos as u32 <= max_sublen {
