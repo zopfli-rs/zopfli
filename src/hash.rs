@@ -37,8 +37,9 @@ impl HashThing {
         self.hashval[hpos] = self.val;
 
         let index = self.val as usize;
-        if self.head[index] != -1 && self.hashval[self.head[index] as usize] == self.val {
-            self.prev[hpos] = self.head[index] as u16;
+        let head_index = self.head[index];
+        if head_index != -1 && self.hashval[head_index as usize] == self.val {
+            self.prev[hpos] = head_index as u16;
         } else {
             self.prev[hpos] = hpos as u16;
         }
