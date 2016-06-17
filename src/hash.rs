@@ -101,7 +101,8 @@ impl ZopfliHash {
         }
 
         let mut another_index = pos + amount as usize + 1;
-        while another_index < array.len() && array[pos] == array[another_index] && amount < -1 {
+        let array_pos = array[pos];
+        while another_index < array.len() && array_pos == array[another_index] && amount < -1 {
             amount += 1;
             another_index += 1;
         }
