@@ -10,27 +10,27 @@ pub enum Which {
 }
 
 pub struct HashThing {
-    head: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
+    head: [i32; 65536],  /* Hash value to index of its most recent occurrence. */
     prev: Vec<u16>,  /* Index to index of prev. occurrence of same hash. */
-    hashval: Vec<i32>,  /* Index to hash value at this index. */
+    hashval: [i32; ZOPFLI_WINDOW_SIZE],  /* Index to hash value at this index. */
     val: i32,  /* Current hash value. */
 }
 
 impl HashThing {
     fn new() -> HashThing {
         HashThing {
-            head: vec![-1; 65536],
+            head: [-1; 65536],
             prev: (0..ZOPFLI_WINDOW_SIZE as u16).collect(),
-            hashval: vec![-1; ZOPFLI_WINDOW_SIZE],
+            hashval: [-1; ZOPFLI_WINDOW_SIZE],
             val: 0,
         }
     }
 
     fn reset(&mut self) {
         self.val = 0;
-        self.head = vec![-1; 65536];
+        self.head = [-1; 65536];
         self.prev = (0..ZOPFLI_WINDOW_SIZE as u16).collect();
-        self.hashval = vec![-1; ZOPFLI_WINDOW_SIZE];
+        self.hashval = [-1; ZOPFLI_WINDOW_SIZE];
     }
 
     fn update(&mut self, hpos: usize) {
@@ -50,7 +50,7 @@ impl HashThing {
 pub struct ZopfliHash {
     hash1: HashThing,
     hash2: HashThing,
-    pub same: Vec<u16>,  /* Amount of repetitions of same byte after this .*/
+    pub same: [u16; ZOPFLI_WINDOW_SIZE],  /* Amount of repetitions of same byte after this .*/
 }
 
 impl ZopfliHash {
@@ -58,14 +58,14 @@ impl ZopfliHash {
         ZopfliHash {
             hash1: HashThing::new(),
             hash2: HashThing::new(),
-            same: vec![0; ZOPFLI_WINDOW_SIZE],
+            same: [0; ZOPFLI_WINDOW_SIZE],
         }
     }
 
     pub fn reset(&mut self) {
         self.hash1.reset();
         self.hash2.reset();
-        self.same = vec![0; ZOPFLI_WINDOW_SIZE];
+        self.same = [0; ZOPFLI_WINDOW_SIZE];
     }
 
     pub fn warmup(&mut self, arr: &[u8], pos: usize, end: usize) {
