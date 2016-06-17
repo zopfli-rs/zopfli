@@ -98,13 +98,12 @@ impl ZopfliHash {
         let same_index = pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK;
         let same = self.same[same_index];
         if same > 1 {
-            amount = same as i32 - 1;
+            amount = same - 1;
         }
 
-        let amount_u16 = amount as u16;
-        self.same[hpos] = amount_u16;
+        self.same[hpos] = amount;
 
-        self.hash2.val = ((amount_u16.wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
+        self.hash2.val = ((amount.wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
 
         self.hash2.update(hpos);
     }
