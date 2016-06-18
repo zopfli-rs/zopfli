@@ -9,10 +9,14 @@ pub enum Which {
     Hash2,
 }
 
+pub struct SmallerHashThing {
+    prev: u16, /* Index to index of prev. occurrence of same hash. */
+    hashval: i32, /* Index to hash value at this index. */
+}
+
 pub struct HashThing {
     head: [i32; 65536],  /* Hash value to index of its most recent occurrence. */
-    prev: Vec<u16>,  /* Index to index of prev. occurrence of same hash. */
-    hashval: [i32; ZOPFLI_WINDOW_SIZE],  /* Index to hash value at this index. */
+    prev_and_hashval: Vec<SmallerHashThing>,
     val: i32,  /* Current hash value. */
 }
 
@@ -20,8 +24,12 @@ impl HashThing {
     fn new() -> HashThing {
         HashThing {
             head: [-1; 65536],
-            prev: (0..ZOPFLI_WINDOW_SIZE as u16).collect(),
-            hashval: [-1; ZOPFLI_WINDOW_SIZE],
+            prev_and_hashval: (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
+                SmallerHashThing {
+                    prev: p,
+                    hashval: -1,
+                }
+            }).collect(),
             val: 0,
         }
     }
@@ -29,19 +37,27 @@ impl HashThing {
     fn reset(&mut self) {
         self.val = 0;
         self.head = [-1; 65536];
-        self.prev = (0..ZOPFLI_WINDOW_SIZE as u16).collect();
-        self.hashval = [-1; ZOPFLI_WINDOW_SIZE];
+        self.prev_and_hashval = (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
+            SmallerHashThing {
+                prev: p,
+                hashval: -1,
+            }
+        }).collect();
     }
 
     fn update(&mut self, hpos: usize) {
-        self.hashval[hpos] = self.val;
-
+        let hashval = self.val;
         let index = self.val as usize;
         let head_index = self.head[index];
-        self.prev[hpos] = if head_index != -1 && self.hashval[head_index as usize] == self.val {
+        let prev = if head_index != -1 && self.prev_and_hashval[head_index as usize].hashval == self.val {
             head_index as u16
         } else {
             hpos as u16
+        };
+
+        self.prev_and_hashval[hpos] = SmallerHashThing {
+            prev: prev,
+            hashval: hashval,
         };
         self.head[index] = hpos as i32;
     }
@@ -117,15 +133,15 @@ impl ZopfliHash {
 
     pub fn prev_at(&self, index: usize, which: Which) -> u16 {
         match which {
-            Which::Hash1 => self.hash1.prev[index],
-            Which::Hash2 => self.hash2.prev[index],
+            Which::Hash1 => self.hash1.prev_and_hashval[index].prev,
+            Which::Hash2 => self.hash2.prev_and_hashval[index].prev,
         }
     }
 
     pub fn hash_val_at(&self, index: usize, which: Which) -> i32 {
         match which {
-            Which::Hash1 => self.hash1.hashval[index],
-            Which::Hash2 => self.hash2.hashval[index],
+            Which::Hash1 => self.hash1.prev_and_hashval[index].hashval,
+            Which::Hash2 => self.hash2.prev_and_hashval[index].hashval,
         }
     }
 
