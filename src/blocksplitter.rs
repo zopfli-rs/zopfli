@@ -34,8 +34,9 @@ fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
         while end - start > num {
             let mut besti = 0;
             let mut best = f64::MAX;
+            let multiplier = (end - start) / (num + 1);
             for i in 0..num {
-                p[i] = start + (i + 1) * ((end - start) / (num + 1));
+                p[i] = start + (i + 1) * multiplier;
                 vp[i] = f(p[i]);
                 if vp[i] < best {
                     best = vp[i];
