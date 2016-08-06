@@ -10,8 +10,6 @@ use Options;
 fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
     where F: Fn(usize) -> f64
 {
-    let mut start = start;
-    let mut end = end;
     if end - start < 1024 {
         let mut best = f64::MAX;
         let mut result = start;
@@ -25,6 +23,8 @@ fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
         (result, best)
     } else {
         /* Try to find minimum faster by recursively checking multiple points. */
+        let mut start = start;
+        let mut end = end;
         let num = 9;  /* Good value: 9. ?!?!?!?! */
         let mut p = vec![0; num];
         let mut vp = vec![0.0; num];
