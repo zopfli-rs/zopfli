@@ -28,24 +28,18 @@ fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
         let num = 9;  /* Good value: 9. ?!?!?!?! */
         let mut p = vec![0; num];
         let mut vp = vec![0.0; num];
-        let mut besti;
-        let mut best;
         let mut lastbest = f64::MAX;
         let mut pos = start;
 
         while end - start > num {
+            let mut besti = 0;
+            let mut best = f64::MAX;
             for i in 0..num {
                 p[i] = start + (i + 1) * ((end - start) / (num + 1));
                 vp[i] = f(p[i]);
-            }
-
-            besti = 0;
-            best = vp[0];
-
-            for (i, &item) in vp.iter().enumerate().take(num).skip(1) {
-                if item < best {
-                  best = item;
-                  besti = i;
+                if vp[i] < best {
+                    best = vp[i];
+                    besti = i;
                 }
             }
             if best > lastbest {
