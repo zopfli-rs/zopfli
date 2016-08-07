@@ -387,14 +387,9 @@ fn encode_tree_no_output(ll_lengths: &[u32], d_lengths: &[u32], use_16: bool, us
 
 /// Gives the exact size of the tree, in bits, as it will be encoded in DEFLATE.
 fn calculate_tree_size(ll_lengths: &[u32], d_lengths: &[u32]) -> usize {
-    let mut result = 0;
-    for i in 0..8 {
-        let size = encode_tree_no_output(ll_lengths, d_lengths, i & 1 > 0, i & 2 > 0, i & 4 > 0);
-        if result == 0 || size < result {
-            result = size;
-        }
-    }
-    result
+    (0..8).map(|i| {
+        encode_tree_no_output(ll_lengths, d_lengths, i & 1 > 0, i & 2 > 0, i & 4 > 0)
+    }).min().unwrap_or(0)
 }
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
