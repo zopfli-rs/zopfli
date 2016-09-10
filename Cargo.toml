@@ -1,6 +1,6 @@
 [package]
 name = "zopfli"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Carol (Nichols || Goulding) <carol.nichols@gmail.com>"]
 description = "A Rust implementation of the Zopfli compression algorithm."
 license = "Apache-2.0"
