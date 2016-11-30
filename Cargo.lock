@@ -1,6 +1,6 @@
 [root]
 name = "zopfli"
-version = "0.3.0"
+version = "0.3.3"
 dependencies = [
  "adler32 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -30,3 +30,8 @@ name = "lazy_static"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
+[metadata]
+"checksum adler32 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e928aa58f6dbd754bda26eca562a242549cb606e27a2240fc305fc75a7f12af9"
+"checksum byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0fc10e8cc6b2580fda3f36eb6dc5316657f812a3df879a44a66fc9f0fdbc4855"
+"checksum crc 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "541a7a4936092a4dac8b3a1dc1abc264372e0ce1e7ab712dfe0484374f5a2b7b"
+"checksum lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "cf186d1a8aa5f5bee5fd662bc9c1b949e0259e1bcc379d1f006847b0080c7417"
