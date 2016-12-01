@@ -15,7 +15,7 @@ pub struct SmallerHashThing {
 }
 
 pub struct HashThing {
-    head: [i32; 65536],  /* Hash value to index of its most recent occurrence. */
+    head: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
     prev_and_hashval: Vec<SmallerHashThing>,
     val: i32,  /* Current hash value. */
 }
@@ -23,7 +23,7 @@ pub struct HashThing {
 impl HashThing {
     fn new() -> HashThing {
         HashThing {
-            head: [-1; 65536],
+            head: vec![-1; 65536],
             prev_and_hashval: (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
                 SmallerHashThing {
                     prev: p,
@@ -36,7 +36,8 @@ impl HashThing {
 
     fn reset(&mut self) {
         self.val = 0;
-        self.head = [-1; 65536];
+        self.head.clear();
+        self.head.resize(65536, -1);
         self.prev_and_hashval = (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
             SmallerHashThing {
                 prev: p,
