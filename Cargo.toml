@@ -1,6 +1,6 @@
 [package]
 name = "zopfli"
-version = "0.3.4"
+version = "0.3.5"
 authors = ["Carol (Nichols || Goulding) <carol.nichols@gmail.com>"]
 description = "A Rust implementation of the Zopfli compression algorithm."
 license = "Apache-2.0"
@@ -8,6 +8,7 @@ keywords = ["compression"]
 homepage = "https://github.com/carols10cents/zopfli"
 repository = "https://github.com/carols10cents/zopfli"
 readme = "README.md"
+categories = ["compression"]
 
 [dependencies]
 crc = "1.2"
