@@ -14,13 +14,13 @@ use iter::IsFinalIterator;
 /// Compresses according to the deflate specification and append the compressed
 /// result to the output.
 ///
-/// options: global program options
-/// btype: the deflate block type. Use Dynamic for best compression.
+/// `options`: global program options
+/// `btype`: the deflate block type. Use Dynamic for best compression.
 ///   - Uncompressed: non compressed blocks (00)
 ///   - Fixed: blocks with fixed tree (01)
 ///   - Dynamic: blocks with dynamic tree (10)
-/// in_data: the input bytes
-/// out: pointer to the dynamic output array to which the result is appended. Must
+/// `in_data`: the input bytes
+/// `out`: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
 pub fn deflate<W>(options: &Options, btype: BlockType, in_data: &[u8], out: W) -> io::Result<()>
     where W: Write
