@@ -66,7 +66,7 @@ impl ZopfliLongestMatchCache {
             if i == length || sublen[i] != sublen[i + 1] {
                 self.sublen[start + (j * 3)] = (i - 3) as u8;
                 self.sublen[start + (j * 3 + 1)] = sublen[i].wrapping_rem(256) as u8;
-                self.sublen[start + (j * 3 + 2)] = ((sublen[i] >> 8)).wrapping_rem(256) as u8;
+                self.sublen[start + (j * 3 + 2)] = (sublen[i] >> 8).wrapping_rem(256) as u8;
                 bestlength = i as u32;
                 j += 1;
                 if j >= ZOPFLI_CACHE_LENGTH {
