@@ -322,14 +322,14 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
         let kend = cmp::min(leng as usize, inend - i);
         let mincostaddcostj = mincost + costs[j] as f64;
 
-        for k in 3..(kend + 1) {
+        for (k, &sublength) in sublen.iter().enumerate().take((kend + 1)).skip(3) {
             // Calling the cost model is expensive, avoid this if we are already at
             // the minimum possible cost that it can return.
             if costs[j + k] as f64 <= mincostaddcostj {
                 continue;
             }
 
-            let new_cost = costmodel(k as u32, sublen[k] as u32) + costs[j] as f64;
+            let new_cost = costmodel(k as u32, sublength as u32) + costs[j] as f64;
             assert!(new_cost >= 0.0);
             if new_cost < costs[j + k] as f64 {
                 assert!(k <= ZOPFLI_MAX_MATCH);
