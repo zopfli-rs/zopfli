@@ -168,7 +168,7 @@ impl SymbolStats {
 
     /// Appends the symbol statistics from the store.
     fn get_statistics(&mut self, store: &Lz77Store) {
-        for &litlen in store.litlens.iter() {
+        for &litlen in &store.litlens {
             match litlen {
                 LitLen::Literal(lit) => self.litlens[lit as usize] += 1,
                 LitLen::LengthDist(len, dist) => {
