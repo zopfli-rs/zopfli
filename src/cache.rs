@@ -149,7 +149,7 @@ impl Cache for ZopfliLongestMatchCache {
             if sublen.is_none() || length_lmcpos as u32 <= max_sublen {
                 let length = cmp::min(length_lmcpos, limit as u16);
                 let distance;
-                if let &mut Some(ref mut subl) = sublen {
+                if let Some(ref mut subl) = *sublen {
                     self.fetch_sublen(lmcpos, length as usize, subl);
                     distance = subl[length as usize];
 
@@ -174,7 +174,7 @@ impl Cache for ZopfliLongestMatchCache {
     }
 
     fn store(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16, blockstart: usize) {
-        if let &mut Some(ref mut subl) = sublen {
+        if let Some(ref mut subl) = *sublen {
             /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
             that this cache value is not filled in yet. */
             let lmcpos = pos - blockstart;

@@ -532,7 +532,7 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
             }
 
             if currentlength > bestlength {
-                if let &mut Some(ref mut subl) = sublen {
+                if let Some(ref mut subl) = *sublen {
                     for j in (bestlength + 1)..(currentlength + 1) {
                         subl[j] = dist as u16;
                     }
