@@ -692,7 +692,7 @@ fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll
     let mut d_counts2 = d_counts.to_owned();
 
     let treesize = calculate_tree_size(&ll_lengths, &d_lengths);
-    let datasize = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, &ll_lengths, &d_lengths, lz77, lstart, lend);
+    let datasize = calculate_block_symbol_size_given_counts(ll_counts, d_counts, &ll_lengths, &d_lengths, lz77, lstart, lend);
 
     optimize_huffman_for_rle(&mut ll_counts2);
     optimize_huffman_for_rle(&mut d_counts2);
@@ -702,7 +702,7 @@ fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll
     patch_distance_codes_for_buggy_decoders(&mut d_lengths2[..]);
 
     let treesize2 = calculate_tree_size(&ll_lengths2, &d_lengths2);
-    let datasize2 = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, &ll_lengths2, &d_lengths2, lz77, lstart, lend);
+    let datasize2 = calculate_block_symbol_size_given_counts(ll_counts, d_counts, &ll_lengths2, &d_lengths2, lz77, lstart, lend);
 
     if treesize2 + datasize2 < treesize + datasize {
         (((treesize2 + datasize2) as f64), ll_lengths2, d_lengths2)
