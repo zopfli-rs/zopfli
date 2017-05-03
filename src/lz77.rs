@@ -286,9 +286,8 @@ impl Lz77Store {
         }
         let end = cmp::min(dpos + ZOPFLI_NUM_D, self.size());
         for i in (lpos + 1)..end {
-            match self.litlens[i] {
-                LitLen::LengthDist(_, _) => d[self.d_symbol[i] as usize] -= 1,
-                _ => {},
+            if let LitLen::LengthDist(_, _) = self.litlens[i] {
+                 d[self.d_symbol[i] as usize] -= 1;
             }
         }
 
@@ -304,9 +303,8 @@ impl Lz77Store {
             let mut d_counts = vec![0; ZOPFLI_NUM_D];
             for i in lstart..lend  {
                 ll_counts[self.ll_symbol[i] as usize] += 1;
-                match self.litlens[i] {
-                    LitLen::LengthDist(_, _) => d_counts[self.d_symbol[i] as usize] += 1,
-                    _ => {},
+                if let LitLen::LengthDist(_, _) = self.litlens[i] {
+                    d_counts[self.d_symbol[i] as usize] += 1;
                 }
             }
             (ll_counts, d_counts)
