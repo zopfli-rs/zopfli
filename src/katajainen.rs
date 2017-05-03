@@ -128,7 +128,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
 fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
     // We're in the lowest list, just add another leaf to the lookaheads
     // There will always be more leaves to be added on level 0 so this is safe.
-    let mut current_list = lists.get_mut(0).unwrap();
+    let mut current_list = &mut lists[0];
     let next_leaf = &leaves[current_list.next_leaf_index];
     current_list.lookahead2.weight = next_leaf.weight;
 
@@ -137,7 +137,7 @@ fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
 }
 
 fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
-    let mut current_list = lists.get_mut(current_list_index).unwrap();
+    let mut current_list = &mut lists[current_list_index];
 
     // The next leaf goes next; counting itself makes the leaf_count increase by one.
     current_list.lookahead2.weight = leaves[current_list.next_leaf_index].weight;
@@ -190,7 +190,7 @@ fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     } else {
         // We're at a list other than the lowest list.
         let weight_sum = {
-            let previous_list = lists.get(current_list_index - 1).unwrap();
+            let previous_list = &lists[current_list_index - 1];
             previous_list.lookahead1.weight + previous_list.lookahead2.weight
         };
 
