@@ -348,7 +348,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
 /// `length_array`. The `length_array` must contain the optimal length to reach that
 /// byte. The path will be filled with the lengths to use, so its data size will be
 /// the amount of lz77 symbols.
-fn trace_backwards(size: usize, length_array: Vec<u16>) -> Vec<u16> {
+fn trace_backwards(size: usize, length_array: &[u16]) -> Vec<u16> {
     let mut index = size;
     if size == 0 {
         return vec![];
@@ -386,7 +386,7 @@ fn lz77_optimal_run<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
           C: Cache,
 {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
-    let path = trace_backwards(inend - instart, length_array);
+    let path = trace_backwards(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
     assert!(cost < f64::MAX);
 }
