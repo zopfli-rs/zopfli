@@ -488,7 +488,7 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
     let mut p = h.prev_at(pp as usize, which_hash);
 
     let hpos = pos & ZOPFLI_WINDOW_MASK;
-    assert!(pp as usize == hpos);
+    assert_eq!(pp as usize, hpos);
 
     let mut dist = if (p as i32) < pp {
         pp - (p as i32)
@@ -508,8 +508,8 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
         let mut currentlength = 0;
 
         assert!((p as usize) < ZOPFLI_WINDOW_SIZE);
-        assert!(p == h.prev_at(pp as usize, which_hash));
-        assert!(h.hash_val_at(p as usize, which_hash) == h.val(which_hash));
+        assert_eq!(p, h.prev_at(pp as usize, which_hash));
+        assert_eq!(h.hash_val_at(p as usize, which_hash), h.val(which_hash));
 
         if dist > 0 {
             assert!(pos < size);
@@ -605,7 +605,7 @@ fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
         let d1 = data[pos - (dist as usize) + (i as usize)];
         let d2 = data[pos + (i as usize)];
         if d1 != d2 {
-            assert!(d1 == d2);
+            assert_eq!(d1, d2);
             break;
         }
     }

@@ -77,12 +77,12 @@ impl ZopfliLongestMatchCache {
         }
 
         if j < ZOPFLI_CACHE_LENGTH {
-            assert!(bestlength == length as u32);
+            assert_eq!(bestlength, length as u32);
             self.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] = (bestlength - 3) as u8;
         } else {
             assert!(bestlength <= length as u32);
         }
-        assert!(bestlength == self.max_sublen(pos));
+        assert_eq!(bestlength, self.max_sublen(pos));
     }
 
     /// Extracts sublen array from the cache.
@@ -154,7 +154,7 @@ impl Cache for ZopfliLongestMatchCache {
                     distance = subl[length as usize];
 
                     if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as u16 {
-                        assert!(subl[length as usize] == dist_lmcpos);
+                        assert_eq!(subl[length as usize], dist_lmcpos);
                     }
                 } else {
                     distance = dist_lmcpos;

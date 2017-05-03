@@ -122,7 +122,7 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
             pos += length;
         }
     }
-    assert!(splitpoints.len() == nlz77points);
+    assert_eq!(splitpoints.len(), nlz77points);
 
     println!("block split points: {} (hex: {})", splitpoints.iter().map(|&sp| format!("{}", sp)).collect::<Vec<_>>().join(" "), splitpoints.iter().map(|&sp| format!("{:x}", sp)).collect::<Vec<_>>().join(" "));
 }
@@ -220,5 +220,5 @@ pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usiz
             pos += length;
         }
     }
-    assert!(splitpoints.len() == nlz77points);
+    assert_eq!(splitpoints.len(), nlz77points);
 }

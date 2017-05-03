@@ -361,7 +361,7 @@ fn trace_backwards(size: usize, length_array: Vec<u16>) -> Vec<u16> {
         path.push(lai);
         assert!(laiu <= index);
         assert!(laiu <= ZOPFLI_MAX_MATCH);
-        assert!(lai != 0);
+        assert_ne!(lai, 0);
         index -= laiu;
     }
 
