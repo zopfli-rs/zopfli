@@ -687,9 +687,9 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: usize, lend: usize, btype:
 /// Tries out `OptimizeHuffmanForRle` for this block, if the result is smaller,
 /// uses it, otherwise keeps the original. Returns size of encoded tree and data in
 /// bits, not including the 3-bit block header.
-fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll_counts: Vec<usize>, d_counts: Vec<usize>, ll_lengths: Vec<u32>, d_lengths: Vec<u32>) -> (f64, Vec<u32>, Vec<u32>) {
-    let mut ll_counts2 = ll_counts.clone();
-    let mut d_counts2 = d_counts.clone();
+fn try_optimize_huffman_for_rle(lz77: &Lz77Store, lstart: usize, lend: usize, ll_counts: &[usize], d_counts: &[usize], ll_lengths: Vec<u32>, d_lengths: Vec<u32>) -> (f64, Vec<u32>, Vec<u32>) {
+    let mut ll_counts2 = ll_counts.to_owned();
+    let mut d_counts2 = d_counts.to_owned();
 
     let treesize = calculate_tree_size(&ll_lengths, &d_lengths);
     let datasize = calculate_block_symbol_size_given_counts(&ll_counts, &d_counts, &ll_lengths, &d_lengths, lz77, lstart, lend);
@@ -725,7 +725,7 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 
     patch_distance_codes_for_buggy_decoders(&mut d_lengths[..]);
 
-    try_optimize_huffman_for_rle(lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths)
+    try_optimize_huffman_for_rle(lz77, lstart, lend, &ll_counts, &d_counts, ll_lengths, d_lengths)
 }
 
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
