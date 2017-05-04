@@ -143,11 +143,7 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
                 } else {
                     cmp::max((sum + stride / 2) / stride, 1)
                 };
-                for k in 0..stride {
-                    // We don't want to change value at counts[i],
-                    // that is already belonging to the next stride. Thus - 1.
-                    counts[i - k - 1] = count;
-                }
+                set_counts_to_count(counts, count, i, stride);
             }
             stride = 0;
             sum = 0;
@@ -165,6 +161,14 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
         if i != length {
             sum += counts[i];
         }
+    }
+}
+
+fn set_counts_to_count(counts: &mut [usize], count: usize, i: usize, stride: usize) {
+    for k in 0..stride {
+        // We don't want to change value at counts[i],
+        // that is already belonging to the next stride. Thus - 1.
+        counts[i - k - 1] = count;
     }
 }
 
