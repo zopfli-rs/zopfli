@@ -999,10 +999,8 @@ impl<W> BitwiseWriter<W>
 }
 
 fn set_counts_to_count(counts: &mut [usize], count: usize, i: usize, stride: usize) {
-    for k in 0..stride {
-        // We don't want to change value at counts[i],
-        // that is already belonging to the next stride. Thus - 1.
-        counts[i - k - 1] = count;
+    for c in &mut counts[(i - stride)..i] {
+        *c = count;
     }
 }
 
