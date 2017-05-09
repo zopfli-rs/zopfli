@@ -164,14 +164,6 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
     }
 }
 
-fn set_counts_to_count(counts: &mut [usize], count: usize, i: usize, stride: usize) {
-    for k in 0..stride {
-        // We don't want to change value at counts[i],
-        // that is already belonging to the next stride. Thus - 1.
-        counts[i - k - 1] = count;
-    }
-}
-
 // Ensures there are at least 2 distance codes to support buggy decoders.
 // Zlib 1.2.1 and below have a bug where it fails if there isn't at least 1
 // distance code (with length > 0), even though it's valid according to the
@@ -1003,5 +995,33 @@ impl<W> BitwiseWriter<W>
             self.bp = 0;
         }
         Ok(())
+    }
+}
+
+fn set_counts_to_count(counts: &mut [usize], count: usize, i: usize, stride: usize) {
+    for k in 0..stride {
+        // We don't want to change value at counts[i],
+        // that is already belonging to the next stride. Thus - 1.
+        counts[i - k - 1] = count;
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_set_counts_to_count() {
+        let mut counts = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let count = 100;
+        let i = 8;
+        let stride = 5;
+
+        set_counts_to_count(&mut counts, count, i, stride);
+
+        assert_eq!(
+            counts,
+            vec![0, 1, 2, 100, 100, 100, 100, 100, 8, 9]
+        )
     }
 }
