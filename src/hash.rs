@@ -22,14 +22,16 @@ pub struct HashThing {
 
 impl HashThing {
     fn new() -> HashThing {
+        let mut prev_and_hashval = Vec::with_capacity(ZOPFLI_WINDOW_SIZE);
+        for p in 0..ZOPFLI_WINDOW_SIZE as u16 {
+            prev_and_hashval.push(SmallerHashThing {
+                prev: p,
+                hashval: -1,
+            });
+        }
         HashThing {
             head: vec![-1; 65536],
-            prev_and_hashval: (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
-                SmallerHashThing {
-                    prev: p,
-                    hashval: -1,
-                }
-            }).collect(),
+            prev_and_hashval,
             val: 0,
         }
     }
