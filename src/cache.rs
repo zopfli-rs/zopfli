@@ -77,12 +77,12 @@ impl ZopfliLongestMatchCache {
         }
 
         if j < ZOPFLI_CACHE_LENGTH {
-            assert_eq!(bestlength, length as u32);
+            debug_assert_eq!(bestlength, length as u32);
             self.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] = (bestlength - 3) as u8;
         } else {
-            assert!(bestlength <= length as u32);
+            debug_assert!(bestlength <= length as u32);
         }
-        assert_eq!(bestlength, self.max_sublen(pos));
+        debug_assert_eq!(bestlength, self.max_sublen(pos));
     }
 
     /// Extracts sublen array from the cache.
@@ -154,7 +154,7 @@ impl Cache for ZopfliLongestMatchCache {
                     distance = subl[length as usize];
 
                     if limit == ZOPFLI_MAX_MATCH && length >= ZOPFLI_MIN_MATCH as u16 {
-                        assert_eq!(subl[length as usize], dist_lmcpos);
+                        debug_assert_eq!(subl[length as usize], dist_lmcpos);
                     }
                 } else {
                     distance = dist_lmcpos;
@@ -181,7 +181,7 @@ impl Cache for ZopfliLongestMatchCache {
             let cache_available = self.length_at(lmcpos) == 0 || self.dist_at(lmcpos) != 0;
 
             if limit == ZOPFLI_MAX_MATCH && !cache_available {
-                assert!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0);
+                debug_assert!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0);
                 if length < ZOPFLI_MIN_MATCH as u16 {
                     self.store_dist_at(lmcpos, 0);
                     self.store_length_at(lmcpos, 0);
@@ -189,7 +189,7 @@ impl Cache for ZopfliLongestMatchCache {
                     self.store_dist_at(lmcpos, distance);
                     self.store_length_at(lmcpos, length);
                 }
-                assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
+                debug_assert!(!(self.length_at(lmcpos) == 1 && self.dist_at(lmcpos) == 0));
                 self.store_sublen(subl, lmcpos, length as usize);
             }
         }

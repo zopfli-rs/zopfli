@@ -182,7 +182,7 @@ impl Lz77Store {
                     verify_len_dist(arr, i - 1, dist, leng);
                     self.lit_len_dist(leng, dist, i - 1);
                     for _ in 2..leng {
-                        assert!(i < inend);
+                        debug_assert!(i < inend);
                         i += 1;
                         h.update(arr, i);
                      }
@@ -207,7 +207,7 @@ impl Lz77Store {
                 self.lit_len_dist(arr[i] as u16, 0, i);
             }
             for _ in 1..leng {
-                assert!(i < inend);
+                debug_assert!(i < inend);
                 i += 1;
                 h.update(arr, i);
             }
@@ -236,7 +236,7 @@ impl Lz77Store {
         let mut pos = instart;
         for &item in &path {
             let mut length = item;
-            assert!(pos < inend);
+            debug_assert!(pos < inend);
 
             h.update(arr, pos);
 
@@ -247,7 +247,7 @@ impl Lz77Store {
                 let longest_match = find_longest_match(s, &mut h, arr, pos, inend, length as usize, &mut None);
                 let dist = longest_match.distance;
                 let dummy_length = longest_match.length;
-                assert!(!(dummy_length != length && length > 2 && dummy_length > 2));
+                debug_assert!(!(dummy_length != length && length > 2 && dummy_length > 2));
                 verify_len_dist(arr, pos, dist, length);
                 self.lit_len_dist(length, dist, pos);
             } else {
@@ -255,7 +255,7 @@ impl Lz77Store {
                 self.lit_len_dist(arr[pos] as u16, 0, pos);
             }
 
-            assert!(pos + (length as usize) <= inend);
+            debug_assert!(pos + (length as usize) <= inend);
             for j in 1..(length as usize) {
                 h.update(arr, pos + j);
             }
@@ -441,15 +441,15 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
     if longest_match.from_cache {
-        assert!(pos + (longest_match.length as usize) <= size);
+        debug_assert!(pos + (longest_match.length as usize) <= size);
         return longest_match;
     }
 
     let mut limit = longest_match.limit;
 
-    assert!(limit <= ZOPFLI_MAX_MATCH);
-    assert!(limit >= ZOPFLI_MIN_MATCH);
-    assert!(pos < size);
+    debug_assert!(limit <= ZOPFLI_MAX_MATCH);
+    debug_assert!(limit >= ZOPFLI_MIN_MATCH);
+    debug_assert!(pos < size);
 
     if size - pos < ZOPFLI_MIN_MATCH {
         /* The rest of the code assumes there are at least ZOPFLI_MIN_MATCH bytes to
@@ -469,9 +469,9 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
 
     s.store_in_longest_match_cache(pos, limit, sublen, bestdist as u16, bestlength as u16);
 
-    assert!(bestlength <= limit);
+    debug_assert!(bestlength <= limit);
 
-    assert!(pos + bestlength <= size);
+    debug_assert!(pos + bestlength <= size);
     longest_match.distance = bestdist as u16;
     longest_match.length = bestlength as u16;
     longest_match.from_cache = false;
@@ -485,7 +485,7 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
     let mut p = h.prev_at(pp as usize, which_hash);
 
     let hpos = pos & ZOPFLI_WINDOW_MASK;
-    assert_eq!(pp as usize, hpos);
+    debug_assert_eq!(pp as usize, hpos);
 
     let mut dist = if (p as i32) < pp {
         pp - (p as i32)
@@ -504,13 +504,13 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
     while (dist as usize) < ZOPFLI_WINDOW_SIZE {
         let mut currentlength = 0;
 
-        assert!((p as usize) < ZOPFLI_WINDOW_SIZE);
-        assert_eq!(p, h.prev_at(pp as usize, which_hash));
-        assert_eq!(h.hash_val_at(p as usize, which_hash), h.val(which_hash) as i32);
+        debug_assert!((p as usize) < ZOPFLI_WINDOW_SIZE);
+        debug_assert_eq!(p, h.prev_at(pp as usize, which_hash));
+        debug_assert_eq!(h.hash_val_at(p as usize, which_hash), h.val(which_hash) as i32);
 
         if dist > 0 {
-            assert!(pos < size);
-            assert!((dist as usize) <= pos);
+            debug_assert!(pos < size);
+            debug_assert!((dist as usize) <= pos);
             scan_offset = pos;
             match_offset = pos - (dist as usize);
 
@@ -604,7 +604,7 @@ fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
         let d1 = data[pos - (dist as usize) + (i as usize)];
         let d2 = data[pos + (i as usize)];
         if d1 != d2 {
-            assert_eq!(d1, d2);
+            debug_assert_eq!(d1, d2);
             break;
         }
     }

@@ -200,16 +200,16 @@ fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut[u32]) {
 fn calculate_block_symbol_size_small(ll_lengths: &[u32], d_lengths: &[u32], lz77: &Lz77Store, lstart: usize, lend: usize) -> usize {
     let mut result = 0;
 
-    assert!(lend - 1 < lz77.size());
+    debug_assert!(lend - 1 < lz77.size());
 
     for &item in &lz77.litlens[lstart..lend] {
         match item {
             LitLen::Literal(litlens_i) => {
-                assert!(litlens_i < 259);
+                debug_assert!(litlens_i < 259);
                 result += ll_lengths[litlens_i as usize]
             },
             LitLen::LengthDist(litlens_i, dists_i) => {
-                assert!(litlens_i < 259);
+                debug_assert!(litlens_i < 259);
                 let ll_symbol = get_length_symbol(litlens_i as usize);
                 let d_symbol = get_dist_symbol(dists_i as i32);
                 result += ll_lengths[ll_symbol as usize];
@@ -736,8 +736,8 @@ fn add_lz77_data<W>(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_
         match item {
             LitLen::Literal(lit) => {
                 let litlen = lit as usize;
-                assert!(litlen < 256);
-                assert!(ll_lengths[litlen] > 0);
+                debug_assert!(litlen < 256);
+                debug_assert!(ll_lengths[litlen] > 0);
                 try!(bitwise_writer.add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen]));
                 testlength += 1;
             },
@@ -745,9 +745,9 @@ fn add_lz77_data<W>(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_
                 let litlen = len as usize;
                 let lls = get_length_symbol(litlen) as u32;
                 let ds = get_dist_symbol(dist as i32) as u32;
-                assert!(litlen >= 3 && litlen <= 288);
-                assert!(ll_lengths[lls as usize] > 0);
-                assert!(d_lengths[ds as usize] > 0);
+                debug_assert!(litlen >= 3 && litlen <= 288);
+                debug_assert!(ll_lengths[lls as usize] > 0);
+                debug_assert!(d_lengths[ds as usize] > 0);
                 try!(bitwise_writer.add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize]));
                 try!(bitwise_writer.add_bits(get_length_extra_bits_value(litlen as i32) as u32, get_length_extra_bits(litlen) as u32));
                 try!(bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize]));
@@ -756,7 +756,7 @@ fn add_lz77_data<W>(lz77: &Lz77Store, lstart: usize, lend: usize, expected_data_
             },
         }
     }
-    assert!(expected_data_size == 0 || testlength == expected_data_size);
+    debug_assert!(expected_data_size == 0 || testlength == expected_data_size);
     Ok(())
 }
 
@@ -849,7 +849,7 @@ fn blocksplit_attempt<W>(options: &Options, final_block: bool, in_data: &[u8], i
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);
-        assert!(store.size() > 0);
+        debug_assert!(store.size() > 0);
         for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
             lz77.append_store_item(litlens, pos);
         }
@@ -865,7 +865,7 @@ fn blocksplit_attempt<W>(options: &Options, final_block: bool, in_data: &[u8], i
     totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
     // ZopfliAppendLZ77Store(&store, &lz77);
-    assert!(store.size() > 0);
+    debug_assert!(store.size() > 0);
     for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
         lz77.append_store_item(litlens, pos);
     }

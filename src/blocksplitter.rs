@@ -122,7 +122,7 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
             pos += length;
         }
     }
-    assert_eq!(splitpoints.len(), nlz77points);
+    debug_assert_eq!(splitpoints.len(), nlz77points);
 
     println!("block split points: {} (hex: {})", splitpoints.iter().map(|&sp| format!("{}", sp)).collect::<Vec<_>>().join(" "), splitpoints.iter().map(|&sp| format!("{:x}", sp)).collect::<Vec<_>>().join(" "));
 }
@@ -141,15 +141,15 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
     let mut lend = lz77.size();
 
     while maxblocks != 0 && numblocks < maxblocks {
-        assert!(lstart < lend);
+        debug_assert!(lstart < lend);
         let find_minimum_result = find_minimum(|i|
             estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend
         );
         let llpos = find_minimum_result.0;
         let splitcost = find_minimum_result.1;
 
-        assert!(llpos > lstart);
-        assert!(llpos < lend);
+        debug_assert!(llpos > lstart);
+        debug_assert!(llpos < lend);
 
         let origcost = estimate_cost(lz77, lstart, lend);
 
@@ -220,5 +220,5 @@ pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usiz
             pos += length;
         }
     }
-    assert_eq!(splitpoints.len(), nlz77points);
+    debug_assert_eq!(splitpoints.len(), nlz77points);
 }

@@ -158,7 +158,7 @@ impl SymbolStats {
                 if bitlengths[i] < 0.0 && bitlengths[i] > -1E-5 {
                     bitlengths[i] = 0.0;
                 }
-                assert!(bitlengths[i] >= 0.0);
+                debug_assert!(bitlengths[i] >= 0.0);
             }
         }
 
@@ -312,7 +312,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
         // Literal.
         if i + 1 <= inend {
             let new_cost = costmodel(arr[i] as u32, 0) + costs[j] as f64;
-            assert!(new_cost >= 0.0);
+            debug_assert!(new_cost >= 0.0);
             if new_cost < costs[j + 1] as f64 {
                 costs[j + 1] = new_cost as f32;
                 length_array[j + 1] = 1;
@@ -330,9 +330,9 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
             }
 
             let new_cost = costmodel(k as u32, sublength as u32) + costs[j] as f64;
-            assert!(new_cost >= 0.0);
+            debug_assert!(new_cost >= 0.0);
             if new_cost < costs[j + k] as f64 {
-                assert!(k <= ZOPFLI_MAX_MATCH);
+                debug_assert!(k <= ZOPFLI_MAX_MATCH);
                 costs[j + k] = new_cost as f32;
                 length_array[j + k] = k as u16;
             }
@@ -340,7 +340,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
         i += 1;
     }
 
-    assert!(costs[blocksize] >= 0.0);
+    debug_assert!(costs[blocksize] >= 0.0);
     (costs[blocksize] as f64, length_array)
 }
 
@@ -359,9 +359,9 @@ fn trace_backwards(size: usize, length_array: &[u16]) -> Vec<u16> {
         let lai = length_array[index];
         let laiu = lai as usize;
         path.push(lai);
-        assert!(laiu <= index);
-        assert!(laiu <= ZOPFLI_MAX_MATCH);
-        assert_ne!(lai, 0);
+        debug_assert!(laiu <= index);
+        debug_assert!(laiu <= ZOPFLI_MAX_MATCH);
+        debug_assert_ne!(lai, 0);
         index -= laiu;
     }
 
@@ -388,7 +388,7 @@ fn lz77_optimal_run<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace_backwards(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
-    assert!(cost < f64::MAX);
+    debug_assert!(cost < f64::MAX);
 }
 
 
