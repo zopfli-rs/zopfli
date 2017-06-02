@@ -481,7 +481,6 @@ pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, ar
 
 fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: &mut Option<&mut [u16]>) -> (i32, usize) {
     let mut which_hash = Which::Hash1;
-    assert!(h.val(which_hash) < 65536);
     let mut pp = h.head_at(h.val(which_hash) as usize, which_hash);  /* During the whole loop, p == hprev[pp]. */
     let mut p = h.prev_at(pp as usize, which_hash);
 
@@ -507,7 +506,7 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
 
         assert!((p as usize) < ZOPFLI_WINDOW_SIZE);
         assert_eq!(p, h.prev_at(pp as usize, which_hash));
-        assert_eq!(h.hash_val_at(p as usize, which_hash), h.val(which_hash));
+        assert_eq!(h.hash_val_at(p as usize, which_hash), h.val(which_hash) as i32);
 
         if dist > 0 {
             assert!(pos < size);
@@ -544,7 +543,9 @@ fn find_longest_match_loop(h: &mut ZopfliHash, array: &[u8], pos: usize, size: u
         }
 
         /* Switch to the other hash once this will be more efficient. */
-        if which_hash == Which::Hash1 && bestlength >= h.same[hpos] as usize && h.val(Which::Hash2) == h.hash_val_at(p as usize, Which::Hash2) {
+        if which_hash == Which::Hash1 &&
+            bestlength >= h.same[hpos] as usize &&
+            h.val(Which::Hash2) as i32 == h.hash_val_at(p as usize, Which::Hash2) {
             /* Now use the hash that encodes the length and first byte. */
             which_hash = Which::Hash2;
         }

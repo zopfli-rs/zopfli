@@ -1,7 +1,7 @@
 use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_SIZE};
 
 const HASH_SHIFT: i32 = 5;
-const HASH_MASK: i32 = 32767;
+const HASH_MASK: u16 = 32767;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Which {
@@ -11,13 +11,13 @@ pub enum Which {
 
 pub struct SmallerHashThing {
     prev: u16, /* Index to index of prev. occurrence of same hash. */
-    hashval: i32, /* Index to hash value at this index. */
+    hashval: Option<u16>, /* Index to hash value at this index. */
 }
 
 pub struct HashThing {
     head: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
     prev_and_hashval: Vec<SmallerHashThing>,
-    val: i32,  /* Current hash value. */
+    val: u16,  /* Current hash value. */
 }
 
 impl HashThing {
@@ -26,7 +26,7 @@ impl HashThing {
         for p in 0..ZOPFLI_WINDOW_SIZE as u16 {
             prev_and_hashval.push(SmallerHashThing {
                 prev: p,
-                hashval: -1,
+                hashval: None,
             });
         }
         HashThing {
@@ -43,7 +43,7 @@ impl HashThing {
         self.prev_and_hashval = (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
             SmallerHashThing {
                 prev: p,
-                hashval: -1,
+                hashval: None,
             }
         }).collect();
     }
@@ -52,7 +52,8 @@ impl HashThing {
         let hashval = self.val;
         let index = self.val as usize;
         let head_index = self.head[index];
-        let prev = if head_index != -1 && self.prev_and_hashval[head_index as usize].hashval == self.val {
+        let prev = if head_index != -1 &&
+            self.prev_and_hashval[head_index as usize].hashval.map_or(false, |hv| hv == self.val) {
             head_index as u16
         } else {
             hpos as u16
@@ -60,7 +61,7 @@ impl HashThing {
 
         self.prev_and_hashval[hpos] = SmallerHashThing {
             prev: prev,
-            hashval: hashval,
+            hashval: Some(hashval),
         };
         self.head[index] = hpos as i32;
     }
@@ -101,7 +102,7 @@ impl ZopfliHash {
     /// must be made on consecutive input characters. Since the hash value exists out
     /// of multiple input bytes, a few warmups with this function are needed initially.
     fn update_val(&mut self, c: u8) {
-        self.hash1.val = ((self.hash1.val << HASH_SHIFT) ^ c as i32) & HASH_MASK;
+        self.hash1.val = ((self.hash1.val << HASH_SHIFT) ^ c as u16) & HASH_MASK;
     }
 
     pub fn update(&mut self, array: &[u8], pos: usize) {
@@ -122,7 +123,7 @@ impl ZopfliHash {
 
         self.same[hpos] = amount;
 
-        self.hash2.val = ((amount.wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val as u16) as i32;
+        self.hash2.val = (amount.wrapping_sub(ZOPFLI_MIN_MATCH as u16) & 255) ^ self.hash1.val;
 
         self.hash2.update(hpos);
     }
@@ -142,13 +143,14 @@ impl ZopfliHash {
     }
 
     pub fn hash_val_at(&self, index: usize, which: Which) -> i32 {
-        match which {
+        let hashval = match which {
             Which::Hash1 => self.hash1.prev_and_hashval[index].hashval,
             Which::Hash2 => self.hash2.prev_and_hashval[index].hashval,
-        }
+        };
+        hashval.map_or(-1, |hv| hv as i32)
     }
 
-    pub fn val(&self, which: Which) -> i32 {
+    pub fn val(&self, which: Which) -> u16 {
         match which {
             Which::Hash1 => self.hash1.val,
             Which::Hash2 => self.hash2.val,
