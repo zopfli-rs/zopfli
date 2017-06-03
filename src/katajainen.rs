@@ -55,14 +55,13 @@ struct List {
 /// symbol.
 pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u32> {
     let num_freqs = frequencies.len();
-    let mut leaves = Vec::with_capacity(num_freqs);
 
     // Count used symbols and place them in the leaves.
-    for (i, &freq) in frequencies.iter().enumerate() {
-        if freq != 0 {
-            leaves.push(Leaf { weight: freq, index: i });
-        }
-    }
+    let mut leaves: Vec<_> = frequencies.iter()
+        .enumerate()
+        .filter(|&(_, &freq)| freq != 0)
+        .map(|(i, &freq)| Leaf { weight: freq, index: i })
+        .collect();
 
     // Short circuit some special cases
     if leaves.is_empty() {
