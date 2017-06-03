@@ -81,14 +81,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
     }
 
     // Sort the leaves from least frequent to most frequent.
-    // Add index into the same variable for stable sorting.
-    for leaf in &mut leaves {
-        leaf.weight = (leaf.weight << 9) | leaf.index;
-    }
     leaves.sort();
-    for leaf in &mut leaves {
-        leaf.weight >>= 9;
-    }
 
     let max_num_leaves = 2 * leaves.len() - 2;
 
