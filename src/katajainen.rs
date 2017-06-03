@@ -54,6 +54,7 @@ struct List {
 /// Calculates the bitlengths for the Huffman tree, based on the counts of each
 /// symbol.
 pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u32> {
+    let num_freqs = frequencies.len();
     let mut leaves = vec![];
 
     // Count used symbols and place them in the leaves.
@@ -66,15 +67,15 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
     // Short circuit some special cases
     if leaves.is_empty() {
         // There are no non-zero frequencies.
-        return vec![0; frequencies.len()];
+        return vec![0; num_freqs];
     }
     if leaves.len() == 1 {
-        let mut result = vec![0; frequencies.len()];
+        let mut result = vec![0; num_freqs];
         result[leaves[0].index] = 1;
         return result;
     }
     if leaves.len() == 2 {
-        let mut result = vec![0; frequencies.len()];
+        let mut result = vec![0; num_freqs];
         result[leaves[0].index] = 1;
         result[leaves[1].index] = 1;
         return result;
@@ -108,7 +109,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
         boundary_pm_toplevel(&mut lists[..], &leaves);
     }
 
-    let n = frequencies.len();
+    let n = num_freqs;
     let mut result = vec![0; n];
 
     let mut a = lists.pop().unwrap().lookahead2.leaf_counts.into_iter().rev().peekable();
