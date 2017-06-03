@@ -5,7 +5,7 @@ use std::{mem};
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     weight: usize,
     leaf_counts: Vec<usize>,
@@ -44,7 +44,7 @@ impl PartialOrd for Leaf {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct List {
     lookahead1: Node,
     lookahead2: Node,
@@ -84,15 +84,14 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
     leaves.sort();
 
     let max_num_leaves = 2 * leaves.len() - 2;
-
-    let mut lists = Vec::with_capacity(maxbits as usize);
-    for _ in 0..maxbits {
-        lists.push(List {
+    let mut lists = vec![
+        List {
             lookahead1: Node::new(leaves[0].weight, 1, max_num_leaves),
             lookahead2: Node::new(leaves[1].weight, 2, max_num_leaves),
             next_leaf_index: 2,
-        });
-    }
+        };
+        maxbits as usize
+    ];
 
     // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
     // are already created in the initialization. Each boundary_pm run creates one.
