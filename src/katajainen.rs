@@ -46,8 +46,8 @@ impl PartialOrd for Leaf {
 
 #[derive(Debug, Clone)]
 struct List {
+    lookahead0: Node,
     lookahead1: Node,
-    lookahead2: Node,
     next_leaf_index: usize,
 }
 
@@ -100,8 +100,8 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let max_num_leaves = 2 * num_symbols - 2;
     let mut lists = vec![
         List {
-            lookahead1: Node::new(leaves[0].weight, 1, max_num_leaves),
-            lookahead2: Node::new(leaves[1].weight, 2, max_num_leaves),
+            lookahead0: Node::new(leaves[0].weight, 1, max_num_leaves),
+            lookahead1: Node::new(leaves[1].weight, 2, max_num_leaves),
             next_leaf_index: 2,
         };
         max_bits
@@ -114,7 +114,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         boundary_pm_toplevel(&mut lists[..], &leaves);
     }
 
-    let mut a = lists.pop().unwrap().lookahead2.leaf_counts.into_iter().rev().peekable();
+    let mut a = lists.pop().unwrap().lookahead1.leaf_counts.into_iter().rev().peekable();
 
     let mut bitlength_value = 1;
     while let Some(leaf_count) = a.next() {
@@ -133,9 +133,9 @@ fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
     // There will always be more leaves to be added on level 0 so this is safe.
     let mut current_list = &mut lists[0];
     let next_leaf = &leaves[current_list.next_leaf_index];
-    current_list.lookahead2.weight = next_leaf.weight;
+    current_list.lookahead1.weight = next_leaf.weight;
 
-    current_list.lookahead2.leaf_counts[0] = current_list.lookahead1.leaf_counts.last().unwrap() + 1;
+    current_list.lookahead1.leaf_counts[0] = current_list.lookahead0.leaf_counts.last().unwrap() + 1;
     current_list.next_leaf_index += 1;
 }
 
@@ -143,11 +143,11 @@ fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     let mut current_list = &mut lists[current_list_index];
 
     // The next leaf goes next; counting itself makes the leaf_count increase by one.
-    current_list.lookahead2.weight = leaves[current_list.next_leaf_index].weight;
-    current_list.lookahead2.leaf_counts.clear();
-    current_list.lookahead2.leaf_counts.extend_from_slice(&current_list.lookahead1.leaf_counts);
-    let last_index = current_list.lookahead2.leaf_counts.len() - 1;
-    current_list.lookahead2.leaf_counts[last_index] += 1;
+    current_list.lookahead1.weight = leaves[current_list.next_leaf_index].weight;
+    current_list.lookahead1.leaf_counts.clear();
+    current_list.lookahead1.leaf_counts.extend_from_slice(&current_list.lookahead0.leaf_counts);
+    let last_index = current_list.lookahead1.leaf_counts.len() - 1;
+    current_list.lookahead1.leaf_counts[last_index] += 1;
     current_list.next_leaf_index += 1;
 }
 
@@ -157,15 +157,15 @@ fn next_tree(weight_sum: usize, lists: &mut [List], leaves: &[Leaf], current_lis
         let prev_list = head.last_mut().unwrap();
         let current_list = tail.first_mut().unwrap();
 
-        let previous_list_leaf_counts = &prev_list.lookahead2.leaf_counts;
+        let previous_list_leaf_counts = &prev_list.lookahead1.leaf_counts;
 
         // Make a tree from the lookaheads from the previous list; that goes next.
         // This is not a leaf node, so the leaf count stays the same.
-        current_list.lookahead2.weight = weight_sum;
-        current_list.lookahead2.leaf_counts.clear();
+        current_list.lookahead1.weight = weight_sum;
+        current_list.lookahead1.leaf_counts.clear();
 
-        current_list.lookahead2.leaf_counts.extend_from_slice(previous_list_leaf_counts);
-        current_list.lookahead2.leaf_counts.push(*current_list.lookahead1.leaf_counts.last().unwrap());
+        current_list.lookahead1.leaf_counts.extend_from_slice(previous_list_leaf_counts);
+        current_list.lookahead1.leaf_counts.push(*current_list.lookahead0.leaf_counts.last().unwrap());
     }
 
     // The previous list needs two new lookahead nodes.
@@ -187,7 +187,7 @@ fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
         return;
     }
 
-    mem::swap(&mut lists[current_list_index].lookahead1, &mut lists[current_list_index].lookahead2);
+    mem::swap(&mut lists[current_list_index].lookahead0, &mut lists[current_list_index].lookahead1);
 
     if current_list_index == 0 {
         lowest_list(lists, leaves);
@@ -195,7 +195,7 @@ fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
         // We're at a list other than the lowest list.
         let weight_sum = {
             let previous_list = &lists[current_list_index - 1];
-            previous_list.lookahead1.weight + previous_list.lookahead2.weight
+            previous_list.lookahead0.weight + previous_list.lookahead1.weight
         };
 
         if next_leaf_index < num_symbols && weight_sum > leaves[next_leaf_index].weight {
