@@ -67,6 +67,13 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let num_symbols = leaves.len();
 
     // Short circuit some special cases
+
+    // TODO:
+    // if ((1 << maxbits) < numsymbols) {
+    //   free(leaves);
+    //   return 1;  /* Error, too few maxbits to represent symbols. */
+    // }
+
     if num_symbols == 0 {
         // There are no non-zero frequencies.
         return result;
