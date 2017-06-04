@@ -53,7 +53,7 @@ struct List {
 
 /// Calculates the bitlengths for the Huffman tree, based on the counts of each
 /// symbol.
-pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u32> {
+pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: i32) -> Vec<u32> {
     let num_freqs = frequencies.len();
     let mut result = vec![0; num_freqs];
 
@@ -89,7 +89,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], maxbits: i32) -> Vec<u
             lookahead2: Node::new(leaves[1].weight, 2, max_num_leaves),
             next_leaf_index: 2,
         };
-        maxbits as usize
+        max_bits as usize
     ];
 
     // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
@@ -211,7 +211,7 @@ mod test {
     }
 
     #[test]
-    fn maxbits_7() {
+    fn max_bits_7() {
         let input = [252, 0, 1, 6, 9, 10, 6, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let output = length_limited_code_lengths(&input, 7);
         let answer = vec![1, 0, 6, 4, 3, 3, 3, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -219,7 +219,7 @@ mod test {
     }
 
     #[test]
-    fn maxbits_15() {
+    fn max_bits_15() {
         let input = [0, 0, 0, 0, 0, 0, 18, 0, 6, 0, 12, 2, 14, 9, 27, 15, 23, 15, 17, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let output = length_limited_code_lengths(&input, 15);
         let answer = vec! [0, 0, 0, 0, 0, 0, 3, 0, 5, 0, 4, 6, 4, 4, 3, 4, 3, 3, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
