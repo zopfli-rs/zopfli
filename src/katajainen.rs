@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::cmp::Ordering;
 
 use typed_arena::Arena;
@@ -16,7 +17,7 @@ struct Thing<'a> {
 struct Node<'a> {
     weight: usize,
     count: usize,
-    tail: Option<&'a Node<'a>>,
+    tail: Cell<Option<&'a Node<'a>>>,
 }
 
 #[derive(Debug)]
@@ -99,13 +100,13 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let node0 = node_arena.alloc(Node {
         weight: leaves[0].weight,
         count: 1,
-        tail: None,
+        tail: Cell::new(None),
     });
 
     let node1 = node_arena.alloc(Node {
         weight: leaves[1].weight,
         count: 2,
-        tail: None,
+        tail: Cell::new(None),
     });
 
     let lists: Vec<List> = vec![
@@ -162,7 +163,7 @@ impl<'a> Thing<'a> {
             let new_chain = self.node_arena.alloc(Node {
                weight: self.leaves[last_count].weight,
                count: last_count + 1,
-               tail: self.lists[index].lookahead0.tail,
+               tail: self.lists[index].lookahead0.tail.clone(),
             });
             self.lists[index].lookahead1 = new_chain;
         } else {
@@ -176,14 +177,14 @@ impl<'a> Thing<'a> {
                 let new_chain = self.node_arena.alloc(Node {
                    weight: self.leaves[last_count].weight,
                    count: last_count + 1,
-                   tail: self.lists[index].lookahead0.tail,
+                   tail: self.lists[index].lookahead0.tail.clone(),
                 });
                 self.lists[index].lookahead1 = new_chain;
             } else {
                 let new_chain = self.node_arena.alloc(Node {
                    weight: weight_sum,
                    count: last_count,
-                   tail: Some(self.lists[index - 1].lookahead1),
+                   tail: Cell::new(Some(self.lists[index - 1].lookahead1)),
                 });
                 self.lists[index].lookahead1 = new_chain;
 
@@ -209,12 +210,11 @@ impl<'a> Thing<'a> {
             let new_chain = self.node_arena.alloc(Node {
                weight: 0,
                count: last_count + 1,
-               tail: self.lists[index].lookahead1.tail,
+               tail: self.lists[index].lookahead1.tail.clone(),
             });
             self.lists[index].lookahead1 = new_chain;
         } else {
-            // ???
-            self.lists[index].lookahead1.tail = Some(self.lists[index - 1].lookahead1);
+            self.lists[index].lookahead1.tail.set(Some(self.lists[index - 1].lookahead1));
         }
     }
 }
