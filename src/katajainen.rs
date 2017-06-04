@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 use std::{mem};
 
+use typed_arena::Arena;
+
 // Bounded package merge algorithm, based on the paper
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
@@ -97,33 +99,36 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         max_bits
     };
 
-    let max_num_leaves = 2 * num_symbols - 2;
-    let mut lists = vec![
-        List {
-            lookahead0: Node::new(leaves[0].weight, 1, max_num_leaves),
-            lookahead1: Node::new(leaves[1].weight, 2, max_num_leaves),
-            next_leaf_index: 2,
-        };
-        max_bits
-    ];
+    let arena_capacity = max_bits * 2 * num_symbols;
+    let node_arena: Arena<Node> = Arena::with_capacity(arena_capacity);
 
-    // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
-    // are already created in the initialization. Each boundary_pm run creates one.
-    let num_boundary_pm_runs = max_num_leaves - 2;
-    for _ in 0..num_boundary_pm_runs {
-        boundary_pm_toplevel(&mut lists[..], &leaves);
-    }
-
-    let mut a = lists.pop().unwrap().lookahead1.leaf_counts.into_iter().rev().peekable();
-
-    let mut bitlength_value = 1;
-    while let Some(leaf_count) = a.next() {
-        let next_count = *a.peek().unwrap_or(&0);
-        for leaf in &leaves[next_count..leaf_count] {
-            bit_lengths[leaf.count] = bitlength_value;
-        }
-        bitlength_value += 1;
-    }
+    // let max_num_leaves = 2 * num_symbols - 2;
+    // let mut lists = vec![
+    //     List {
+    //         lookahead0: Node::new(leaves[0].weight, 1, max_num_leaves),
+    //         lookahead1: Node::new(leaves[1].weight, 2, max_num_leaves),
+    //         next_leaf_index: 2,
+    //     };
+    //     max_bits
+    // ];
+    //
+    // // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
+    // // are already created in the initialization. Each boundary_pm run creates one.
+    // let num_boundary_pm_runs = max_num_leaves - 2;
+    // for _ in 0..num_boundary_pm_runs {
+    //     boundary_pm_toplevel(&mut lists[..], &leaves);
+    // }
+    //
+    // let mut a = lists.pop().unwrap().lookahead1.leaf_counts.into_iter().rev().peekable();
+    //
+    // let mut bitlength_value = 1;
+    // while let Some(leaf_count) = a.next() {
+    //     let next_count = *a.peek().unwrap_or(&0);
+    //     for leaf in &leaves[next_count..leaf_count] {
+    //         bit_lengths[leaf.count] = bitlength_value;
+    //     }
+    //     bitlength_value += 1;
+    // }
 
     bit_lengths
 }

@@ -14,6 +14,7 @@ categories = ["compression"]
 crc = "1.2"
 adler32 = "0.2"
 byteorder = "0.5.3"
+typed-arena = "1.3.0"
 
 [profile.release]
 debug = true
