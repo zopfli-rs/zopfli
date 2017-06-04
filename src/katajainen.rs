@@ -64,16 +64,18 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         .map(|(i, &freq)| Leaf { weight: freq, index: i })
         .collect();
 
+    let num_symbols = leaves.len();
+
     // Short circuit some special cases
-    if leaves.is_empty() {
+    if num_symbols == 0 {
         // There are no non-zero frequencies.
         return result;
     }
-    if leaves.len() == 1 {
+    if num_symbols == 1 {
         result[leaves[0].index] = 1;
         return result;
     }
-    if leaves.len() == 2 {
+    if num_symbols == 2 {
         result[leaves[0].index] = 1;
         result[leaves[1].index] = 1;
         return result;
@@ -82,7 +84,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     // Sort the leaves from least frequent to most frequent.
     leaves.sort();
 
-    let max_num_leaves = 2 * leaves.len() - 2;
+    let max_num_leaves = 2 * num_symbols - 2;
     let mut lists = vec![
         List {
             lookahead1: Node::new(leaves[0].weight, 1, max_num_leaves),
@@ -165,8 +167,9 @@ fn boundary_pm_toplevel(lists: &mut [List], leaves: &[Leaf]) {
 
 fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
     let next_leaf_index = lists[current_list_index].next_leaf_index;
+    let num_symbols = leaves.len();
 
-    if current_list_index == 0 && next_leaf_index == leaves.len() {
+    if current_list_index == 0 && next_leaf_index == num_symbols {
         // We've added all the leaves to the lowest list, so we're done here
         return;
     }
@@ -182,7 +185,7 @@ fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
             previous_list.lookahead1.weight + previous_list.lookahead2.weight
         };
 
-        if next_leaf_index < leaves.len() && weight_sum > leaves[next_leaf_index].weight {
+        if next_leaf_index < num_symbols && weight_sum > leaves[next_leaf_index].weight {
             next_leaf(lists, leaves, current_list_index);
         } else {
             next_tree(weight_sum, lists, leaves, current_list_index);
