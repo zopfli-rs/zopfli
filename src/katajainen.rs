@@ -214,6 +214,7 @@ impl<'a> Thing<'a> {
             self.lists[index].lookahead1 = new_chain;
         } else {
             // ???
+            self.lists[index].lookahead1.tail = Some(self.lists[index - 1].lookahead1);
         }
     }
 }
