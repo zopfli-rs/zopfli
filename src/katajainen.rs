@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::{mem};
+// use std::{mem};
 
 use typed_arena::Arena;
 
@@ -7,21 +7,11 @@ use typed_arena::Arena;
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
-#[derive(Debug, Clone)]
-struct Node {
+#[derive(Debug)]
+struct Node<'a> {
     weight: usize,
-    leaf_counts: Vec<usize>,
-}
-
-impl Node {
-    fn new(weight: usize, initial_count: usize, capacity: usize) -> Node {
-        let mut n = Node {
-            weight: weight,
-            leaf_counts: Vec::with_capacity(capacity),
-        };
-        n.leaf_counts.push(initial_count);
-        n
-    }
+    count: usize,
+    tail: Option<&'a mut Node<'a>>,
 }
 
 #[derive(Debug)]
@@ -47,10 +37,9 @@ impl PartialOrd for Leaf {
 }
 
 #[derive(Debug, Clone)]
-struct List {
-    lookahead0: Node,
-    lookahead1: Node,
-    next_leaf_index: usize,
+struct List<'a> {
+    lookahead0: &'a Node<'a>,
+    lookahead1: &'a Node<'a>,
 }
 
 /// Calculates the bitlengths for the Huffman tree, based on the counts of each
@@ -102,6 +91,26 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let arena_capacity = max_bits * 2 * num_symbols;
     let node_arena: Arena<Node> = Arena::with_capacity(arena_capacity);
 
+    let node0 = node_arena.alloc(Node {
+        weight: leaves[0].weight,
+        count: 1,
+        tail: None,
+    });
+
+    let node1 = node_arena.alloc(Node {
+        weight: leaves[1].weight,
+        count: 2,
+        tail: None,
+    });
+
+    let mut lists: Vec<List> = vec![
+        List {
+            lookahead0: node0,
+            lookahead1: node1,
+        };
+        max_bits
+    ];
+
     // let max_num_leaves = 2 * num_symbols - 2;
     // let mut lists = vec![
     //     List {
@@ -133,83 +142,83 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     bit_lengths
 }
 
-fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
-    // We're in the lowest list, just add another leaf to the lookaheads
-    // There will always be more leaves to be added on level 0 so this is safe.
-    let mut current_list = &mut lists[0];
-    let next_leaf = &leaves[current_list.next_leaf_index];
-    current_list.lookahead1.weight = next_leaf.weight;
+// fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
+//     // We're in the lowest list, just add another leaf to the lookaheads
+//     // There will always be more leaves to be added on level 0 so this is safe.
+//     let mut current_list = &mut lists[0];
+//     let next_leaf = &leaves[current_list.next_leaf_index];
+//     current_list.lookahead1.weight = next_leaf.weight;
+//
+//     current_list.lookahead1.leaf_counts[0] = current_list.lookahead0.leaf_counts.last().unwrap() + 1;
+//     current_list.next_leaf_index += 1;
+// }
 
-    current_list.lookahead1.leaf_counts[0] = current_list.lookahead0.leaf_counts.last().unwrap() + 1;
-    current_list.next_leaf_index += 1;
-}
+// fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
+//     let mut current_list = &mut lists[current_list_index];
+//
+//     // The next leaf goes next; counting itself makes the leaf_count increase by one.
+//     current_list.lookahead1.weight = leaves[current_list.next_leaf_index].weight;
+//     current_list.lookahead1.leaf_counts.clear();
+//     current_list.lookahead1.leaf_counts.extend_from_slice(&current_list.lookahead0.leaf_counts);
+//     let last_index = current_list.lookahead1.leaf_counts.len() - 1;
+//     current_list.lookahead1.leaf_counts[last_index] += 1;
+//     current_list.next_leaf_index += 1;
+// }
 
-fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
-    let mut current_list = &mut lists[current_list_index];
+// fn next_tree(weight_sum: usize, lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
+//     {
+//         let (head, tail) = lists.split_at_mut(current_list_index);
+//         let prev_list = head.last_mut().unwrap();
+//         let current_list = tail.first_mut().unwrap();
+//
+//         let previous_list_leaf_counts = &prev_list.lookahead1.leaf_counts;
+//
+//         // Make a tree from the lookaheads from the previous list; that goes next.
+//         // This is not a leaf node, so the leaf count stays the same.
+//         current_list.lookahead1.weight = weight_sum;
+//         current_list.lookahead1.leaf_counts.clear();
+//
+//         current_list.lookahead1.leaf_counts.extend_from_slice(previous_list_leaf_counts);
+//         current_list.lookahead1.leaf_counts.push(*current_list.lookahead0.leaf_counts.last().unwrap());
+//     }
+//
+//     // The previous list needs two new lookahead nodes.
+//     boundary_pm(lists, leaves, current_list_index - 1);
+//     boundary_pm(lists, leaves, current_list_index - 1);
+// }
 
-    // The next leaf goes next; counting itself makes the leaf_count increase by one.
-    current_list.lookahead1.weight = leaves[current_list.next_leaf_index].weight;
-    current_list.lookahead1.leaf_counts.clear();
-    current_list.lookahead1.leaf_counts.extend_from_slice(&current_list.lookahead0.leaf_counts);
-    let last_index = current_list.lookahead1.leaf_counts.len() - 1;
-    current_list.lookahead1.leaf_counts[last_index] += 1;
-    current_list.next_leaf_index += 1;
-}
+// fn boundary_pm_toplevel(lists: &mut [List], leaves: &[Leaf]) {
+//     let last_index = lists.len() - 1;
+//     boundary_pm(lists, leaves, last_index);
+// }
 
-fn next_tree(weight_sum: usize, lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
-    {
-        let (head, tail) = lists.split_at_mut(current_list_index);
-        let prev_list = head.last_mut().unwrap();
-        let current_list = tail.first_mut().unwrap();
-
-        let previous_list_leaf_counts = &prev_list.lookahead1.leaf_counts;
-
-        // Make a tree from the lookaheads from the previous list; that goes next.
-        // This is not a leaf node, so the leaf count stays the same.
-        current_list.lookahead1.weight = weight_sum;
-        current_list.lookahead1.leaf_counts.clear();
-
-        current_list.lookahead1.leaf_counts.extend_from_slice(previous_list_leaf_counts);
-        current_list.lookahead1.leaf_counts.push(*current_list.lookahead0.leaf_counts.last().unwrap());
-    }
-
-    // The previous list needs two new lookahead nodes.
-    boundary_pm(lists, leaves, current_list_index - 1);
-    boundary_pm(lists, leaves, current_list_index - 1);
-}
-
-fn boundary_pm_toplevel(lists: &mut [List], leaves: &[Leaf]) {
-    let last_index = lists.len() - 1;
-    boundary_pm(lists, leaves, last_index);
-}
-
-fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
-    let next_leaf_index = lists[current_list_index].next_leaf_index;
-    let num_symbols = leaves.len();
-
-    if current_list_index == 0 && next_leaf_index == num_symbols {
-        // We've added all the leaves to the lowest list, so we're done here
-        return;
-    }
-
-    mem::swap(&mut lists[current_list_index].lookahead0, &mut lists[current_list_index].lookahead1);
-
-    if current_list_index == 0 {
-        lowest_list(lists, leaves);
-    } else {
-        // We're at a list other than the lowest list.
-        let weight_sum = {
-            let previous_list = &lists[current_list_index - 1];
-            previous_list.lookahead0.weight + previous_list.lookahead1.weight
-        };
-
-        if next_leaf_index < num_symbols && weight_sum > leaves[next_leaf_index].weight {
-            next_leaf(lists, leaves, current_list_index);
-        } else {
-            next_tree(weight_sum, lists, leaves, current_list_index);
-        }
-    }
-}
+// fn boundary_pm(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
+//     let next_leaf_index = lists[current_list_index].next_leaf_index;
+//     let num_symbols = leaves.len();
+//
+//     if current_list_index == 0 && next_leaf_index == num_symbols {
+//         // We've added all the leaves to the lowest list, so we're done here
+//         return;
+//     }
+//
+//     mem::swap(&mut lists[current_list_index].lookahead0, &mut lists[current_list_index].lookahead1);
+//
+//     if current_list_index == 0 {
+//         lowest_list(lists, leaves);
+//     } else {
+//         // We're at a list other than the lowest list.
+//         let weight_sum = {
+//             let previous_list = &lists[current_list_index - 1];
+//             previous_list.lookahead0.weight + previous_list.lookahead1.weight
+//         };
+//
+//         if next_leaf_index < num_symbols && weight_sum > leaves[next_leaf_index].weight {
+//             next_leaf(lists, leaves, current_list_index);
+//         } else {
+//             next_tree(weight_sum, lists, leaves, current_list_index);
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod test {
