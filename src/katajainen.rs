@@ -52,7 +52,6 @@ struct List<'a> {
 /// symbol.
 pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Vec<u32> {
     let num_freqs = frequencies.len();
-    let mut bit_lengths = vec![0; num_freqs];
 
     // Count used symbols and place them in the leaves.
     let mut leaves: Vec<_> = frequencies.iter()
@@ -73,13 +72,15 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
 
     if num_symbols == 0 {
         // There are no non-zero frequencies.
-        return bit_lengths;
+        return vec![0; num_freqs];
     }
     if num_symbols == 1 {
+        let mut bit_lengths = vec![0; num_freqs];
         bit_lengths[leaves[0].count] = 1;
         return bit_lengths;
     }
     if num_symbols == 2 {
+        let mut bit_lengths = vec![0; num_freqs];
         bit_lengths[leaves[0].count] = 1;
         bit_lengths[leaves[1].count] = 1;
         return bit_lengths;
@@ -132,18 +133,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
 
     thing.boundary_pm_final(max_bits - 1);
 
-    // let mut a = lists.pop().unwrap().lookahead1.leaf_counts.into_iter().rev().peekable();
-    //
-    // let mut bitlength_value = 1;
-    // while let Some(leaf_count) = a.next() {
-    //     let next_count = *a.peek().unwrap_or(&0);
-    //     for leaf in &leaves[next_count..leaf_count] {
-    //         bit_lengths[leaf.count] = bitlength_value;
-    //     }
-    //     bitlength_value += 1;
-    // }
-
-    bit_lengths
+    thing.extract_bit_lengths(max_bits, num_freqs)
 }
 
 impl<'a> Thing<'a> {
@@ -216,6 +206,39 @@ impl<'a> Thing<'a> {
         } else {
             self.lists[index].lookahead1.tail.set(Some(self.lists[index - 1].lookahead1));
         }
+    }
+
+    fn extract_bit_lengths(&self, max_bits: usize, num_freqs: usize) -> Vec<u32> {
+        let mut counts = [0; 16];
+        let mut end = 16;
+        let mut ptr = 15;
+        let mut value = 1;
+
+        let mut node = self.lists[max_bits - 1].lookahead1;
+
+        end -= 1;
+        counts[end] = node.count;
+
+        while let Some(tail) = node.tail.get() {
+            end -= 1;
+            counts[end] = tail.count;
+            node = tail;
+        }
+
+        let mut val = counts[15];
+
+        let mut bit_lengths = vec![0; num_freqs];
+
+        while ptr >= end {
+            while val > counts[ptr - 1] {
+                bit_lengths[self.leaves[val - 1].count] = value;
+                val -= 1;
+            }
+            ptr -= 1;
+            value += 1;
+        }
+
+        bit_lengths
     }
 }
 
