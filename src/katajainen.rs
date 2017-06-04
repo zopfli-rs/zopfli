@@ -25,7 +25,7 @@ impl Node {
 #[derive(Debug)]
 struct Leaf {
     weight: usize,
-    index: usize,
+    count: usize,
 }
 impl PartialEq for Leaf {
     fn eq(&self, other: &Self) -> bool {
@@ -61,7 +61,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let mut leaves: Vec<_> = frequencies.iter()
         .enumerate()
         .filter(|&(_, &freq)| freq != 0)
-        .map(|(i, &freq)| Leaf { weight: freq, index: i })
+        .map(|(i, &freq)| Leaf { weight: freq, count: i })
         .collect();
 
     let num_symbols = leaves.len();
@@ -79,12 +79,12 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         return result;
     }
     if num_symbols == 1 {
-        result[leaves[0].index] = 1;
+        result[leaves[0].count] = 1;
         return result;
     }
     if num_symbols == 2 {
-        result[leaves[0].index] = 1;
-        result[leaves[1].index] = 1;
+        result[leaves[0].count] = 1;
+        result[leaves[1].count] = 1;
         return result;
     }
 
@@ -114,7 +114,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     while let Some(leaf_count) = a.next() {
         let next_count = *a.peek().unwrap_or(&0);
         for leaf in &leaves[next_count..leaf_count] {
-            result[leaf.index] = bitlength_value;
+            result[leaf.count] = bitlength_value;
         }
         bitlength_value += 1;
     }
