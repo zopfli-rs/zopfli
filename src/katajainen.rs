@@ -129,7 +129,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         thing.boundary_pm(max_bits - 1);
     }
 
-    // TODO: boundary_pm_final
+    thing.boundary_pm_final(max_bits - 1);
 
     // let mut a = lists.pop().unwrap().lookahead1.leaf_counts.into_iter().rev().peekable();
     //
@@ -191,6 +191,29 @@ impl<'a> Thing<'a> {
                 self.boundary_pm(index - 1);
                 self.boundary_pm(index - 1);
             }
+        }
+    }
+
+    fn boundary_pm_final(&mut self, index: usize) {
+        let num_symbols = self.leaves.len();
+
+        // Count of last chain of list.
+        let last_count = self.lists[index].lookahead1.count;
+
+        let weight_sum = {
+            let previous_list = &self.lists[index - 1];
+            previous_list.lookahead0.weight + previous_list.lookahead1.weight
+        };
+
+        if last_count < num_symbols && weight_sum > self.leaves[last_count].weight {
+            let new_chain = self.node_arena.alloc(Node {
+               weight: 0,
+               count: last_count + 1,
+               tail: self.lists[index].lookahead1.tail,
+            });
+            self.lists[index].lookahead1 = new_chain;
+        } else {
+            // ???
         }
     }
 }
