@@ -91,6 +91,12 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     // Sort the leaves from least frequent to most frequent.
     leaves.sort();
 
+    let max_bits = if num_symbols - 1 < max_bits {
+        num_symbols - 1
+    } else {
+        max_bits
+    };
+
     let max_num_leaves = 2 * num_symbols - 2;
     let mut lists = vec![
         List {
