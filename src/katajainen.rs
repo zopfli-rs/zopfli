@@ -55,7 +55,7 @@ struct List {
 /// symbol.
 pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Vec<u32> {
     let num_freqs = frequencies.len();
-    let mut result = vec![0; num_freqs];
+    let mut bit_lengths = vec![0; num_freqs];
 
     // Count used symbols and place them in the leaves.
     let mut leaves: Vec<_> = frequencies.iter()
@@ -76,16 +76,16 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
 
     if num_symbols == 0 {
         // There are no non-zero frequencies.
-        return result;
+        return bit_lengths;
     }
     if num_symbols == 1 {
-        result[leaves[0].count] = 1;
-        return result;
+        bit_lengths[leaves[0].count] = 1;
+        return bit_lengths;
     }
     if num_symbols == 2 {
-        result[leaves[0].count] = 1;
-        result[leaves[1].count] = 1;
-        return result;
+        bit_lengths[leaves[0].count] = 1;
+        bit_lengths[leaves[1].count] = 1;
+        return bit_lengths;
     }
 
     // Sort the leaves from least frequent to most frequent.
@@ -114,12 +114,12 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     while let Some(leaf_count) = a.next() {
         let next_count = *a.peek().unwrap_or(&0);
         for leaf in &leaves[next_count..leaf_count] {
-            result[leaf.count] = bitlength_value;
+            bit_lengths[leaf.count] = bitlength_value;
         }
         bitlength_value += 1;
     }
 
-    result
+    bit_lengths
 }
 
 fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
