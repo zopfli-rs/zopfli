@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-// use std::{mem};
 
 use typed_arena::Arena;
 
@@ -7,11 +6,17 @@ use typed_arena::Arena;
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
+struct Thing<'a> {
+    node_arena: &'a Arena<Node<'a>>,
+    leaves: Vec<Leaf>,
+    lists: Vec<List<'a>>,
+}
+
 #[derive(Debug)]
 struct Node<'a> {
     weight: usize,
     count: usize,
-    tail: Option<&'a mut Node<'a>>,
+    tail: Option<&'a Node<'a>>,
 }
 
 #[derive(Debug)]
@@ -103,7 +108,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         tail: None,
     });
 
-    let mut lists: Vec<List> = vec![
+    let lists: Vec<List> = vec![
         List {
             lookahead0: node0,
             lookahead1: node1,
@@ -111,23 +116,21 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         max_bits
     ];
 
-    // let max_num_leaves = 2 * num_symbols - 2;
-    // let mut lists = vec![
-    //     List {
-    //         lookahead0: Node::new(leaves[0].weight, 1, max_num_leaves),
-    //         lookahead1: Node::new(leaves[1].weight, 2, max_num_leaves),
-    //         next_leaf_index: 2,
-    //     };
-    //     max_bits
-    // ];
-    //
-    // // In the last list, 2 * numsymbols - 2 active chains need to be created. Two
-    // // are already created in the initialization. Each boundary_pm run creates one.
-    // let num_boundary_pm_runs = max_num_leaves - 2;
-    // for _ in 0..num_boundary_pm_runs {
-    //     boundary_pm_toplevel(&mut lists[..], &leaves);
-    // }
-    //
+    let mut thing = Thing {
+        node_arena: &node_arena,
+        leaves,
+        lists,
+    };
+
+    // In the last list, 2 * num_symbols - 2 active chains need to be created. Two
+    // are already created in the initialization. Each boundary_pm run creates one.
+    let num_boundary_pm_runs = 2 * num_symbols - 4;
+    for _ in 0..num_boundary_pm_runs - 1 {
+        thing.boundary_pm(max_bits - 1);
+    }
+
+    // TODO: boundary_pm_final
+
     // let mut a = lists.pop().unwrap().lookahead1.leaf_counts.into_iter().rev().peekable();
     //
     // let mut bitlength_value = 1;
@@ -142,16 +145,56 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     bit_lengths
 }
 
-// fn lowest_list(lists: &mut [List], leaves: &[Leaf]) {
-//     // We're in the lowest list, just add another leaf to the lookaheads
-//     // There will always be more leaves to be added on level 0 so this is safe.
-//     let mut current_list = &mut lists[0];
-//     let next_leaf = &leaves[current_list.next_leaf_index];
-//     current_list.lookahead1.weight = next_leaf.weight;
-//
-//     current_list.lookahead1.leaf_counts[0] = current_list.lookahead0.leaf_counts.last().unwrap() + 1;
-//     current_list.next_leaf_index += 1;
-// }
+impl<'a> Thing<'a> {
+    fn boundary_pm(&mut self, index: usize) {
+        let num_symbols = self.leaves.len();
+
+        let last_count = self.lists[index].lookahead1.count; // Count of last chain of list.
+
+        if index == 0 && last_count >= num_symbols {
+            return
+        }
+
+        self.lists[index].lookahead0 = self.lists[index].lookahead1;
+
+        if index == 0 {
+            // New leaf node in list 0.
+            let new_chain = self.node_arena.alloc(Node {
+               weight: self.leaves[last_count].weight,
+               count: last_count + 1,
+               tail: self.lists[index].lookahead0.tail,
+            });
+            self.lists[index].lookahead1 = new_chain;
+        } else {
+            let weight_sum = {
+                let previous_list = &self.lists[index - 1];
+                previous_list.lookahead0.weight + previous_list.lookahead1.weight
+            };
+
+            if last_count < num_symbols && weight_sum > self.leaves[last_count].weight {
+                // New leaf inserted in list, so count is incremented.
+                let new_chain = self.node_arena.alloc(Node {
+                   weight: self.leaves[last_count].weight,
+                   count: last_count + 1,
+                   tail: self.lists[index].lookahead0.tail,
+                });
+                self.lists[index].lookahead1 = new_chain;
+            } else {
+                let new_chain = self.node_arena.alloc(Node {
+                   weight: weight_sum,
+                   count: last_count,
+                   tail: Some(self.lists[index - 1].lookahead1),
+                });
+                self.lists[index].lookahead1 = new_chain;
+
+                // Two lookahead chains of previous list used up, create new ones.
+                self.boundary_pm(index - 1);
+                self.boundary_pm(index - 1);
+            }
+        }
+    }
+}
+
 
 // fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
 //     let mut current_list = &mut lists[current_list_index];
