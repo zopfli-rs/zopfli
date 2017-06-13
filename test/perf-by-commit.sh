@@ -3,6 +3,7 @@ echo 'SHA,result' > results.csv
 START=$(git rev-parse --abbrev-ref HEAD)
 for COMMIT in $(git rev-list upstream/master.. --reverse)
 do
+    git checkout .
     git checkout $COMMIT
     if [ $? -ne 0 ]
     then
