@@ -9,6 +9,7 @@ homepage = "https://github.com/carols10cents/zopfli"
 repository = "https://github.com/carols10cents/zopfli"
 readme = "README.md"
 categories = ["compression"]
+exclude = ["test/*"]
 
 [dependencies]
 crc = "1.2"
