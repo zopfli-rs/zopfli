@@ -435,7 +435,7 @@ fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) 
     scan_offset
 }
 
-pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, mut sublen: &mut Option<&mut [u16]>) -> LongestMatch
+pub fn find_longest_match<C>(s: &mut ZopfliBlockState<C>, h: &mut ZopfliHash, array: &[u8], pos: usize, size: usize, limit: usize, sublen: &mut Option<&mut [u16]>) -> LongestMatch
     where C: Cache,
 {
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
