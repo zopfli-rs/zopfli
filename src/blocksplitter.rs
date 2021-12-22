@@ -1,8 +1,8 @@
 use std::f64;
 
-use deflate::calculate_block_size_auto_type;
-use lz77::{Lz77Store, ZopfliBlockState};
-use Options;
+use crate::deflate::calculate_block_size_auto_type;
+use crate::lz77::{Lz77Store, ZopfliBlockState};
+use crate::Options;
 
 /// Finds minimum of function `f(i)` where `i` is of type `usize`, `f(i)` is of type
 /// `f64`, `i` is in range `start-end` (excluding `end`).

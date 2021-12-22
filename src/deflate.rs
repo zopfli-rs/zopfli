@@ -1,19 +1,19 @@
 use std::cmp;
 use std::io::{self, Write};
 
-use blocksplitter::{blocksplit, blocksplit_lz77};
-use iter::IsFinalIterator;
-use katajainen::length_limited_code_lengths;
-use lz77::{LitLen, Lz77Store, ZopfliBlockState};
-use squeeze::{lz77_optimal, lz77_optimal_fixed};
-use symbols::{
+use crate::blocksplitter::{blocksplit, blocksplit_lz77};
+use crate::iter::IsFinalIterator;
+use crate::katajainen::length_limited_code_lengths;
+use crate::lz77::{LitLen, Lz77Store, ZopfliBlockState};
+use crate::squeeze::{lz77_optimal, lz77_optimal_fixed};
+use crate::symbols::{
     get_dist_extra_bits, get_dist_extra_bits_value, get_dist_symbol, get_dist_symbol_extra_bits,
     get_length_extra_bits, get_length_extra_bits_value, get_length_symbol,
     get_length_symbol_extra_bits,
 };
-use tree::lengths_to_symbols;
-use util::{ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL};
-use Options;
+use crate::tree::lengths_to_symbols;
+use crate::util::{ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL};
+use crate::Options;
 
 /// Compresses according to the deflate specification and append the compressed
 /// result to the output.

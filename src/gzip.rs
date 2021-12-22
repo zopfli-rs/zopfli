@@ -1,8 +1,8 @@
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::{self, Write};
 
-use deflate::{deflate, BlockType};
-use Options;
+use crate::deflate::{deflate, BlockType};
+use crate::Options;
 
 const CRC_IEEE: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
 

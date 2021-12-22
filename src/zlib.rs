@@ -2,8 +2,8 @@ use adler32::adler32;
 use byteorder::{BigEndian, WriteBytesExt};
 use std::io::{self, Write};
 
-use deflate::{deflate, BlockType};
-use Options;
+use crate::deflate::{deflate, BlockType};
+use crate::Options;
 
 pub fn zlib_compress<W>(options: &Options, in_data: &[u8], mut out: W) -> io::Result<()>
 where

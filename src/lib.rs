@@ -21,9 +21,9 @@ mod zlib;
 
 use std::io::{self, Write};
 
-use deflate::{deflate, BlockType};
-use gzip::gzip_compress;
-use zlib::zlib_compress;
+use crate::deflate::{deflate, BlockType};
+use crate::gzip::gzip_compress;
+use crate::zlib::zlib_compress;
 
 /// Options used throughout the program.
 pub struct Options {

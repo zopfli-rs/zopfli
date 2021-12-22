@@ -1,13 +1,13 @@
 use std::cmp;
 
-use cache::{Cache, NoCache, ZopfliLongestMatchCache};
-use hash::{Which, ZopfliHash};
-use symbols::{get_dist_symbol, get_length_symbol};
-use util::{
+use crate::cache::{Cache, NoCache, ZopfliLongestMatchCache};
+use crate::hash::{Which, ZopfliHash};
+use crate::symbols::{get_dist_symbol, get_length_symbol};
+use crate::util::{
     ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL,
     ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE,
 };
-use Options;
+use crate::Options;
 
 #[derive(Clone, Debug, Copy)]
 pub enum LitLen {
