@@ -16,9 +16,9 @@ where
     let fcheck = 31 - cmfflg % 31;
     cmfflg += fcheck;
 
-    try!(out.by_ref().write_u16::<BigEndian>(cmfflg));
+    out.by_ref().write_u16::<BigEndian>(cmfflg)?;
 
-    try!(deflate(options, BlockType::Dynamic, in_data, out.by_ref()));
+    deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
 
     let checksum = adler32(io::Cursor::new(&in_data)).expect("Error with adler32");
     out.write_u32::<BigEndian>(checksum)

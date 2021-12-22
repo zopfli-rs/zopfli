@@ -21,12 +21,11 @@ pub fn gzip_compress<W>(options: &Options, in_data: &[u8], mut out: W) -> io::Re
 where
     W: Write,
 {
-    try!(out.by_ref().write_all(HEADER));
+    out.by_ref().write_all(HEADER)?;
 
-    try!(deflate(options, BlockType::Dynamic, in_data, out.by_ref()));
+    deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
 
-    try!(out
-        .by_ref()
-        .write_u32::<LittleEndian>(CRC_IEEE.checksum(in_data)));
+    out.by_ref()
+        .write_u32::<LittleEndian>(CRC_IEEE.checksum(in_data))?;
     out.write_u32::<LittleEndian>(in_data.len() as u32)
 }

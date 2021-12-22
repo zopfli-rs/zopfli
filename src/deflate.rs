@@ -40,15 +40,15 @@ where
         } else {
             ZOPFLI_MASTER_BLOCK_SIZE
         };
-        try!(deflate_part(
+        deflate_part(
             options,
             btype,
             final_block,
             in_data,
             i,
             i + size,
-            &mut bitwise_writer
-        ));
+            &mut bitwise_writer,
+        )?;
         i += size;
     }
     bitwise_writer.finish_partial_bits()
@@ -586,26 +586,26 @@ where
         hclen -= 1;
     }
 
-    try!(bitwise_writer.add_bits(hlit as u32, 5));
-    try!(bitwise_writer.add_bits(hdist as u32, 5));
-    try!(bitwise_writer.add_bits(hclen as u32, 4));
+    bitwise_writer.add_bits(hlit as u32, 5)?;
+    bitwise_writer.add_bits(hdist as u32, 5)?;
+    bitwise_writer.add_bits(hclen as u32, 4)?;
 
     for &item in order.iter().take(hclen + 4) {
-        try!(bitwise_writer.add_bits(clcl[item], 3));
+        bitwise_writer.add_bits(clcl[item], 3)?;
     }
 
     for i in 0..rle.len() {
         let rle_i = rle[i] as usize;
         let rle_bits_i = rle_bits[i] as u32;
         let sym = clsymbols[rle_i];
-        try!(bitwise_writer.add_huffman_bits(sym, clcl[rle_i]));
+        bitwise_writer.add_huffman_bits(sym, clcl[rle_i])?;
         /* Extra bits. */
         if rle_i == 16 {
-            try!(bitwise_writer.add_bits(rle_bits_i, 2));
+            bitwise_writer.add_bits(rle_bits_i, 2)?;
         } else if rle_i == 17 {
-            try!(bitwise_writer.add_bits(rle_bits_i, 3));
+            bitwise_writer.add_bits(rle_bits_i, 3)?;
         } else if rle_i == 18 {
-            try!(bitwise_writer.add_bits(rle_bits_i, 7));
+            bitwise_writer.add_bits(rle_bits_i, 7)?;
         }
     }
 
@@ -686,22 +686,22 @@ where
         return add_non_compressed_block(final_block, in_data, pos, end, bitwise_writer);
     }
 
-    try!(bitwise_writer.add_bit(final_block as u8));
+    bitwise_writer.add_bit(final_block as u8)?;
 
     let (ll_lengths, d_lengths) = match btype {
         BlockType::Uncompressed => unreachable!(),
         BlockType::Fixed => {
-            try!(bitwise_writer.add_bit(1));
-            try!(bitwise_writer.add_bit(0));
+            bitwise_writer.add_bit(1)?;
+            bitwise_writer.add_bit(0)?;
             fixed_tree()
         }
         BlockType::Dynamic => {
-            try!(bitwise_writer.add_bit(0));
-            try!(bitwise_writer.add_bit(1));
+            bitwise_writer.add_bit(0)?;
+            bitwise_writer.add_bit(1)?;
             let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
             let detect_tree_size = bitwise_writer.bytes_written();
-            try!(add_dynamic_tree(&ll_lengths, &d_lengths, bitwise_writer));
+            add_dynamic_tree(&ll_lengths, &d_lengths, bitwise_writer)?;
             if options.verbose {
                 println!(
                     "treesize: {}",
@@ -716,7 +716,7 @@ where
     let d_symbols = lengths_to_symbols(&d_lengths, 15);
 
     let detect_block_size = bitwise_writer.bytes_written();
-    try!(add_lz77_data(
+    add_lz77_data(
         lz77,
         lstart,
         lend,
@@ -725,11 +725,11 @@ where
         &ll_lengths,
         &d_symbols,
         &d_lengths,
-        bitwise_writer
-    ));
+        bitwise_writer,
+    )?;
 
     /* End symbol. */
-    try!(bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256]));
+    bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256])?;
 
     if options.verbose {
         let uncompressed_size = lz77.litlens[lstart..lend]
@@ -871,7 +871,7 @@ where
                 let litlen = lit as usize;
                 debug_assert!(litlen < 256);
                 debug_assert!(ll_lengths[litlen] > 0);
-                try!(bitwise_writer.add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen]));
+                bitwise_writer.add_huffman_bits(ll_symbols[litlen], ll_lengths[litlen])?;
                 testlength += 1;
             }
             LitLen::LengthDist(len, dist) => {
@@ -881,19 +881,17 @@ where
                 debug_assert!(litlen >= 3 && litlen <= 288);
                 debug_assert!(ll_lengths[lls as usize] > 0);
                 debug_assert!(d_lengths[ds as usize] > 0);
-                try!(bitwise_writer
-                    .add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize]));
-                try!(bitwise_writer.add_bits(
+                bitwise_writer
+                    .add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize])?;
+                bitwise_writer.add_bits(
                     get_length_extra_bits_value(litlen as i32) as u32,
-                    get_length_extra_bits(litlen) as u32
-                ));
-                try!(
-                    bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize])
-                );
-                try!(bitwise_writer.add_bits(
+                    get_length_extra_bits(litlen) as u32,
+                )?;
+                bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize])?;
+                bitwise_writer.add_bits(
                     get_dist_extra_bits_value(dist as i32) as u32,
-                    get_dist_extra_bits(dist as i32) as u32
-                ));
+                    get_dist_extra_bits(dist as i32) as u32,
+                )?;
                 testlength += litlen;
             }
         }
@@ -927,9 +925,9 @@ where
     let mut fixedstore = Lz77Store::new();
     if lstart == lend {
         /* Smallest empty block is represented by fixed block */
-        try!(bitwise_writer.add_bits(final_block as u32, 1));
-        try!(bitwise_writer.add_bits(1, 2)); /* btype 01 */
-        try!(bitwise_writer.add_bits(0, 7)); /* end symbol has code 0000000 */
+        bitwise_writer.add_bits(final_block as u32, 1)?;
+        bitwise_writer.add_bits(1, 2)?; /* btype 01 */
+        bitwise_writer.add_bits(0, 7)?; /* end symbol has code 0000000 */
         return Ok(());
     }
     if expensivefixed {
@@ -1022,16 +1020,7 @@ where
 {
     let mut last = 0;
     for &item in splitpoints.iter() {
-        try!(add_lz77_block_auto_type(
-            options,
-            false,
-            in_data,
-            lz77,
-            last,
-            item,
-            0,
-            bitwise_writer
-        ));
+        add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bitwise_writer)?;
         last = item;
     }
     add_lz77_block_auto_type(
@@ -1155,19 +1144,19 @@ where
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
-        try!(bitwise_writer.add_bit((final_block && is_final) as u8));
+        bitwise_writer.add_bit((final_block && is_final) as u8)?;
         /* BTYPE 00 */
-        try!(bitwise_writer.add_bit(0));
-        try!(bitwise_writer.add_bit(0));
+        bitwise_writer.add_bit(0)?;
+        bitwise_writer.add_bit(0)?;
 
-        try!(bitwise_writer.finish_partial_bits());
+        bitwise_writer.finish_partial_bits()?;
 
-        try!(bitwise_writer.add_byte((blocksize % 256) as u8));
-        try!(bitwise_writer.add_byte(((blocksize / 256) % 256) as u8));
-        try!(bitwise_writer.add_byte((nlen % 256) as u8));
-        try!(bitwise_writer.add_byte(((nlen / 256) % 256) as u8));
+        bitwise_writer.add_byte((blocksize % 256) as u8)?;
+        bitwise_writer.add_byte(((blocksize / 256) % 256) as u8)?;
+        bitwise_writer.add_byte((nlen % 256) as u8)?;
+        bitwise_writer.add_byte(((nlen / 256) % 256) as u8)?;
 
-        try!(bitwise_writer.add_bytes(chunk));
+        bitwise_writer.add_bytes(chunk)?;
     }
 
     Ok(())
@@ -1222,7 +1211,7 @@ where
         // TODO: make more efficient (add more bits at once)
         for i in 0..length {
             let bit = ((symbol >> i) & 1) as u8;
-            try!(self.add_bit(bit));
+            self.add_bit(bit)?;
         }
 
         Ok(())
@@ -1234,7 +1223,7 @@ where
         // TODO: make more efficient (add more bits at once)
         for i in 0..length {
             let bit = ((symbol >> (length - i - 1)) & 1) as u8;
-            try!(self.add_bit(bit));
+            self.add_bit(bit)?;
         }
 
         Ok(())
@@ -1243,7 +1232,7 @@ where
     fn finish_partial_bits(&mut self) -> io::Result<()> {
         if self.bp != 0 {
             let bytes = &[self.bit];
-            try!(self.add_bytes(bytes));
+            self.add_bytes(bytes)?;
             self.bit = 0;
             self.bp = 0;
         }
