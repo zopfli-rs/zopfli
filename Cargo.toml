@@ -10,7 +10,7 @@ repository = "https://github.com/carols10cents/zopfli"
 readme = "README.md"
 categories = ["compression"]
 exclude = ["test/*"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 crc = "2"
