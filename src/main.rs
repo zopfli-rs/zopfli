@@ -1,7 +1,7 @@
 use std::env;
+use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
-use std::fs::File;
 
 extern crate zopfli;
 
@@ -35,12 +35,18 @@ fn main() {
             .unwrap_or_else(|why| panic!("couldn't create output file {}: {}", out_filename, why));
         let mut out_file = WriteStatistics::new(BufWriter::new(out_file));
 
-        zopfli::compress(&options, &output_type, &data, &mut out_file)
-            .unwrap_or_else(|why| panic!("couldn't write to output file {}: {}", out_filename, why));
+        zopfli::compress(&options, &output_type, &data, &mut out_file).unwrap_or_else(|why| {
+            panic!("couldn't write to output file {}: {}", out_filename, why)
+        });
 
         if options.verbose {
             let out_size = out_file.count;
-            println!("Original Size: {}, Compressed: {}, Compression: {}% Removed", filesize, out_size, 100.0 * (filesize - out_size) as f64 / filesize as f64);
+            println!(
+                "Original Size: {}, Compressed: {}, Compression: {}% Removed",
+                filesize,
+                out_size,
+                100.0 * (filesize - out_size) as f64 / filesize as f64
+            );
         }
     }
 }
@@ -60,7 +66,8 @@ impl<W> WriteStatistics<W> {
 }
 
 impl<W> Write for WriteStatistics<W>
-    where W: Write
+where
+    W: Write,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let res = self.inner.write(buf);

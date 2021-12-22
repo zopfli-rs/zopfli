@@ -30,7 +30,7 @@ impl PartialEq for Leaf {
         self.weight == other.weight
     }
 }
-impl Eq for Leaf { }
+impl Eq for Leaf {}
 impl Ord for Leaf {
     fn cmp(&self, other: &Self) -> Ordering {
         self.weight.cmp(&other.weight)
@@ -54,10 +54,14 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let num_freqs = frequencies.len();
 
     // Count used symbols and place them in the leaves.
-    let mut leaves: Vec<_> = frequencies.iter()
+    let mut leaves: Vec<_> = frequencies
+        .iter()
         .enumerate()
         .filter(|&(_, &freq)| freq != 0)
-        .map(|(i, &freq)| Leaf { weight: freq, count: i })
+        .map(|(i, &freq)| Leaf {
+            weight: freq,
+            count: i,
+        })
         .collect();
 
     let num_symbols = leaves.len();
@@ -143,7 +147,7 @@ impl<'a> Thing<'a> {
         let last_count = self.lists[index].lookahead1.count; // Count of last chain of list.
 
         if index == 0 && last_count >= num_symbols {
-            return
+            return;
         }
 
         self.lists[index].lookahead0 = self.lists[index].lookahead1;
@@ -151,9 +155,9 @@ impl<'a> Thing<'a> {
         if index == 0 {
             // New leaf node in list 0.
             let new_chain = self.node_arena.alloc(Node {
-               weight: self.leaves[last_count].weight,
-               count: last_count + 1,
-               tail: self.lists[index].lookahead0.tail.clone(),
+                weight: self.leaves[last_count].weight,
+                count: last_count + 1,
+                tail: self.lists[index].lookahead0.tail.clone(),
             });
             self.lists[index].lookahead1 = new_chain;
         } else {
@@ -165,16 +169,16 @@ impl<'a> Thing<'a> {
             if last_count < num_symbols && weight_sum > self.leaves[last_count].weight {
                 // New leaf inserted in list, so count is incremented.
                 let new_chain = self.node_arena.alloc(Node {
-                   weight: self.leaves[last_count].weight,
-                   count: last_count + 1,
-                   tail: self.lists[index].lookahead0.tail.clone(),
+                    weight: self.leaves[last_count].weight,
+                    count: last_count + 1,
+                    tail: self.lists[index].lookahead0.tail.clone(),
                 });
                 self.lists[index].lookahead1 = new_chain;
             } else {
                 let new_chain = self.node_arena.alloc(Node {
-                   weight: weight_sum,
-                   count: last_count,
-                   tail: Cell::new(Some(self.lists[index - 1].lookahead1)),
+                    weight: weight_sum,
+                    count: last_count,
+                    tail: Cell::new(Some(self.lists[index - 1].lookahead1)),
                 });
                 self.lists[index].lookahead1 = new_chain;
 
@@ -198,13 +202,16 @@ impl<'a> Thing<'a> {
 
         if last_count < num_symbols && weight_sum > self.leaves[last_count].weight {
             let new_chain = self.node_arena.alloc(Node {
-               weight: 0,
-               count: last_count + 1,
-               tail: self.lists[index].lookahead1.tail.clone(),
+                weight: 0,
+                count: last_count + 1,
+                tail: self.lists[index].lookahead1.tail.clone(),
             });
             self.lists[index].lookahead1 = new_chain;
         } else {
-            self.lists[index].lookahead1.tail.set(Some(self.lists[index - 1].lookahead1));
+            self.lists[index]
+                .lookahead1
+                .tail
+                .set(Some(self.lists[index - 1].lookahead1));
         }
     }
 
@@ -241,7 +248,6 @@ impl<'a> Thing<'a> {
         bit_lengths
     }
 }
-
 
 // fn next_leaf(lists: &mut [List], leaves: &[Leaf], current_list_index: usize) {
 //     let mut current_list = &mut lists[current_list_index];
@@ -340,9 +346,15 @@ mod test {
 
     #[test]
     fn max_bits_15() {
-        let input = [0, 0, 0, 0, 0, 0, 18, 0, 6, 0, 12, 2, 14, 9, 27, 15, 23, 15, 17, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let input = [
+            0, 0, 0, 0, 0, 0, 18, 0, 6, 0, 12, 2, 14, 9, 27, 15, 23, 15, 17, 8, 1, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
         let output = length_limited_code_lengths(&input, 15);
-        let answer = vec! [0, 0, 0, 0, 0, 0, 3, 0, 5, 0, 4, 6, 4, 4, 3, 4, 3, 3, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let answer = vec![
+            0, 0, 0, 0, 0, 0, 3, 0, 5, 0, 4, 6, 4, 4, 3, 4, 3, 3, 3, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
         assert_eq!(output, answer);
     }
 

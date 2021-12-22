@@ -1,14 +1,15 @@
-use std::io::{self, Write};
 use adler32::adler32;
 use byteorder::{BigEndian, WriteBytesExt};
+use std::io::{self, Write};
 
 use deflate::{deflate, BlockType};
 use Options;
 
 pub fn zlib_compress<W>(options: &Options, in_data: &[u8], mut out: W) -> io::Result<()>
-    where W: Write
+where
+    W: Write,
 {
-    let cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
+    let cmf = 120; /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
     let fdict = 0;
     let mut cmfflg = 256 * cmf + fdict * 32 + flevel * 64;

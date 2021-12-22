@@ -47,7 +47,7 @@ impl ZopfliLongestMatchCache {
     fn max_sublen(&self, pos: usize) -> u32 {
         let start = ZOPFLI_CACHE_LENGTH * pos * 3;
         if self.sublen[start + 1] == 0 && self.sublen[start + 2] == 0 {
-            return 0;  // No sublen cached.
+            return 0; // No sublen cached.
         }
         self.sublen[start + ((ZOPFLI_CACHE_LENGTH - 1) * 3)] as u32 + 3
     }
@@ -97,7 +97,8 @@ impl ZopfliLongestMatchCache {
 
         for j in 0..ZOPFLI_CACHE_LENGTH {
             let length = self.sublen[start + (j * 3)] as usize + 3;
-            let dist = self.sublen[start + (j * 3 + 1)] as u16 + 256 * self.sublen[start + (j * 3 + 2)] as u16;
+            let dist = self.sublen[start + (j * 3 + 1)] as u16
+                + 256 * self.sublen[start + (j * 3 + 2)] as u16;
 
             let mut i = prevlength;
             while i <= length {
@@ -113,14 +114,34 @@ impl ZopfliLongestMatchCache {
 }
 
 pub trait Cache {
-    fn try_get(&self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, blockstart: usize) -> LongestMatch;
-    fn store(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16, blockstart: usize);
+    fn try_get(
+        &self,
+        pos: usize,
+        limit: usize,
+        sublen: &mut Option<&mut [u16]>,
+        blockstart: usize,
+    ) -> LongestMatch;
+    fn store(
+        &mut self,
+        pos: usize,
+        limit: usize,
+        sublen: &mut Option<&mut [u16]>,
+        distance: u16,
+        length: u16,
+        blockstart: usize,
+    );
 }
 
 pub struct NoCache;
 
 impl Cache for NoCache {
-    fn try_get(&self, _: usize, limit: usize, _: &mut Option<&mut [u16]>, _: usize) -> LongestMatch {
+    fn try_get(
+        &self,
+        _: usize,
+        limit: usize,
+        _: &mut Option<&mut [u16]>,
+        _: usize,
+    ) -> LongestMatch {
         LongestMatch::new(limit)
     }
 
@@ -130,7 +151,13 @@ impl Cache for NoCache {
 }
 
 impl Cache for ZopfliLongestMatchCache {
-    fn try_get(&self, pos: usize, mut limit: usize, sublen: &mut Option<&mut [u16]>, blockstart: usize) -> LongestMatch {
+    fn try_get(
+        &self,
+        pos: usize,
+        mut limit: usize,
+        sublen: &mut Option<&mut [u16]>,
+        blockstart: usize,
+    ) -> LongestMatch {
         let mut longest_match = LongestMatch::new(limit);
 
         /* The LMC cache starts at the beginning of the block rather than the
@@ -143,7 +170,9 @@ impl Cache for ZopfliLongestMatchCache {
         let dist_lmcpos = self.dist_at(lmcpos);
         let cache_available = length_lmcpos == 0 || dist_lmcpos != 0;
         let max_sublen = self.max_sublen(lmcpos);
-        let limit_ok_for_cache = limit == ZOPFLI_MAX_MATCH || length_lmcpos <= limit as u16 || ( sublen.is_some() && max_sublen >= limit as u32);
+        let limit_ok_for_cache = limit == ZOPFLI_MAX_MATCH
+            || length_lmcpos <= limit as u16
+            || (sublen.is_some() && max_sublen >= limit as u32);
 
         if limit_ok_for_cache && cache_available {
             if sublen.is_none() || length_lmcpos as u32 <= max_sublen {
@@ -173,7 +202,15 @@ impl Cache for ZopfliLongestMatchCache {
         longest_match
     }
 
-    fn store(&mut self, pos: usize, limit: usize, sublen: &mut Option<&mut [u16]>, distance: u16, length: u16, blockstart: usize) {
+    fn store(
+        &mut self,
+        pos: usize,
+        limit: usize,
+        sublen: &mut Option<&mut [u16]>,
+        distance: u16,
+        length: u16,
+        blockstart: usize,
+    ) {
         if let Some(ref mut subl) = *sublen {
             /* Length > 0 and dist 0 is invalid combination, which indicates on purpose
             that this cache value is not filled in yet. */

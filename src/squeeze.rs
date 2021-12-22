@@ -7,16 +7,16 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
-use std::{cmp, f64, f32};
+use std::{cmp, f32, f64};
 
 use cache::Cache;
 use deflate::{calculate_block_size, BlockType};
 use hash::ZopfliHash;
-use lz77::{Lz77Store, ZopfliBlockState, find_longest_match, LitLen};
+use lz77::{find_longest_match, LitLen, Lz77Store, ZopfliBlockState};
 use symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
-use util::{ZOPFLI_NUM_LL, ZOPFLI_NUM_D, ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_MASK, ZOPFLI_MAX_MATCH};
+use util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
-const K_INV_LOG2: f64 = f64::consts::LOG2_E;  // 1.0 / log(2.0)
+const K_INV_LOG2: f64 = f64::consts::LOG2_E; // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
 fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
@@ -36,7 +36,7 @@ fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
         } else {
             cost += 8;
         }
-        cost += 5;  // Every dist symbol has length 5.
+        cost += 5; // Every dist symbol has length 5.
         cost + dbits + lbits
     };
     result as f64
@@ -63,10 +63,7 @@ struct RanState {
 
 impl RanState {
     fn new() -> RanState {
-        RanState {
-            m_w: 1,
-            m_z: 2,
-        }
+        RanState { m_w: 1, m_z: 2 }
     }
 
     /// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
@@ -79,15 +76,15 @@ impl RanState {
 
 #[derive(Copy)]
 struct SymbolStats {
-  /* The literal and length symbols. */
-  litlens: [usize; ZOPFLI_NUM_LL],
-  /* The 32 unique dist symbols, not the 32768 possible dists. */
-  dists: [usize; ZOPFLI_NUM_D],
+    /* The literal and length symbols. */
+    litlens: [usize; ZOPFLI_NUM_LL],
+    /* The 32 unique dist symbols, not the 32768 possible dists. */
+    dists: [usize; ZOPFLI_NUM_D],
 
-  /* Length of each lit/len symbol in bits. */
-  ll_symbols: [f64; ZOPFLI_NUM_LL],
-  /* Length of each dist symbol in bits. */
-  d_symbols: [f64; ZOPFLI_NUM_D],
+    /* Length of each lit/len symbol in bits. */
+    ll_symbols: [f64; ZOPFLI_NUM_LL],
+    /* Length of each dist symbol in bits. */
+    d_symbols: [f64; ZOPFLI_NUM_D],
 }
 
 impl Clone for SymbolStats {
@@ -177,7 +174,7 @@ impl SymbolStats {
                 }
             }
         }
-        self.litlens[256] = 1;  /* End symbol. */
+        self.litlens[256] = 1; /* End symbol. */
 
         self.calculate_entropy();
     }
@@ -188,11 +185,17 @@ impl SymbolStats {
     }
 }
 
-fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: f64, stats2: &SymbolStats, w2: f64) -> SymbolStats {
+fn add_weighed_stat_freqs(
+    stats1: &SymbolStats,
+    w1: f64,
+    stats2: &SymbolStats,
+    w2: f64,
+) -> SymbolStats {
     let mut result = SymbolStats::default();
 
     for i in 0..ZOPFLI_NUM_LL {
-        result.litlens[i] = (stats1.litlens[i] as f64 * w1 + stats2.litlens[i] as f64 * w2) as usize;
+        result.litlens[i] =
+            (stats1.litlens[i] as f64 * w1 + stats2.litlens[i] as f64 * w2) as usize;
     }
     for i in 0..ZOPFLI_NUM_D {
         result.dists[i] = (stats1.dists[i] as f64 * w1 + stats2.dists[i] as f64 * w2) as usize;
@@ -204,7 +207,8 @@ fn add_weighed_stat_freqs(stats1: &SymbolStats, w1: f64, stats2: &SymbolStats, w
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
 fn get_cost_model_min_cost<F>(costmodel: F) -> f64
-        where F: Fn(u32, u32) -> f64
+where
+    F: Fn(u32, u32) -> f64,
 {
     let mut bestlength = 0; // length that has lowest cost in the cost model
     let mut bestdist = 0; // distance that has lowest cost in the cost model
@@ -215,8 +219,8 @@ fn get_cost_model_min_cost<F>(costmodel: F) -> f64
     // See RFC 1951 section 3.2.5. Compressed blocks (length and distance codes).
 
     let dsymbols = [
-        1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
-        769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
+        1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537,
+        2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
     ];
 
     let mut mincost = f64::MAX;
@@ -249,9 +253,18 @@ fn get_cost_model_min_cost<F>(costmodel: F) -> f64
 /// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
-fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, costmodel: F, h: &mut ZopfliHash, costs: &mut Vec<f32>) -> (f64, Vec<u16>)
-    where F: Fn(u32, u32) -> f64,
-          C: Cache,
+fn get_best_lengths<F, C>(
+    s: &mut ZopfliBlockState<C>,
+    in_data: &[u8],
+    instart: usize,
+    inend: usize,
+    costmodel: F,
+    h: &mut ZopfliHash,
+    costs: &mut Vec<f32>,
+) -> (f64, Vec<u16>)
+where
+    F: Fn(u32, u32) -> f64,
+    C: Cache,
 {
     // Best cost to get here so far.
     let blocksize = inend - instart;
@@ -282,7 +295,7 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
     let mut sublen = vec![0; ZOPFLI_MAX_MATCH + 1];
     let mincost = get_cost_model_min_cost(&costmodel);
     while i < inend {
-        let mut j = i - instart;  // Index in the costs array and length_array.
+        let mut j = i - instart; // Index in the costs array and length_array.
         h.update(arr, i);
 
         // If we're in a long repetition of the same character and have more than
@@ -290,8 +303,8 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
         if h.same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as u16 * 2
             && i > instart + ZOPFLI_MAX_MATCH + 1
             && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
-            && h.same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as u16 {
-
+            && h.same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as u16
+        {
             let symbolcost = costmodel(ZOPFLI_MAX_MATCH as u32, 1);
             // Set the length to reach each one to ZOPFLI_MAX_MATCH, and the cost to
             // the cost corresponding to that length. Doing this, we skip
@@ -306,7 +319,15 @@ fn get_best_lengths<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
             }
         }
 
-        longest_match = find_longest_match(s, h, arr, i, inend, ZOPFLI_MAX_MATCH, &mut Some(&mut sublen));
+        longest_match = find_longest_match(
+            s,
+            h,
+            arr,
+            i,
+            inend,
+            ZOPFLI_MAX_MATCH,
+            &mut Some(&mut sublen),
+        );
         leng = longest_match.length;
 
         // Literal.
@@ -381,16 +402,24 @@ fn trace_backwards(size: usize, length_array: &[u16]) -> Vec<u16> {
 /// `store`: place to output the LZ77 data
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
-fn lz77_optimal_run<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, costmodel: F, store: &mut Lz77Store, h: &mut ZopfliHash, costs: &mut Vec<f32>)
-    where F: Fn(u32, u32) -> f64,
-          C: Cache,
+fn lz77_optimal_run<F, C>(
+    s: &mut ZopfliBlockState<C>,
+    in_data: &[u8],
+    instart: usize,
+    inend: usize,
+    costmodel: F,
+    store: &mut Lz77Store,
+    h: &mut ZopfliHash,
+    costs: &mut Vec<f32>,
+) where
+    F: Fn(u32, u32) -> f64,
+    C: Cache,
 {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace_backwards(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
     debug_assert!(cost < f64::MAX);
 }
-
 
 /// Does the same as `lz77_optimal`, but optimized for the fixed tree of the
 /// deflate standard.
@@ -400,21 +429,43 @@ fn lz77_optimal_run<F, C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: 
 /// using with a fixed tree.
 /// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal_fixed<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, store: &mut Lz77Store)
-    where C: Cache,
+pub fn lz77_optimal_fixed<C>(
+    s: &mut ZopfliBlockState<C>,
+    in_data: &[u8],
+    instart: usize,
+    inend: usize,
+    store: &mut Lz77Store,
+) where
+    C: Cache,
 {
     s.blockstart = instart;
     s.blockend = inend;
     let mut h = ZopfliHash::new();
     let mut costs = Vec::with_capacity(inend - instart - 1);
-    lz77_optimal_run(s, in_data, instart, inend, get_cost_fixed, store, &mut h, &mut costs);
+    lz77_optimal_run(
+        s,
+        in_data,
+        instart,
+        inend,
+        get_cost_fixed,
+        store,
+        &mut h,
+        &mut costs,
+    );
 }
 
 /// Calculates lit/len and dist pairs for given data.
 /// If `instart` is larger than 0, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usize, inend: usize, numiterations: i32) -> Lz77Store
-    where C: Cache,
+pub fn lz77_optimal<C>(
+    s: &mut ZopfliBlockState<C>,
+    in_data: &[u8],
+    instart: usize,
+    inend: usize,
+    numiterations: i32,
+) -> Lz77Store
+where
+    C: Cache,
 {
     /* Dist to get to here with smallest cost. */
     let mut currentstore = Lz77Store::new();
@@ -442,11 +493,20 @@ pub fn lz77_optimal<C>(s: &mut ZopfliBlockState<C>, in_data: &[u8], instart: usi
     run. */
     for i in 0..numiterations {
         currentstore.reset();
-        lz77_optimal_run(s, in_data, instart, inend, |a, b| get_cost_stat(a, b, &stats), &mut currentstore, &mut h, &mut costs);
+        lz77_optimal_run(
+            s,
+            in_data,
+            instart,
+            inend,
+            |a, b| get_cost_stat(a, b, &stats),
+            &mut currentstore,
+            &mut h,
+            &mut costs,
+        );
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
 
         if s.options.verbose_more || (s.options.verbose && cost < bestcost) {
-              println!("Iteration {}: {} bit", i, cost);
+            println!("Iteration {}: {} bit", i, cost);
         }
         if cost < bestcost {
             /* Copy to the output store. */

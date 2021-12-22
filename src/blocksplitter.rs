@@ -8,7 +8,8 @@ use Options;
 /// `f64`, `i` is in range `start-end` (excluding `end`).
 /// Returns the index to the minimum and the minimum value.
 fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
-    where F: Fn(usize) -> f64
+where
+    F: Fn(usize) -> f64,
 {
     if end - start < 1024 {
         let mut best = f64::MAX;
@@ -25,7 +26,7 @@ fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
         /* Try to find minimum faster by recursively checking multiple points. */
         let mut start = start;
         let mut end = end;
-        let num = 9;  /* Good value: 9. ?!?!?!?! */
+        let num = 9; /* Good value: 9. ?!?!?!?! */
         let mut p = vec![0; num];
         let mut vp = vec![0.0; num];
         let mut lastbest = f64::MAX;
@@ -80,7 +81,11 @@ fn estimate_cost(lz77: &Lz77Store, lstart: usize, lend: usize) -> f64 {
 /// lstart: output variable, giving start of block.
 /// lend: output variable, giving end of block.
 /// returns 1 if a block was found, 0 if no block found (all are done).
-fn find_largest_splittable_block(lz77size: usize, done: &[u8], splitpoints: &[usize]) -> Option<(usize, usize)> {
+fn find_largest_splittable_block(
+    lz77size: usize,
+    done: &[u8],
+    splitpoints: &[usize],
+) -> Option<(usize, usize)> {
     let mut longest = 0;
     let mut found = None;
 
@@ -124,15 +129,32 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
     }
     debug_assert_eq!(splitpoints.len(), nlz77points);
 
-    println!("block split points: {} (hex: {})", splitpoints.iter().map(|&sp| format!("{}", sp)).collect::<Vec<_>>().join(" "), splitpoints.iter().map(|&sp| format!("{:x}", sp)).collect::<Vec<_>>().join(" "));
+    println!(
+        "block split points: {} (hex: {})",
+        splitpoints
+            .iter()
+            .map(|&sp| format!("{}", sp))
+            .collect::<Vec<_>>()
+            .join(" "),
+        splitpoints
+            .iter()
+            .map(|&sp| format!("{:x}", sp))
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
 }
 
 /// Does blocksplitting on LZ77 data.
 /// The output splitpoints are indices in the LZ77 data.
 /// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
-pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, splitpoints: &mut Vec<usize>) {
+pub fn blocksplit_lz77(
+    options: &Options,
+    lz77: &Lz77Store,
+    maxblocks: usize,
+    splitpoints: &mut Vec<usize>,
+) {
     if lz77.size() < 10 {
-        return;  /* This code fails on tiny files. */
+        return; /* This code fails on tiny files. */
     }
 
     let mut numblocks = 1;
@@ -142,8 +164,10 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 
     while maxblocks != 0 && numblocks < maxblocks {
         debug_assert!(lstart < lend);
-        let find_minimum_result = find_minimum(|i|
-            estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend), lstart + 1, lend
+        let find_minimum_result = find_minimum(
+            |i| estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend),
+            lstart + 1,
+            lend,
         );
         let llpos = find_minimum_result.0;
         let splitcost = find_minimum_result.1;
@@ -163,14 +187,18 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 
         // If `find_largest_splittable_block` returns `None`, no further split will
         // likely reduce compression.
-        let is_finished = find_largest_splittable_block(lz77.size(), &done, splitpoints)
-            .map_or(true, |(start, end)| {
+        let is_finished = find_largest_splittable_block(lz77.size(), &done, splitpoints).map_or(
+            true,
+            |(start, end)| {
                 lstart = start;
                 lend = end;
                 lend - lstart < 10
-            });
+            },
+        );
 
-        if is_finished { break }
+        if is_finished {
+            break;
+        }
     }
 
     if options.verbose {
@@ -190,7 +218,14 @@ pub fn blocksplit_lz77(options: &Options, lz77: &Lz77Store, maxblocks: usize, sp
 ///   The coordinates are indices in the input array.
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
-pub fn blocksplit(options: &Options, in_data: &[u8], instart: usize, inend: usize, maxblocks: usize, splitpoints: &mut Vec<usize>) {
+pub fn blocksplit(
+    options: &Options,
+    in_data: &[u8],
+    instart: usize,
+    inend: usize,
+    maxblocks: usize,
+    splitpoints: &mut Vec<usize>,
+) {
     splitpoints.clear();
     let mut store = Lz77Store::new();
 

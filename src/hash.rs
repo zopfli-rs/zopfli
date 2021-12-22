@@ -1,4 +1,4 @@
-use util::{ZOPFLI_WINDOW_MASK, ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_SIZE};
+use util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
 const HASH_SHIFT: i32 = 5;
 const HASH_MASK: u16 = 32767;
@@ -10,14 +10,14 @@ pub enum Which {
 }
 
 pub struct SmallerHashThing {
-    prev: u16, /* Index to index of prev. occurrence of same hash. */
+    prev: u16,            /* Index to index of prev. occurrence of same hash. */
     hashval: Option<u16>, /* Index to hash value at this index. */
 }
 
 pub struct HashThing {
-    head: Vec<i32>,  /* Hash value to index of its most recent occurrence. */
+    head: Vec<i32>, /* Hash value to index of its most recent occurrence. */
     prev_and_hashval: Vec<SmallerHashThing>,
-    val: u16,  /* Current hash value. */
+    val: u16, /* Current hash value. */
 }
 
 impl HashThing {
@@ -40,20 +40,23 @@ impl HashThing {
         self.val = 0;
         self.head.clear();
         self.head.resize(65536, -1);
-        self.prev_and_hashval = (0..ZOPFLI_WINDOW_SIZE as u16).map(|p| {
-            SmallerHashThing {
+        self.prev_and_hashval = (0..ZOPFLI_WINDOW_SIZE as u16)
+            .map(|p| SmallerHashThing {
                 prev: p,
                 hashval: None,
-            }
-        }).collect();
+            })
+            .collect();
     }
 
     fn update(&mut self, hpos: usize) {
         let hashval = self.val;
         let index = self.val as usize;
         let head_index = self.head[index];
-        let prev = if head_index != -1 &&
-            self.prev_and_hashval[head_index as usize].hashval.map_or(false, |hv| hv == self.val) {
+        let prev = if head_index != -1
+            && self.prev_and_hashval[head_index as usize]
+                .hashval
+                .map_or(false, |hv| hv == self.val)
+        {
             head_index as u16
         } else {
             hpos as u16
@@ -70,7 +73,7 @@ impl HashThing {
 pub struct ZopfliHash {
     hash1: HashThing,
     hash2: HashThing,
-    pub same: [u16; ZOPFLI_WINDOW_SIZE],  /* Amount of repetitions of same byte after this .*/
+    pub same: [u16; ZOPFLI_WINDOW_SIZE], /* Amount of repetitions of same byte after this .*/
 }
 
 impl ZopfliHash {
