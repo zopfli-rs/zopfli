@@ -14,7 +14,6 @@ use crate::symbols::{
 use crate::tree::lengths_to_symbols;
 use crate::util::{ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE};
 use crate::Options;
-use iter::IsFinalIterator;
 
 /// Compresses according to the deflate specification and append the compressed
 /// result to the output.
