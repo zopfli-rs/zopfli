@@ -1,12 +1,8 @@
 # Zopfli in Rust
 
-[![Build Status](https://travis-ci.org/carols10cents/zopfli.svg?branch=master)](https://travis-ci.org/carols10cents/zopfli)
-
 This is a reimplementation of the [Zopfli](https://github.com/google/zopfli) compression tool in Rust.
 
-I have totally ignored zopflipng.
-
-More info about why and how I did this can be found in [the slides for a talk I gave about it](https://github.com/carols10cents/rust-out-your-c-talk).
+Carol Nichols started the Rust implementation as an experiment in incrementally rewriting a C library in Rust, keeping the project compiling at every step. For more information about that experiment, see [the slides for a talk she gave about it](https://github.com/carols10cents/rust-out-your-c-talk) and [the repo as it was for the experiment](https://github.com/carols10cents/zopfli).
 
 ## How to build
 
@@ -38,5 +34,5 @@ $ ./test/run.sh
 
 and then checking that git reports no changes to the files in `test/results`.
 
-Or you can run `make test`, which will run `cargo test`, then `./test/run.sh`, and then will fail if there are any changed files according to git. Note that if you have uncommitted changes and you run this, your changes will cause this command to fail, but the tests actually passed. 
+Or you can run `make test`, which will run `cargo test`, then `./test/run.sh`, and then will fail if there are any changed files according to git. Note that if you have uncommitted changes and you run this, your changes will cause this command to fail, but the tests actually passed.
 

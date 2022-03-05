@@ -1,12 +1,11 @@
 [package]
 name = "zopfli"
 version = "0.5.0"
-authors = ["Carol (Nichols || Goulding) <carol.nichols@gmail.com>"]
 description = "A Rust implementation of the Zopfli compression algorithm."
 license = "Apache-2.0"
 keywords = ["compression"]
-homepage = "https://github.com/carols10cents/zopfli"
-repository = "https://github.com/carols10cents/zopfli"
+homepage = "https://github.com/zopfli-rs/zopfli"
+repository = "https://github.com/zopfli-rs/zopfli"
 readme = "README.md"
 categories = ["compression"]
 exclude = ["test/*"]
