@@ -1,6 +1,6 @@
 [package]
 name = "zopfli"
-version = "0.5.0"
+version = "0.6.0"
 description = "A Rust implementation of the Zopfli compression algorithm."
 license = "Apache-2.0"
 keywords = ["compression"]
