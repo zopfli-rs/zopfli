@@ -95,7 +95,9 @@ where
     }
 
     if bytes_read == 0 {
-        let instart = if j == ZOPFLI_MASTER_BLOCK_SIZE {
+        let instart = if total_bytes_read == 0 {
+            0
+        } else if j == ZOPFLI_MASTER_BLOCK_SIZE {
             0
         } else {
             ZOPFLI_WINDOW_SIZE
@@ -308,7 +310,7 @@ fn calculate_block_symbol_size_small(
 ) -> usize {
     let mut result = 0;
 
-    debug_assert!(lend - 1 < lz77.size());
+    debug_assert!(lend == lstart || lend - 1 < lz77.size());
 
     for &item in &lz77.litlens[lstart..lend] {
         match item {
@@ -1132,7 +1134,7 @@ where
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);
-        debug_assert!(store.size() > 0);
+        debug_assert!(instart == inend || store.size() > 0);
         for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
             lz77.append_store_item(litlens, pos);
         }
@@ -1148,7 +1150,7 @@ where
     totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
     // ZopfliAppendLZ77Store(&store, &lz77);
-    debug_assert!(store.size() > 0);
+    debug_assert!(instart == inend || store.size() > 0);
     for (&litlens, &pos) in store.litlens.iter().zip(store.pos.iter()) {
         lz77.append_store_item(litlens, pos);
     }
