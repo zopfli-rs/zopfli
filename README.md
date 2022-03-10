@@ -34,5 +34,4 @@ $ ./test/run.sh
 
 and then checking that git reports no changes to the files in `test/results`.
 
-Or you can run `make test`, which will run `cargo test`, then `./test/run.sh`, and then will fail if there are any changed files according to git. Note that if you have uncommitted changes and you run this, your changes will cause this command to fail, but the tests actually passed.
-
+Or you can run `make test`, which will run `cargo test` followed by `./test/run.sh`; it will fail if there are any mismatches.
