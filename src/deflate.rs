@@ -12,7 +12,7 @@ use crate::symbols::{
     get_length_symbol_extra_bits,
 };
 use crate::tree::lengths_to_symbols;
-use crate::util::{ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE};
+use crate::util::{ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE, read_to_fill};
 use crate::Options;
 
 /// Compresses according to the deflate specification and append the compressed
@@ -26,92 +26,172 @@ use crate::Options;
 /// `in_data`: the input bytes
 /// `out`: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
-pub fn deflate<R, W>(
-    options: &Options,
-    btype: BlockType,
-    mut in_data: R,
-    insize: u64,
-    out: W,
-) -> io::Result<()>
+pub fn deflate<R, W>(options: &Options, btype: BlockType, mut in_data: R, out: W) -> io::Result<()>
 where
     R: Read,
     W: Write,
 {
-    let mut block_and_window = [0; ZOPFLI_WINDOW_SIZE + ZOPFLI_MASTER_BLOCK_SIZE];
-    let block_and_window_len = block_and_window.len();
+    const ZOPFLI_WINDOW_AND_BLOCK_SIZE: usize = ZOPFLI_WINDOW_SIZE + ZOPFLI_MASTER_BLOCK_SIZE;
+
+    // Logically, this buffer is structured as shown in the following ASCII art:
+    //
+    // 0
+    //  ┌──────────┬──────────┬──────────┐
+    //  │ Previous │ Previous │  Current │
+    //  │  block   │   block  │   block  │
+    //  │  window  │   data   │   data   │
+    //  └──────────┴──────────┴──────────┘
+    //                                    WINDOW_SIZE + 2 * MASTER_BLOCK_SIZE
+    //
+    // Each block is a Zopfli master block. Master blocks are read from the source
+    // one at a time, and temporarily stored in the "Current block data" section.
+    // After a master block is read, the previously read master block, if any, is
+    // compressed and written to the stream, as we know for sure that it's not the
+    // last block on the stream. In addition, the current block data, plus the last
+    // window size bytes of the previous block data, are moved to the previous block
+    // data and previous block window regions, respectively, to be compressed later.
+    // Thus, the buffer works as a sliding window of recent stream data.
+    //
+    // The implementation of this technique below handles subtleties such as avoiding
+    // outputting an empty DEFLATE block in the end if the source size is a multiple
+    // of the master block size, among other things.
+    let mut buffer = vec![0; ZOPFLI_WINDOW_SIZE + 2 * ZOPFLI_MASTER_BLOCK_SIZE];
+
+    let mut have_previous_block = false;
+    let mut previous_block_has_window = false;
 
     let mut bitwise_writer = BitwiseWriter::new(out);
-    let mut total_bytes_read = 0;
-    let mut bytes_read;
-    let mut i = 0;
-    let mut j = ZOPFLI_MASTER_BLOCK_SIZE;
 
-    loop {
-        bytes_read = in_data.read(&mut block_and_window[i..j])?;
-
-        if bytes_read == 0 {
-            // Reached EOF while trying to read a full block.
-            // This means that insize is not a multiple of ZOPFLI_MASTER_BLOCK_SIZE, and the
-            // last block should be smaller.
-            break;
-        }
-
-        total_bytes_read += bytes_read as u64;
-
-        if bytes_read == j - i {
-            // Just read a full block.
-            let final_block = total_bytes_read == insize;
-            let instart = if j == ZOPFLI_MASTER_BLOCK_SIZE {
-                0
-            } else {
-                ZOPFLI_WINDOW_SIZE
-            };
-            deflate_part(
-                options,
-                btype,
-                final_block,
-                &mut block_and_window,
-                instart,
-                j,
-                &mut bitwise_writer,
-            )?;
-
-            if final_block {
-                // No point in trying to read more data.
-                break;
-            } else {
-                // Update buffer start and end indexes accordingly.
-                // Keep a sliding window at the beginning with the latest ZOPFLI_WINDOW_SIZE bytes.
-                // There is no purpose in keeping more than that because only the strings in the
-                // previous ZOPFLI_WINDOW_SIZE bytes can be referenced in a DEFLATE stream.
-                block_and_window.copy_within(j - ZOPFLI_WINDOW_SIZE..j, 0);
-                i = ZOPFLI_WINDOW_SIZE;
-                j = block_and_window_len;
-            }
+    fn deflate_previous_block<W: Write>(
+        previous_block_has_window: bool,
+        buffer: &[u8],
+        options: &Options,
+        btype: BlockType,
+        final_block: bool,
+        bitwise_writer: &mut BitwiseWriter<W>,
+    ) -> io::Result<()> {
+        // If the previous block has some data from its previous block, use it for
+        // backreferences in the DEFLATE stream.
+        let (in_data, instart, inend) = if previous_block_has_window {
+            (
+                &buffer[..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
+                ZOPFLI_WINDOW_SIZE,
+                ZOPFLI_WINDOW_AND_BLOCK_SIZE,
+            )
         } else {
-            // Continue trying to read a full block.
-            i += bytes_read;
-        }
-    }
-
-    if bytes_read == 0 {
-        let instart = if total_bytes_read == 0 {
-            0
-        } else if j == ZOPFLI_MASTER_BLOCK_SIZE {
-            0
-        } else {
-            ZOPFLI_WINDOW_SIZE
+            (
+                &buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
+                0,
+                ZOPFLI_MASTER_BLOCK_SIZE,
+            )
         };
-        let inend = instart + (total_bytes_read % ZOPFLI_MASTER_BLOCK_SIZE as u64) as usize;
+
         deflate_part(
             options,
             btype,
-            true,
-            &mut block_and_window,
+            final_block,
+            in_data,
             instart,
             inend,
-            &mut bitwise_writer,
-        )?;
+            bitwise_writer,
+        )
+    }
+
+    loop {
+        match read_to_fill(&mut in_data, &mut buffer[ZOPFLI_WINDOW_AND_BLOCK_SIZE..])? {
+            (true, _) => {
+                // A new master block was completely filled.
+
+                // Now we know that the previous block, if any, can't be the last one,
+                // so we're ready to compress it. Observe that it's necessary to know
+                // in advance whether it's the last block to write it properly to
+                // unseekable streams.
+                if have_previous_block {
+                    deflate_previous_block(
+                        previous_block_has_window,
+                        &buffer,
+                        options,
+                        btype,
+                        false,
+                        &mut bitwise_writer,
+                    )?;
+                }
+
+                if have_previous_block {
+                    // Copy the last ZOPFLI_WINDOW_SIZE bytes of the previous block to
+                    // the previous block window section, and copy the current block
+                    // data to the previous block data section. By construction, now
+                    // the previous block has a window.
+                    buffer.copy_within(ZOPFLI_WINDOW_AND_BLOCK_SIZE - ZOPFLI_WINDOW_SIZE.., 0);
+                    previous_block_has_window = true;
+                } else {
+                    // There's no previous block data to move to the previous window.
+                    // Just copy the current block data to the previous block data region.
+                    buffer.copy_within(ZOPFLI_WINDOW_AND_BLOCK_SIZE.., ZOPFLI_WINDOW_SIZE);
+                    have_previous_block = true;
+                }
+            }
+            (false, bytes_read) => {
+                // We read a partial master block, after zero or more complete
+                // master blocks, because EOF was reached.
+
+                // Handle the edge cases of the input size being of the form
+                // n * ZOPFLI_MASTER_BLOCK_SIZE, where n > 0: in such cases,
+                // bytes_read would be zero here, so the previous block should
+                // be the last one, because otherwise we would need to output
+                // a wasteful zero-sized block to signal the end of the DEFLATE
+                // stream. That n is strictly greater than zero is important:
+                // if the input is zero-sized, we need that dummy block to
+                // signal that in a proper DEFLATE stream.
+                let previous_block_is_last = have_previous_block && bytes_read == 0;
+
+                if have_previous_block {
+                    deflate_previous_block(
+                        previous_block_has_window,
+                        &buffer,
+                        options,
+                        btype,
+                        previous_block_is_last,
+                        &mut bitwise_writer,
+                    )?;
+                }
+
+                // This line of code is reached on EOF, so there won't be more
+                // blocks after this. If this block has some meaningful data,
+                // output it.
+                if !previous_block_is_last {
+                    // Use the last bytes of the previous block for the compression
+                    // window if possible.
+                    let (in_data, instart, inend) = if have_previous_block {
+                        (
+                            &buffer[ZOPFLI_WINDOW_AND_BLOCK_SIZE - ZOPFLI_WINDOW_SIZE
+                                ..ZOPFLI_WINDOW_AND_BLOCK_SIZE + bytes_read],
+                            ZOPFLI_WINDOW_SIZE,
+                            ZOPFLI_WINDOW_SIZE + bytes_read,
+                        )
+                    } else {
+                        (
+                            &buffer[ZOPFLI_WINDOW_AND_BLOCK_SIZE
+                                ..ZOPFLI_WINDOW_AND_BLOCK_SIZE + bytes_read],
+                            0,
+                            bytes_read,
+                        )
+                    };
+
+                    deflate_part(
+                        options,
+                        btype,
+                        true,
+                        in_data,
+                        instart,
+                        inend,
+                        &mut bitwise_writer,
+                    )?;
+                }
+
+                break;
+            }
+        };
     }
 
     bitwise_writer.finish_partial_bits()
