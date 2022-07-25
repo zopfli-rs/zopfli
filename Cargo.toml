@@ -10,6 +10,7 @@ readme = "README.md"
 categories = ["compression"]
 exclude = ["test/*"]
 edition = "2021"
+rust-version = "1.56"
 
 [dependencies]
 crc = "2"
