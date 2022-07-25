@@ -1,4 +1,10 @@
-# Zopfli in Rust [![crates.io badge](https://img.shields.io/crates/v/zopfli)](https://crates.io/crates/zopfli)
+<div align="center">
+<img src="https://avatars.githubusercontent.com/u/100982154?s=200&v=4" alt="Zopfli in Rust logo">
+<h1>Zopfli in Rust</h1>
+
+<a href="https://crates.io/crates/zopfli"><img alt="crates.io latest version" src="https://img.shields.io/crates/v/zopfli"></a>
+<a href="https://docs.rs/zopfli"><img alt="docs.rs status" src="https://img.shields.io/docsrs/zopfli?label=docs.rs"></a>
+</div>
 
 This is a reimplementation of the [Zopfli](https://github.com/google/zopfli) compression tool in Rust.
 
