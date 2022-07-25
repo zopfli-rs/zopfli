@@ -2,8 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
-
-extern crate zopfli;
+use log::info;
 
 fn main() {
     let options = zopfli::Options::default();
@@ -38,15 +37,13 @@ fn main() {
         )
         .unwrap_or_else(|why| panic!("couldn't write to output file {}: {}", out_filename, why));
 
-        if options.verbose {
-            let out_size = out_file.count;
-            println!(
-                "Original Size: {}, Compressed: {}, Compression: {}% Removed",
-                filesize,
-                out_size,
-                100.0 * (filesize - out_size) as f64 / filesize as f64
-            );
-        }
+        let out_size = out_file.count;
+        info!(
+            "Original Size: {}, Compressed: {}, Compression: {}% Removed",
+            filesize,
+            out_size,
+            100.0 * (filesize - out_size) as f64 / filesize as f64
+        );
     }
 }
 

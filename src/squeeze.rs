@@ -8,6 +8,7 @@
 //! solution.
 
 use std::{cmp, f32, f64};
+use log::{debug, trace};
 
 use crate::cache::Cache;
 use crate::deflate::{calculate_block_size, BlockType};
@@ -462,7 +463,7 @@ pub fn lz77_optimal<C>(
     in_data: &[u8],
     instart: usize,
     inend: usize,
-    numiterations: i32,
+    numiterations: u8,
 ) -> Lz77Store
 where
     C: Cache,
@@ -491,7 +492,7 @@ where
     the statistics of the previous run. */
     /* Repeat statistics with each time the cost model from the previous stat
     run. */
-    for i in 0..numiterations {
+    for i in 0..numiterations as i32 {
         currentstore.reset();
         lz77_optimal_run(
             s,
@@ -505,14 +506,15 @@ where
         );
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
 
-        if s.options.verbose_more || (s.options.verbose && cost < bestcost) {
-            println!("Iteration {}: {} bit", i, cost);
-        }
         if cost < bestcost {
             /* Copy to the output store. */
             outputstore = currentstore.clone();
             beststats = stats;
             bestcost = cost;
+
+            debug!("Iteration {}: {} bit", i, cost);
+        } else {
+            trace!("Iteration {}: {} bit", i, cost);
         }
         let laststats = stats;
         stats.clear_freqs();

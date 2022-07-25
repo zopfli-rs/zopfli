@@ -17,7 +17,8 @@ crc = "2"
 adler32 = "1"
 byteorder = "1"
 typed-arena = "2"
-iter-read = "0.3.0"
+iter-read = "0.3"
+log = "0.4"
 
 [profile.release]
 debug = true

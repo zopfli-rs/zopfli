@@ -1,4 +1,5 @@
 use std::f64;
+use log::{debug, log_enabled};
 
 use crate::deflate::calculate_block_size_auto_type;
 use crate::lz77::{Lz77Store, ZopfliBlockState};
@@ -108,7 +109,12 @@ fn find_largest_splittable_block(
 }
 
 /// Prints the block split points as decimal and hex values in the terminal.
+#[inline]
 fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
+    if !log_enabled!(log::Level::Debug) {
+        return;
+    }
+
     let nlz77points = lz77splitpoints.len();
     let mut splitpoints = Vec::with_capacity(nlz77points);
 
@@ -129,7 +135,7 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
     }
     debug_assert_eq!(splitpoints.len(), nlz77points);
 
-    println!(
+    debug!(
         "block split points: {} (hex: {})",
         splitpoints
             .iter()
@@ -148,21 +154,20 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
 /// The output splitpoints are indices in the LZ77 data.
 /// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
 pub fn blocksplit_lz77(
-    options: &Options,
     lz77: &Lz77Store,
-    maxblocks: usize,
+    maxblocks: u16,
     splitpoints: &mut Vec<usize>,
 ) {
     if lz77.size() < 10 {
         return; /* This code fails on tiny files. */
     }
 
-    let mut numblocks = 1;
+    let mut numblocks = 1u32;
     let mut done = vec![0; lz77.size()];
     let mut lstart = 0;
     let mut lend = lz77.size();
 
-    while maxblocks != 0 && numblocks < maxblocks {
+    while maxblocks != 0 && numblocks < maxblocks as u32 {
         debug_assert!(lstart < lend);
         let find_minimum_result = find_minimum(
             |i| estimate_cost(lz77, lstart, i) + estimate_cost(lz77, i, lend),
@@ -201,9 +206,7 @@ pub fn blocksplit_lz77(
         }
     }
 
-    if options.verbose {
-        print_block_split_points(lz77, splitpoints);
-    }
+    print_block_split_points(lz77, splitpoints);
 }
 
 /// Does blocksplitting on uncompressed data.
@@ -223,7 +226,7 @@ pub fn blocksplit(
     in_data: &[u8],
     instart: usize,
     inend: usize,
-    maxblocks: usize,
+    maxblocks: u16,
     splitpoints: &mut Vec<usize>,
 ) {
     splitpoints.clear();
@@ -236,8 +239,8 @@ pub fn blocksplit(
         store.greedy(&mut state, in_data, instart, inend);
     }
 
-    let mut lz77splitpoints = Vec::with_capacity(maxblocks);
-    blocksplit_lz77(options, &store, maxblocks, &mut lz77splitpoints);
+    let mut lz77splitpoints = Vec::with_capacity(maxblocks as usize);
+    blocksplit_lz77(&store, maxblocks, &mut lz77splitpoints);
 
     let nlz77points = lz77splitpoints.len();
 
