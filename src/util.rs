@@ -1,3 +1,5 @@
+use std::io::{ErrorKind, Read, self};
+
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: usize = 288;
 /// Number of distinct distance symbols in DEFLATE
@@ -39,3 +41,25 @@ pub const ZOPFLI_MAX_CHAIN_HITS: usize = 8192;
 /// Dividing into huge blocks hurts compression, but not much relative to the size.
 /// This must be equal or greater than `ZOPFLI_WINDOW_SIZE`.
 pub const ZOPFLI_MASTER_BLOCK_SIZE: usize = 1000000;
+
+/// Reads all bytes from a source to a buffer until either the buffer is full or EOF is
+/// reached. The return value is a tuple whose first element signals whether the buffer
+/// was completely filled, and its second element the count of bytes read and placed into
+/// `buf`.
+pub fn read_to_fill<R: Read>(mut in_data: R, mut buf: &mut [u8]) -> io::Result<(bool, usize)> {
+    let mut bytes_read = 0;
+
+    while !buf.is_empty() {
+        match in_data.read(buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                bytes_read += n;
+                buf = &mut buf[n..];
+            }
+            Err(err) if err.kind() == ErrorKind::Interrupted => {},
+            Err(err) => return Err(err)
+        }
+    }
+
+    Ok((buf.is_empty(), bytes_read))
+}

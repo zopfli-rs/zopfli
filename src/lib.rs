@@ -14,7 +14,7 @@ mod tree;
 mod util;
 mod zlib;
 
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Write};
 
 use crate::deflate::{deflate, BlockType};
 use crate::gzip::gzip_compress;
@@ -56,31 +56,10 @@ pub enum Format {
     Deflate,
 }
 
-pub fn compress_seekable<R, W>(
-    options: &Options,
-    output_type: &Format,
-    mut in_data: R,
-    out: W,
-) -> io::Result<()>
-where
-    R: Read + Seek,
-    W: Write,
-{
-    let insize = {
-        let offset = in_data.seek(SeekFrom::Current(0))?;
-        let insize = in_data.seek(SeekFrom::End(0))?;
-        in_data.seek(SeekFrom::Start(offset))?;
-        insize
-    };
-
-    compress(options, output_type, in_data, insize, out)
-}
-
 pub fn compress<R, W>(
     options: &Options,
     output_type: &Format,
     in_data: R,
-    insize: u64,
     out: W,
 ) -> io::Result<()>
 where
@@ -88,8 +67,8 @@ where
     W: Write,
 {
     match *output_type {
-        Format::Gzip => gzip_compress(options, in_data, insize, out),
-        Format::Zlib => zlib_compress(options, in_data, insize, out),
-        Format::Deflate => deflate(options, BlockType::Dynamic, in_data, insize, out),
+        Format::Gzip => gzip_compress(options, in_data, out),
+        Format::Zlib => zlib_compress(options, in_data, out),
+        Format::Deflate => deflate(options, BlockType::Dynamic, in_data, out),
     }
 }

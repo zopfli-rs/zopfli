@@ -34,7 +34,6 @@ fn main() {
             &options,
             &output_type,
             &file,
-            filesize as u64,
             &mut out_file,
         )
         .unwrap_or_else(|why| panic!("couldn't write to output file {}: {}", out_filename, why));
