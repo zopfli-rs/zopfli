@@ -1,11 +1,5 @@
 #![deny(trivial_casts, trivial_numeric_casts)]
 
-extern crate adler32;
-extern crate byteorder;
-extern crate crc;
-extern crate iter_read;
-extern crate typed_arena;
-
 mod blocksplitter;
 mod cache;
 mod deflate;
