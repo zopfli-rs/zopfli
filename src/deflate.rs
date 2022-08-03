@@ -1,5 +1,6 @@
 use std::cmp;
 use std::io::{self, Read, Write};
+use log::{debug, log_enabled};
 
 use crate::blocksplitter::{blocksplit, blocksplit_lz77};
 use crate::iter::IsFinalIterator;
@@ -154,7 +155,6 @@ where
 
             lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
             add_lz77_block(
-                options,
                 btype,
                 final_block,
                 in_data,
@@ -731,7 +731,6 @@ where
 ///   set it to `0` to not do the assertion.
 /// `bitwise_writer`: writer responsible for appending bits
 fn add_lz77_block<W>(
-    options: &Options,
     btype: BlockType,
     final_block: bool,
     in_data: &[u8],
@@ -767,12 +766,10 @@ where
 
             let detect_tree_size = bitwise_writer.bytes_written();
             add_dynamic_tree(&ll_lengths, &d_lengths, bitwise_writer)?;
-            if options.verbose {
-                println!(
-                    "treesize: {}",
-                    bitwise_writer.bytes_written() - detect_tree_size
-                );
-            }
+            debug!(
+                "treesize: {}",
+                bitwise_writer.bytes_written() - detect_tree_size
+            );
             (ll_lengths, d_lengths)
         }
     };
@@ -796,18 +793,19 @@ where
     /* End symbol. */
     bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256])?;
 
-    if options.verbose {
+    if log_enabled!(log::Level::Debug) {
         let uncompressed_size = lz77.litlens[lstart..lend]
             .iter()
             .fold(0, |acc, &x| acc + x.size());
         let compressed_size = bitwise_writer.bytes_written() - detect_block_size;
-        println!(
+        debug!(
             "compressed block size: {} ({}k) (unc: {})",
             compressed_size,
             compressed_size / 1024,
             uncompressed_size
         );
     }
+
     Ok(())
 }
 
@@ -1007,7 +1005,6 @@ where
 
     if uncompressedcost < fixedcost && uncompressedcost < dyncost {
         add_lz77_block(
-            options,
             BlockType::Uncompressed,
             final_block,
             in_data,
@@ -1020,7 +1017,6 @@ where
     } else if fixedcost < dyncost {
         if expensivefixed {
             add_lz77_block(
-                options,
                 BlockType::Fixed,
                 final_block,
                 in_data,
@@ -1032,7 +1028,6 @@ where
             )
         } else {
             add_lz77_block(
-                options,
                 BlockType::Fixed,
                 final_block,
                 in_data,
@@ -1045,7 +1040,6 @@ where
         }
     } else {
         add_lz77_block(
-            options,
             BlockType::Dynamic,
             final_block,
             in_data,
@@ -1115,14 +1109,14 @@ where
     let mut lz77 = Lz77Store::new();
 
     /* byte coordinates rather than lz77 index */
-    let mut splitpoints_uncompressed = Vec::with_capacity(options.blocksplittingmax as usize);
+    let mut splitpoints_uncompressed = Vec::with_capacity(options.maximum_block_splits as usize);
 
     blocksplit(
         options,
         in_data,
         instart,
         inend,
-        options.blocksplittingmax as usize,
+        options.maximum_block_splits,
         &mut splitpoints_uncompressed,
     );
     let npoints = splitpoints_uncompressed.len();
@@ -1132,7 +1126,7 @@ where
     for &item in &splitpoints_uncompressed {
         let mut s = ZopfliBlockState::new(options, last, item);
 
-        let store = lz77_optimal(&mut s, in_data, last, item, options.numiterations);
+        let store = lz77_optimal(&mut s, in_data, last, item, options.iteration_count.get());
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);
@@ -1148,7 +1142,7 @@ where
 
     let mut s = ZopfliBlockState::new(options, last, inend);
 
-    let store = lz77_optimal(&mut s, in_data, last, inend, options.numiterations);
+    let store = lz77_optimal(&mut s, in_data, last, inend, options.iteration_count.get());
     totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
     // ZopfliAppendLZ77Store(&store, &lz77);
@@ -1163,9 +1157,8 @@ where
         let mut totalcost2 = 0.0;
 
         blocksplit_lz77(
-            options,
             &lz77,
-            options.blocksplittingmax as usize,
+            options.maximum_block_splits,
             &mut splitpoints2,
         );
 
