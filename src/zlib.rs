@@ -6,7 +6,7 @@ use crate::deflate::{deflate, BlockType};
 use crate::Options;
 use iter_read::IterRead;
 
-pub fn zlib_compress<R, W>(options: &Options, in_data: R, insize: u64, mut out: W) -> io::Result<()>
+pub fn zlib_compress<R, W>(options: &Options, in_data: R, mut out: W) -> io::Result<()>
 where
     R: Read,
     W: Write,
@@ -40,7 +40,7 @@ where
 
     out.by_ref().write_u16::<BigEndian>(cmfflg)?;
 
-    deflate(options, BlockType::Dynamic, in_data, insize, out.by_ref())?;
+    deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
 
     // in_data is fused and stops reading bytes after the first error, so
     // this if is evaluated as soon as an error occurs. The deflate function
