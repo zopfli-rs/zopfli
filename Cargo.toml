@@ -13,12 +13,12 @@ edition = "2021"
 rust-version = "1.56"
 
 [dependencies]
-crc = "2"
-adler32 = "1"
-byteorder = "1"
-typed-arena = "2"
-iter-read = "0.3"
-log = "0.4"
+crc = "3.0.0"
+adler32 = "1.2.0"
+byteorder = "1.4.3"
+typed-arena = "2.0.1"
+iter-read = "0.3.1"
+log = "0.4.17"
 
 [profile.release]
 debug = true
