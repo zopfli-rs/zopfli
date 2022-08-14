@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        conf:
+          - stable
+          - beta
+        include:
+          - conf: stable
+            toolchain: stable
+          - conf: beta
+            toolchain: beta
+    env:
+      RUST_BACKTRACE: 1
+
+    # For other ways of skipping CI runs, see: https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
+    if: >-
+      (github.event_name == 'push' && !endsWith(github.event.head_commit.message, 'CI: skip')) ||
+      (github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.names, 'skip-ci'))
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install ${{ matrix.toolchain }}
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run rustfmt
+        run: cargo fmt -- --check --verbose
+
+      - name: Run linter
+        run: cargo clippy
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Generate documentation
+        run: cargo doc --no-deps
