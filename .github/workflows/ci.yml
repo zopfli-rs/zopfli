@@ -53,7 +53,7 @@ jobs:
         run: cargo clippy
 
       - name: Run tests
-        run: cargo test
+        run: make zopfli && make test
 
       - name: Generate documentation
         run: cargo doc --no-deps

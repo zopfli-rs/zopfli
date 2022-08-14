@@ -37,5 +37,6 @@ test:
 	./test/run.sh
 
 # Remove all libraries and binaries
+.PHONY: clean
 clean:
 	cargo clean && rm -f zopfli $(ZOPFLILIB_OBJ) libzopfli*
