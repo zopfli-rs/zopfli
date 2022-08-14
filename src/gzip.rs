@@ -34,15 +34,13 @@ where
             .filter_map(|byte_result| {
                 read_error_kind = byte_result.as_ref().map_or_else(
                     |error| Some(error.kind()),
-                    |byte| {
-                        match insize.checked_add(1) {
-                            Some(new_insize) => {
-                                insize = new_insize;
-                                crc_digest.update(&[*byte]);
-                                None
-                            }
-                            None => Some(io::ErrorKind::Other)
+                    |byte| match insize.checked_add(1) {
+                        Some(new_insize) => {
+                            insize = new_insize;
+                            crc_digest.update(&[*byte]);
+                            None
                         }
+                        None => Some(io::ErrorKind::Other),
                     },
                 );
 

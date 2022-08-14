@@ -1,5 +1,5 @@
-use std::f64;
 use log::{debug, log_enabled};
+use std::f64;
 
 use crate::deflate::calculate_block_size_auto_type;
 use crate::lz77::{Lz77Store, ZopfliBlockState};
@@ -153,11 +153,7 @@ fn print_block_split_points(lz77: &Lz77Store, lz77splitpoints: &[usize]) {
 /// Does blocksplitting on LZ77 data.
 /// The output splitpoints are indices in the LZ77 data.
 /// maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
-pub fn blocksplit_lz77(
-    lz77: &Lz77Store,
-    maxblocks: u16,
-    splitpoints: &mut Vec<usize>,
-) {
+pub fn blocksplit_lz77(lz77: &Lz77Store, maxblocks: u16, splitpoints: &mut Vec<usize>) {
     if lz77.size() < 10 {
         return; /* This code fails on tiny files. */
     }

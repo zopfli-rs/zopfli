@@ -7,15 +7,19 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
-use std::{cmp, f32, f64};
 use log::{debug, trace};
+use std::{cmp, f32, f64};
 
 use crate::cache::Cache;
 use crate::deflate::{calculate_block_size, BlockType};
 use crate::hash::ZopfliHash;
 use crate::lz77::{find_longest_match, LitLen, Lz77Store, ZopfliBlockState};
-use crate::symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol};
-use crate::util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
+use crate::symbols::{
+    get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol,
+};
+use crate::util::{
+    ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE,
+};
 
 const K_INV_LOG2: f64 = f64::consts::LOG2_E; // 1.0 / log(2.0)
 

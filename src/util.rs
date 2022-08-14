@@ -1,4 +1,4 @@
-use std::io::{ErrorKind, Read, self};
+use std::io::{self, ErrorKind, Read};
 
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: usize = 288;
@@ -56,8 +56,8 @@ pub fn read_to_fill<R: Read>(mut in_data: R, mut buf: &mut [u8]) -> io::Result<(
                 bytes_read += n;
                 buf = &mut buf[n..];
             }
-            Err(err) if err.kind() == ErrorKind::Interrupted => {},
-            Err(err) => return Err(err)
+            Err(err) if err.kind() == ErrorKind::Interrupted => {}
+            Err(err) => return Err(err),
         }
     }
 

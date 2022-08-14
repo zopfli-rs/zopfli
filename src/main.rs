@@ -1,8 +1,8 @@
+use log::info;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
-use log::info;
 
 fn main() {
     let options = zopfli::Options::default();
@@ -29,13 +29,9 @@ fn main() {
             .unwrap_or_else(|why| panic!("couldn't create output file {}: {}", out_filename, why));
         let mut out_file = WriteStatistics::new(BufWriter::new(out_file));
 
-        zopfli::compress(
-            &options,
-            &output_type,
-            &file,
-            &mut out_file,
-        )
-        .unwrap_or_else(|why| panic!("couldn't write to output file {}: {}", out_filename, why));
+        zopfli::compress(&options, &output_type, &file, &mut out_file).unwrap_or_else(|why| {
+            panic!("couldn't write to output file {}: {}", out_filename, why)
+        });
 
         let out_size = out_file.count;
         info!(

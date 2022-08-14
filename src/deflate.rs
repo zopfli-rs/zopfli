@@ -1,12 +1,11 @@
+use log::{debug, log_enabled};
 use std::cmp;
 use std::io::{self, Read, Write};
-use log::{debug, log_enabled};
 
 use crate::blocksplitter::{blocksplit, blocksplit_lz77};
 use crate::iter::IsFinalIterator;
 use crate::katajainen::length_limited_code_lengths;
 use crate::lz77::{LitLen, Lz77Store, ZopfliBlockState};
-use crate::Options;
 use crate::squeeze::{lz77_optimal, lz77_optimal_fixed};
 use crate::symbols::{
     get_dist_extra_bits, get_dist_extra_bits_value, get_dist_symbol, get_dist_symbol_extra_bits,
@@ -14,7 +13,10 @@ use crate::symbols::{
     get_length_symbol_extra_bits,
 };
 use crate::tree::lengths_to_symbols;
-use crate::util::{read_to_fill, ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE};
+use crate::util::{
+    read_to_fill, ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE,
+};
+use crate::Options;
 
 /// Compresses according to the deflate specification and append the compressed
 /// result to the output.
@@ -80,21 +82,43 @@ where
         };
 
         // Read a new master block of data, plus a new sentinel byte.
-        match read_to_fill(&mut in_data, &mut buffer[ZOPFLI_WINDOW_SIZE + sentinel_byte_count..])? {
+        match read_to_fill(
+            &mut in_data,
+            &mut buffer[ZOPFLI_WINDOW_SIZE + sentinel_byte_count..],
+        )? {
             (true, _) => {
                 // We have read a full master block and a sentinel byte.
 
                 let (in_data, instart, inend) = if have_window {
-                    (&buffer[..ZOPFLI_WINDOW_AND_BLOCK_SIZE], ZOPFLI_WINDOW_SIZE, ZOPFLI_MASTER_BLOCK_SIZE)
+                    (
+                        &buffer[..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
+                        ZOPFLI_WINDOW_SIZE,
+                        ZOPFLI_MASTER_BLOCK_SIZE,
+                    )
                 } else {
-                    (&buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE], 0, ZOPFLI_MASTER_BLOCK_SIZE)
+                    (
+                        &buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
+                        0,
+                        ZOPFLI_MASTER_BLOCK_SIZE,
+                    )
                 };
 
                 // The next block is at least one byte long due to the sentinel, so we know this block is not the last.
-                deflate_part(options, btype, false, in_data, instart, inend, &mut bitwise_writer)?;
+                deflate_part(
+                    options,
+                    btype,
+                    false,
+                    in_data,
+                    instart,
+                    inend,
+                    &mut bitwise_writer,
+                )?;
 
                 // Update the DEFLATE sliding window with the latest bytes we've just read.
-                buffer.copy_within(ZOPFLI_WINDOW_AND_BLOCK_SIZE - ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE, 0);
+                buffer.copy_within(
+                    ZOPFLI_WINDOW_AND_BLOCK_SIZE - ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE,
+                    0,
+                );
                 have_window = true;
 
                 sentinel_byte = Some(buffer[buffer.len() - 1]);
@@ -105,12 +129,28 @@ where
 
                 let read_block_size = sentinel_byte_count + bytes_read;
                 let (in_data, instart, inend) = if have_window {
-                    (&buffer[..ZOPFLI_WINDOW_SIZE + read_block_size], ZOPFLI_WINDOW_SIZE, ZOPFLI_WINDOW_SIZE + read_block_size)
+                    (
+                        &buffer[..ZOPFLI_WINDOW_SIZE + read_block_size],
+                        ZOPFLI_WINDOW_SIZE,
+                        ZOPFLI_WINDOW_SIZE + read_block_size,
+                    )
                 } else {
-                    (&buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_SIZE + read_block_size], 0, read_block_size)
+                    (
+                        &buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_SIZE + read_block_size],
+                        0,
+                        read_block_size,
+                    )
                 };
 
-                deflate_part(options, btype, true, in_data, instart, inend, &mut bitwise_writer)?;
+                deflate_part(
+                    options,
+                    btype,
+                    true,
+                    in_data,
+                    instart,
+                    inend,
+                    &mut bitwise_writer,
+                )?;
 
                 break;
             }
@@ -1156,11 +1196,7 @@ where
         let mut splitpoints2 = Vec::with_capacity(splitpoints_uncompressed.len());
         let mut totalcost2 = 0.0;
 
-        blocksplit_lz77(
-            &lz77,
-            options.maximum_block_splits,
-            &mut splitpoints2,
-        );
+        blocksplit_lz77(&lz77, options.maximum_block_splits, &mut splitpoints2);
 
         let mut last = 0;
         for &item in &splitpoints2 {
