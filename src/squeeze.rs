@@ -138,7 +138,7 @@ impl SymbolStats {
         fn calculate_and_store_entropy(count: &[usize], bitlengths: &mut [f64]) {
             let n = count.len();
 
-            let sum = count.iter().fold(0, |acc, &x| acc + x);
+            let sum = count.iter().sum();
 
             let log2sum = (if sum == 0 { n } else { sum } as f64).ln() * K_INV_LOG2;
 
@@ -336,7 +336,7 @@ where
         leng = longest_match.length;
 
         // Literal.
-        if i + 1 <= inend {
+        if i < inend {
             let new_cost = costmodel(arr[i] as u32, 0) + costs[j] as f64;
             debug_assert!(new_cost >= 0.0);
             if new_cost < costs[j + 1] as f64 {
@@ -407,6 +407,7 @@ fn trace_backwards(size: usize, length_array: &[u16]) -> Vec<u16> {
 /// `store`: place to output the LZ77 data
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
+#[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
 fn lz77_optimal_run<F, C>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],

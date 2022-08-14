@@ -1,13 +1,13 @@
 use std::iter::Peekable;
 
-pub struct IsFinal<I>
+pub struct FlagLastIterator<I>
 where
     I: Iterator,
 {
     inner: Peekable<I>,
 }
 
-impl<I> Iterator for IsFinal<I>
+impl<I> Iterator for FlagLastIterator<I>
 where
     I: Iterator,
 {
@@ -20,12 +20,12 @@ where
     }
 }
 
-pub trait IsFinalIterator: Iterator + Sized {
-    fn is_final(self) -> IsFinal<Self> {
-        IsFinal {
+pub trait ToFlagLastIterator: Iterator + Sized {
+    fn flag_last(self) -> FlagLastIterator<Self> {
+        FlagLastIterator {
             inner: self.peekable(),
         }
     }
 }
 
-impl<T> IsFinalIterator for T where T: Iterator + Sized {}
+impl<T> ToFlagLastIterator for T where T: Iterator + Sized {}

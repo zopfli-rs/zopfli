@@ -3,7 +3,7 @@ use std::cmp;
 use std::io::{self, Read, Write};
 
 use crate::blocksplitter::{blocksplit, blocksplit_lz77};
-use crate::iter::IsFinalIterator;
+use crate::iter::ToFlagLastIterator;
 use crate::katajainen::length_limited_code_lengths;
 use crate::lz77::{LitLen, Lz77Store, ZopfliBlockState};
 use crate::squeeze::{lz77_optimal, lz77_optimal_fixed};
@@ -216,7 +216,7 @@ where
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum BlockType {
     Uncompressed,
     Fixed,
@@ -770,6 +770,7 @@ where
 /// `expected_data_size`: the uncompressed block size, used for assert, but you can
 ///   set it to `0` to not do the assertion.
 /// `bitwise_writer`: writer responsible for appending bits
+#[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
 fn add_lz77_block<W>(
     btype: BlockType,
     final_block: bool,
@@ -952,6 +953,7 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 /// Adds all lit/len and dist codes from the lists as huffman symbols. Does not add
 /// end code 256. `expected_data_size` is the uncompressed block size, used for
 /// assert, but you can set it to `0` to not do the assertion.
+#[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
 fn add_lz77_data<W>(
     lz77: &Lz77Store,
     lstart: usize,
@@ -981,7 +983,7 @@ where
                 let litlen = len as usize;
                 let lls = get_length_symbol(litlen) as u32;
                 let ds = get_dist_symbol(dist as i32) as u32;
-                debug_assert!(litlen >= 3 && litlen <= 288);
+                debug_assert!((3..=288).contains(&litlen));
                 debug_assert!(ll_lengths[lls as usize] > 0);
                 debug_assert!(d_lengths[ds as usize] > 0);
                 bitwise_writer
@@ -1003,6 +1005,7 @@ where
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
 fn add_lz77_block_auto_type<W>(
     options: &Options,
     final_block: bool,
@@ -1234,7 +1237,7 @@ where
 {
     let in_data = &in_data[instart..inend];
 
-    for (chunk, is_final) in in_data.chunks(65535).is_final() {
+    for (chunk, is_final) in in_data.chunks(65535).flag_last() {
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
@@ -1272,7 +1275,7 @@ where
             bit: 0,
             bp: 0,
             len: 0,
-            out: out,
+            out,
         }
     }
 

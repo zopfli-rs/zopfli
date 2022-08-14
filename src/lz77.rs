@@ -80,7 +80,7 @@ impl Lz77Store {
                 self.ll_counts.resize(origsize + ZOPFLI_NUM_LL, 0);
             } else {
                 let mut last_histogram =
-                    (&self.ll_counts[(origsize - ZOPFLI_NUM_LL)..origsize]).to_vec();
+                    self.ll_counts[(origsize - ZOPFLI_NUM_LL)..origsize].to_vec();
                 self.ll_counts.append(&mut last_histogram);
             }
         }
@@ -90,7 +90,7 @@ impl Lz77Store {
                 self.d_counts.resize(ZOPFLI_NUM_D, 0);
             } else {
                 let mut last_histogram =
-                    (&self.d_counts[(origsize - ZOPFLI_NUM_D)..origsize]).to_vec();
+                    self.d_counts[(origsize - ZOPFLI_NUM_D)..origsize].to_vec();
                 self.d_counts.append(&mut last_histogram);
             }
         }
@@ -381,9 +381,9 @@ pub struct ZopfliBlockState<'a, C> {
 impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
     pub fn new(options: &'a Options, blockstart: usize, blockend: usize) -> Self {
         ZopfliBlockState {
-            options: options,
-            blockstart: blockstart,
-            blockend: blockend,
+            options,
+            blockstart,
+            blockend,
             lmc: ZopfliLongestMatchCache::new(blockend - blockstart),
         }
     }
@@ -392,9 +392,9 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
 impl<'a> ZopfliBlockState<'a, NoCache> {
     pub fn new_without_cache(options: &'a Options, blockstart: usize, blockend: usize) -> Self {
         ZopfliBlockState {
-            options: options,
-            blockstart: blockstart,
-            blockend: blockend,
+            options,
+            blockstart,
+            blockend,
             lmc: NoCache,
         }
     }
@@ -445,7 +445,7 @@ impl LongestMatch {
             distance: 0,
             length: 0,
             from_cache: false,
-            limit: limit,
+            limit,
         }
     }
 }

@@ -63,7 +63,7 @@ impl HashThing {
         };
 
         self.prev_and_hashval[hpos] = SmallerHashThing {
-            prev: prev,
+            prev,
             hashval: Some(hashval),
         };
         self.head[index] = hpos as i32;

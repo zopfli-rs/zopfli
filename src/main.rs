@@ -50,10 +50,7 @@ struct WriteStatistics<W> {
 
 impl<W> WriteStatistics<W> {
     fn new(inner: W) -> Self {
-        WriteStatistics {
-            inner: inner,
-            count: 0,
-        }
+        WriteStatistics { inner, count: 0 }
     }
 }
 
