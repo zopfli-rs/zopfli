@@ -58,7 +58,7 @@ checksum = "0685c84d5d54d1c26f7d3eb96cd41550adb97baed141a761cf335d3d33bcd0ae"
 
 [[package]]
 name = "zopfli"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "adler32",
  "byteorder",
