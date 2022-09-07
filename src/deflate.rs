@@ -93,7 +93,7 @@ where
                     (
                         &buffer[..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
                         ZOPFLI_WINDOW_SIZE,
-                        ZOPFLI_MASTER_BLOCK_SIZE,
+                        ZOPFLI_WINDOW_AND_BLOCK_SIZE,
                     )
                 } else {
                     (
