@@ -8,7 +8,7 @@
 //! solution.
 
 use log::{debug, trace};
-use std::{cmp, f32, f64};
+use std::{cmp, f64};
 
 use crate::cache::Cache;
 use crate::deflate::{calculate_block_size, BlockType};
@@ -447,7 +447,7 @@ pub fn lz77_optimal_fixed<C>(
     s.blockstart = instart;
     s.blockend = inend;
     let mut h = ZopfliHash::new();
-    let mut costs = Vec::with_capacity(inend - instart - 1);
+    let mut costs = Vec::with_capacity(inend - instart);
     lz77_optimal_run(
         s,
         in_data,
