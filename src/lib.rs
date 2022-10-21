@@ -31,7 +31,7 @@ use crate::zlib::zlib_compress;
 /// Options for the Zopfli compression algorithm.
 pub struct Options {
     /// Maximum amount of times to rerun forward and backward pass to optimize LZ77
-    /// compression cost. Good values: 10, 15 for small files, 5 for files over
+    /// compression cost.
     /// Good values: 10, 15 for small files, 5 for files over several MB in size or
     /// it will be too slow.
     ///
