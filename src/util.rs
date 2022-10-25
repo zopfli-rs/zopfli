@@ -63,3 +63,58 @@ pub fn read_to_fill<R: Read>(mut in_data: R, mut buf: &mut [u8]) -> io::Result<(
 
     Ok((buf.is_empty(), bytes_read))
 }
+
+/// A hasher that may be used by [`HashingAndCountingRead`].
+pub trait Hasher {
+    fn update(&mut self, data: &[u8]);
+}
+
+impl Hasher for &mut crc32fast::Hasher {
+    fn update(&mut self, data: &[u8]) {
+        crc32fast::Hasher::update(self, data)
+    }
+}
+
+impl Hasher for &mut simd_adler32::Adler32 {
+    fn update(&mut self, data: &[u8]) {
+        simd_adler32::Adler32::write(self, data)
+    }
+}
+
+/// A reader that wraps another reader, a hasher and an optional counter,
+/// updating the hasher state and incrementing a counter of bytes read so
+/// far for each block of data read.
+pub struct HashingAndCountingRead<'counter, R: Read, H: Hasher> {
+    inner: R,
+    hasher: H,
+    bytes_read: Option<&'counter mut u32>,
+}
+
+impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
+    pub fn new(inner: R, hasher: H, bytes_read: Option<&'counter mut u32>) -> Self {
+        Self {
+            inner,
+            hasher,
+            bytes_read,
+        }
+    }
+}
+
+impl<R: Read, H: Hasher> Read for HashingAndCountingRead<'_, R, H> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self.inner.read(buf) {
+            Ok(bytes_read) => {
+                self.hasher.update(&buf[..bytes_read]);
+
+                if let Some(total_bytes_read) = &mut self.bytes_read {
+                    **total_bytes_read = total_bytes_read
+                        .checked_add(bytes_read.try_into().map_err(|_| ErrorKind::Other)?)
+                        .ok_or(ErrorKind::Other)?;
+                }
+
+                Ok(bytes_read)
+            }
+            Err(err) => Err(err),
+        }
+    }
+}

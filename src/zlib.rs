@@ -1,10 +1,9 @@
-use adler32::RollingAdler32;
 use byteorder::{BigEndian, WriteBytesExt};
 use std::io::{self, Read, Write};
 
 use crate::deflate::{deflate, BlockType};
+use crate::util::HashingAndCountingRead;
 use crate::Options;
-use iter_read::IterRead;
 
 pub fn zlib_compress<R, W>(options: &Options, in_data: R, mut out: W) -> io::Result<()>
 where
@@ -18,36 +17,13 @@ where
     let fcheck = 31 - cmfflg % 31;
     cmfflg += fcheck;
 
-    let mut rolling_adler = RollingAdler32::new();
-    let mut read_error_kind = None;
+    let mut rolling_adler = simd_adler32::Adler32::new();
 
-    let in_data = IterRead::new(
-        in_data
-            .bytes()
-            .filter_map(|byte_result| {
-                read_error_kind = byte_result.as_ref().map_or_else(
-                    |error| Some(error.kind()),
-                    |byte| {
-                        rolling_adler.update(*byte);
-                        None
-                    },
-                );
-
-                byte_result.ok()
-            })
-            .fuse(),
-    );
+    let in_data = HashingAndCountingRead::new(in_data, &mut rolling_adler, None);
 
     out.by_ref().write_u16::<BigEndian>(cmfflg)?;
 
     deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
 
-    // in_data is fused and stops reading bytes after the first error, so
-    // this if is evaluated as soon as an error occurs. The deflate function
-    // has received EOF at this point, so the last block has been written.
-    if let Some(error_kind) = read_error_kind {
-        return Err(error_kind.into());
-    }
-
-    out.write_u32::<BigEndian>(rolling_adler.hash())
+    out.write_u32::<BigEndian>(rolling_adler.finish())
 }
