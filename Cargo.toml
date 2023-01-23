@@ -16,7 +16,7 @@ rust-version = "1.56"
 crc32fast = "1.3.2"
 simd-adler32 = "0.3.4"
 byteorder = "1.4.3"
-typed-arena = "2.0.1"
+typed-arena = "2.0.2"
 log = "0.4.17"
 
 [profile.release]
