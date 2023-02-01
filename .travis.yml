@@ -1,9 +1,0 @@
-language: rust
-script: make zopfli && make test
-rust:
-  - stable
-  - beta
-  - nightly
-matrix:
-  allow_failures:
-    - rust: nightly
