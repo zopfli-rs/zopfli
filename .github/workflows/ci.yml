@@ -44,13 +44,16 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rustfmt
+        if: matrix.conf != 'msrv'
         run: cargo fmt --check --verbose -- --color=always
 
       - name: Run linter
+        if: matrix.conf != 'msrv'
         run: cargo clippy
 
       - name: Run tests
         run: make zopfli && make test
 
       - name: Generate documentation
+        if: matrix.conf != 'msrv'
         run: cargo doc --no-deps
