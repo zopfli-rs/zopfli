@@ -14,12 +14,12 @@ jobs:
       matrix:
         conf:
           - stable
-          - beta
+          - msrv
         include:
           - conf: stable
             toolchain: stable
-          - conf: beta
-            toolchain: beta
+          - conf: msrv
+            toolchain: 1.56
     env:
       RUST_BACKTRACE: 1
 
