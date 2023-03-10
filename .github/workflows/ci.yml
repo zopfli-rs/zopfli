@@ -22,6 +22,7 @@ jobs:
             toolchain: 1.56
     env:
       RUST_BACKTRACE: 1
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 
     # For other ways of skipping CI runs, see: https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
     if: >-
