@@ -1,4 +1,4 @@
-use std::io::{self, ErrorKind, Read};
+use crate::{io, ErrorKind, Read};
 
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: usize = 288;
@@ -69,12 +69,14 @@ pub trait Hasher {
     fn update(&mut self, data: &[u8]);
 }
 
+#[cfg(feature = "gzip")]
 impl Hasher for &mut crc32fast::Hasher {
     fn update(&mut self, data: &[u8]) {
         crc32fast::Hasher::update(self, data)
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Hasher for &mut simd_adler32::Adler32 {
     fn update(&mut self, data: &[u8]) {
         simd_adler32::Adler32::write(self, data)

@@ -1,8 +1,9 @@
-use std::io::{self, Read, Write};
-
-use crate::deflate::{deflate, BlockType};
-use crate::util::HashingAndCountingRead;
-use crate::Options;
+use crate::{
+    deflate::{deflate, BlockType},
+    io,
+    util::HashingAndCountingRead,
+    Options, Read, Write,
+};
 
 static HEADER: &[u8] = &[
     31,  // ID1

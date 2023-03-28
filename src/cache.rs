@@ -1,7 +1,9 @@
-use std::cmp;
+use core::cmp;
 
-use crate::lz77::LongestMatch;
-use crate::util::{ZOPFLI_CACHE_LENGTH, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH};
+use crate::{
+    lz77::LongestMatch,
+    util::{ZOPFLI_CACHE_LENGTH, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH},
+};
 
 // Cache used by ZopfliFindLongestMatch to remember previously found length/dist
 // values.

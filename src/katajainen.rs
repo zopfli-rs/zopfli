@@ -1,5 +1,4 @@
-use std::cell::Cell;
-use std::cmp::Ordering;
+use core::{cell::Cell, cmp::Ordering};
 
 use typed_arena::Arena;
 

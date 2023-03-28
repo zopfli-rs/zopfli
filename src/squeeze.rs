@@ -7,21 +7,20 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
+use core::cmp;
+
 use log::{debug, trace};
-use std::{cmp, f64};
 
-use crate::cache::Cache;
-use crate::deflate::{calculate_block_size, BlockType};
-use crate::hash::ZopfliHash;
-use crate::lz77::{find_longest_match, LitLen, Lz77Store, ZopfliBlockState};
-use crate::symbols::{
-    get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol,
-};
-use crate::util::{
-    ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE,
+use crate::{
+    cache::Cache,
+    deflate::{calculate_block_size, BlockType},
+    hash::ZopfliHash,
+    lz77::{find_longest_match, LitLen, Lz77Store, ZopfliBlockState},
+    symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol},
+    util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE},
 };
 
-const K_INV_LOG2: f64 = f64::consts::LOG2_E; // 1.0 / log(2.0)
+const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 
 /// Cost model which should exactly match fixed tree.
 fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {

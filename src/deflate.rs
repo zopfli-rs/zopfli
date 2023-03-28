@@ -1,22 +1,25 @@
-use log::{debug, log_enabled};
-use std::cmp;
-use std::io::{self, Read, Write};
+use core::cmp;
 
-use crate::blocksplitter::{blocksplit, blocksplit_lz77};
-use crate::iter::ToFlagLastIterator;
-use crate::katajainen::length_limited_code_lengths;
-use crate::lz77::{LitLen, Lz77Store, ZopfliBlockState};
-use crate::squeeze::{lz77_optimal, lz77_optimal_fixed};
-use crate::symbols::{
-    get_dist_extra_bits, get_dist_extra_bits_value, get_dist_symbol, get_dist_symbol_extra_bits,
-    get_length_extra_bits, get_length_extra_bits_value, get_length_symbol,
-    get_length_symbol_extra_bits,
+use log::{debug, log_enabled};
+
+use crate::{
+    blocksplitter::{blocksplit, blocksplit_lz77},
+    io,
+    iter::ToFlagLastIterator,
+    katajainen::length_limited_code_lengths,
+    lz77::{LitLen, Lz77Store, ZopfliBlockState},
+    squeeze::{lz77_optimal, lz77_optimal_fixed},
+    symbols::{
+        get_dist_extra_bits, get_dist_extra_bits_value, get_dist_symbol,
+        get_dist_symbol_extra_bits, get_length_extra_bits, get_length_extra_bits_value,
+        get_length_symbol, get_length_symbol_extra_bits,
+    },
+    tree::lengths_to_symbols,
+    util::{
+        read_to_fill, ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE,
+    },
+    Options, Read, Write,
 };
-use crate::tree::lengths_to_symbols;
-use crate::util::{
-    read_to_fill, ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE,
-};
-use crate::Options;
 
 /// Compresses according to the deflate specification and append the compressed
 /// result to the output.

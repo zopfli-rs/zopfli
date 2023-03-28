@@ -6,10 +6,24 @@
 //! It usually compresses much better than other DEFLATE compressors, generating standard DEFLATE
 //! streams that can be decompressed with any DEFLATE decompressor, at the cost of being
 //! significantly slower.
+//!
+//! # Features
+//!
+//! This crate exposes the following features. You can enable or disable them in your `Cargo.toml`
+//! as needed.
+//!
+//! - `gzip` (enabled by default): enables support for compression in the gzip format.
+//! - `zlib` (enabled by default): enables support for compression in the Zlib format.
+//! - `nightly`: enables performance optimizations that are specific to the nightly Rust toolchain.
+//!              Currently, this feature improves rustdoc generation and enables the namesake feature
+//!              on `crc32fast` and `simd-adler32`, but this may change in the future.
+
+#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
 
 mod blocksplitter;
 mod cache;
 mod deflate;
+#[cfg(feature = "gzip")]
 mod gzip;
 mod hash;
 mod iter;
@@ -19,14 +33,13 @@ mod squeeze;
 mod symbols;
 mod tree;
 mod util;
+#[cfg(feature = "zlib")]
 mod zlib;
 
-use std::io::{self, Read, Write};
-use std::num::NonZeroU8;
+use core::num::NonZeroU8;
+use std::io::{self, ErrorKind, Read, Write};
 
 use crate::deflate::{deflate, BlockType};
-use crate::gzip::gzip_compress;
-use crate::zlib::zlib_compress;
 
 /// Options for the Zopfli compression algorithm.
 pub struct Options {
@@ -60,6 +73,7 @@ pub enum Format {
     ///
     /// This file format can be easily decompressed with the gzip
     /// program.
+    #[cfg(feature = "gzip")]
     Gzip,
     /// The zlib file format, as defined in
     /// [RFC 1950](https://datatracker.ietf.org/doc/html/rfc1950).
@@ -67,6 +81,7 @@ pub enum Format {
     /// The zlib format has less header overhead than gzip, but it
     /// stores less metadata about the compressed data and may not
     /// be as fit for purpose.
+    #[cfg(feature = "zlib")]
     Zlib,
     /// The raw DEFLATE stream format, as defined in
     /// [RFC 1951](https://datatracker.ietf.org/doc/html/rfc1951).
@@ -91,8 +106,10 @@ where
     W: Write,
 {
     match *output_format {
-        Format::Gzip => gzip_compress(options, in_data, out),
-        Format::Zlib => zlib_compress(options, in_data, out),
+        #[cfg(feature = "gzip")]
+        Format::Gzip => gzip::gzip_compress(options, in_data, out),
+        #[cfg(feature = "zlib")]
+        Format::Zlib => zlib::zlib_compress(options, in_data, out),
         Format::Deflate => deflate(options, BlockType::Dynamic, in_data, out),
     }
 }

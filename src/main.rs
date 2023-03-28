@@ -1,8 +1,10 @@
+use std::{
+    env,
+    fs::File,
+    io::{self, prelude::*, BufWriter},
+};
+
 use log::info;
-use std::env;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::{self, BufWriter};
 
 fn main() {
     let options = zopfli::Options::default();

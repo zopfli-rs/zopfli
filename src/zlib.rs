@@ -1,8 +1,9 @@
-use std::io::{self, Read, Write};
-
-use crate::deflate::{deflate, BlockType};
-use crate::util::HashingAndCountingRead;
-use crate::Options;
+use crate::{
+    deflate::{deflate, BlockType},
+    io,
+    util::HashingAndCountingRead,
+    Options, Read, Write,
+};
 
 pub fn zlib_compress<R, W>(options: &Options, in_data: R, mut out: W) -> io::Result<()>
 where
