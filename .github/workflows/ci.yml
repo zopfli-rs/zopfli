@@ -19,7 +19,7 @@ jobs:
           - conf: stable
             toolchain: stable
           - conf: msrv
-            toolchain: 1.56
+            toolchain: 1.60
     env:
       RUST_BACKTRACE: 1
 
