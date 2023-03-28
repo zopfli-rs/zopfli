@@ -7,7 +7,7 @@ keywords = ["compression"]
 homepage = "https://github.com/zopfli-rs/zopfli"
 repository = "https://github.com/zopfli-rs/zopfli"
 readme = "README.md"
-categories = ["compression"]
+categories = ["compression", "no-std"]
 exclude = ["test/*"]
 edition = "2021"
 rust-version = "1.60"
@@ -19,15 +19,16 @@ typed-arena = { version = "2.0.2", default-features = false }
 log = "0.4.17"
 
 [features]
-default = ["gzip", "zlib"]
+default = ["gzip", "zlib", "std"]
 gzip = ["dep:crc32fast"]
 zlib = ["dep:simd-adler32"]
 
+std = ["crc32fast?/std", "simd-adler32?/std"]
 nightly = ["crc32fast?/nightly", "simd-adler32?/nightly"]
 
 [[bin]]
 name = "zopfli"
-required-features = ["gzip", "zlib"]
+required-features = ["gzip", "zlib", "std"]
 
 [profile.release]
 debug = true
@@ -35,4 +36,4 @@ debug = true
 # docs.rs uses a nightly toolchain, so it can leverage unstable rustdoc features.
 # Reference: https://docs.rs/about/builds
 [package.metadata.docs.rs]
-cargo-args = ["--features", "nightly"]
+cargo-args = ["--no-default-features", "--features", "gzip,zlib,nightly"]

@@ -7,6 +7,7 @@
 //! multiple runs are done with updated cost models to converge to a better
 //! solution.
 
+use alloc::vec::Vec;
 use core::cmp;
 
 use log::{debug, trace};
@@ -21,6 +22,10 @@ use crate::{
 };
 
 const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
+
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)] // False-positive
+use crate::math::F64MathExt;
 
 /// Cost model which should exactly match fixed tree.
 fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {

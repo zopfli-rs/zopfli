@@ -14,11 +14,27 @@
 //!
 //! - `gzip` (enabled by default): enables support for compression in the gzip format.
 //! - `zlib` (enabled by default): enables support for compression in the Zlib format.
+//! - `std` (enabled by default): enables linking against the Rust standard library. When not enabled,
+//!                               the crate is built with the `#![no_std]` attribute and can be used
+//!                               in any environment where [`alloc`](https://doc.rust-lang.org/alloc/)
+//!                               (i.e., a memory allocator) is available. In addition, the crate
+//!                               exposes minimalist versions of the `std` I/O traits it needs to
+//!                               function, allowing users to implement them. Disabling `std` requires
+//!                               enabling `nightly` due to dependencies on unstable language features.
 //! - `nightly`: enables performance optimizations that are specific to the nightly Rust toolchain.
 //!              Currently, this feature improves rustdoc generation and enables the namesake feature
 //!              on `crc32fast` and `simd-adler32`, but this may change in the future.
 
-#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(
+    feature = "nightly",
+    feature(doc_auto_cfg),
+    feature(error_in_core),
+    feature(core_intrinsics)
+)]
+
+#[cfg_attr(not(feature = "std"), macro_use)]
+extern crate alloc;
 
 mod blocksplitter;
 mod cache;
@@ -26,9 +42,13 @@ mod deflate;
 #[cfg(feature = "gzip")]
 mod gzip;
 mod hash;
+#[cfg(not(feature = "std"))]
+mod io;
 mod iter;
 mod katajainen;
 mod lz77;
+#[cfg(all(not(feature = "std")))]
+mod math;
 mod squeeze;
 mod symbols;
 mod tree;
@@ -37,9 +57,11 @@ mod util;
 mod zlib;
 
 use core::num::NonZeroU8;
-use std::io::{self, ErrorKind, Read, Write};
+#[cfg(feature = "std")]
+use std::io::{Error, ErrorKind, Read, Write};
 
-use crate::deflate::{deflate, BlockType};
+#[cfg(not(feature = "std"))]
+pub use io::{Error, ErrorKind, Read, Write};
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone)]
@@ -102,7 +124,7 @@ pub fn compress<R, W>(
     output_format: Format,
     in_data: R,
     out: W,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     R: Read,
     W: Write,
@@ -112,6 +134,6 @@ where
         Format::Gzip => gzip::gzip_compress(options, in_data, out),
         #[cfg(feature = "zlib")]
         Format::Zlib => zlib::zlib_compress(options, in_data, out),
-        Format::Deflate => deflate(options, BlockType::Dynamic, in_data, out),
+        Format::Deflate => deflate::deflate(options, deflate::BlockType::Dynamic, in_data, out),
     }
 }

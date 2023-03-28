@@ -1,8 +1,7 @@
 use crate::{
     deflate::{deflate, BlockType},
-    io,
     util::HashingAndCountingRead,
-    Options, Read, Write,
+    Error, Options, Read, Write,
 };
 
 static HEADER: &[u8] = &[
@@ -16,7 +15,7 @@ static HEADER: &[u8] = &[
 ];
 
 /// Compresses the data according to the gzip specification, RFC 1952.
-pub fn gzip_compress<R, W>(options: &Options, in_data: R, mut out: W) -> io::Result<()>
+pub fn gzip_compress<R, W>(options: &Options, in_data: R, mut out: W) -> Result<(), Error>
 where
     R: Read,
     W: Write,

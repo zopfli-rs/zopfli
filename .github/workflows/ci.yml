@@ -18,6 +18,8 @@ jobs:
         include:
           - conf: stable
             toolchain: stable
+          - conf: nightly
+            toolchain: nightly
           - conf: msrv
             toolchain: '1.60'
     env:
@@ -44,16 +46,20 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rustfmt
-        if: matrix.conf != 'msrv'
+        if: matrix.conf == 'nightly'
         run: cargo fmt --check --verbose -- --color=always
 
       - name: Run linter
-        if: matrix.conf != 'msrv'
+        if: matrix.conf == 'nightly'
         run: cargo clippy
 
       - name: Run tests
         run: make zopfli && make test
 
+      - name: Run tests (no-std)
+        if: matrix.conf == 'nightly'
+        run: cargo test --no-default-features --features gzip,zlib,nightly
+
       - name: Generate documentation
-        if: matrix.conf != 'msrv'
+        if: matrix.conf == 'nightly'
         run: cargo doc --no-deps

@@ -1,4 +1,4 @@
-use crate::{io, ErrorKind, Read};
+use crate::{Error, ErrorKind, Read};
 
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: usize = 288;
@@ -46,7 +46,7 @@ pub const ZOPFLI_MASTER_BLOCK_SIZE: usize = 1000000;
 /// reached. The return value is a tuple whose first element signals whether the buffer
 /// was completely filled, and its second element the count of bytes read and placed into
 /// `buf`.
-pub fn read_to_fill<R: Read>(mut in_data: R, mut buf: &mut [u8]) -> io::Result<(bool, usize)> {
+pub fn read_to_fill<R: Read>(mut in_data: R, mut buf: &mut [u8]) -> Result<(bool, usize), Error> {
     let mut bytes_read = 0;
 
     while !buf.is_empty() {
@@ -103,7 +103,7 @@ impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
 }
 
 impl<R: Read, H: Hasher> Read for HashingAndCountingRead<'_, R, H> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
         match self.inner.read(buf) {
             Ok(bytes_read) => {
                 self.hasher.update(&buf[..bytes_read]);

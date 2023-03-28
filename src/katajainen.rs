@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::{cell::Cell, cmp::Ordering};
 
 use typed_arena::Arena;

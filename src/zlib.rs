@@ -1,11 +1,10 @@
 use crate::{
     deflate::{deflate, BlockType},
-    io,
     util::HashingAndCountingRead,
-    Options, Read, Write,
+    Error, Options, Read, Write,
 };
 
-pub fn zlib_compress<R, W>(options: &Options, in_data: R, mut out: W) -> io::Result<()>
+pub fn zlib_compress<R, W>(options: &Options, in_data: R, mut out: W) -> Result<(), Error>
 where
     R: Read,
     W: Write,

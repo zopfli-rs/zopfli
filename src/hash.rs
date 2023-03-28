@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
 const HASH_SHIFT: i32 = 5;

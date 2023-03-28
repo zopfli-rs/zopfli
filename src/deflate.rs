@@ -1,10 +1,10 @@
+use alloc::vec::Vec;
 use core::cmp;
 
 use log::{debug, log_enabled};
 
 use crate::{
     blocksplitter::{blocksplit, blocksplit_lz77},
-    io,
     iter::ToFlagLastIterator,
     katajainen::length_limited_code_lengths,
     lz77::{LitLen, Lz77Store, ZopfliBlockState},
@@ -18,7 +18,7 @@ use crate::{
     util::{
         read_to_fill, ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE,
     },
-    Options, Read, Write,
+    Error, Options, Read, Write,
 };
 
 /// Compresses according to the deflate specification and append the compressed
@@ -32,7 +32,12 @@ use crate::{
 /// `in_data`: the input bytes
 /// `out`: pointer to the dynamic output array to which the result is appended. Must
 ///   be freed after use.
-pub fn deflate<R, W>(options: &Options, btype: BlockType, mut in_data: R, out: W) -> io::Result<()>
+pub fn deflate<R, W>(
+    options: &Options,
+    btype: BlockType,
+    mut in_data: R,
+    out: W,
+) -> Result<(), Error>
 where
     R: Read,
     W: Write,
@@ -181,7 +186,7 @@ fn deflate_part<W>(
     instart: usize,
     inend: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -577,7 +582,7 @@ fn encode_tree<W>(
     use_17: bool,
     use_18: bool,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<usize>
+) -> Result<usize, Error>
 where
     W: Write,
 {
@@ -734,7 +739,7 @@ fn add_dynamic_tree<W>(
     ll_lengths: &[u32],
     d_lengths: &[u32],
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -783,7 +788,7 @@ fn add_lz77_block<W>(
     lend: usize,
     expected_data_size: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -895,8 +900,8 @@ fn try_optimize_huffman_for_rle(
     ll_lengths: Vec<u32>,
     d_lengths: Vec<u32>,
 ) -> (f64, Vec<u32>, Vec<u32>) {
-    let mut ll_counts2 = ll_counts.to_owned();
-    let mut d_counts2 = d_counts.to_owned();
+    let mut ll_counts2 = Vec::from(ll_counts);
+    let mut d_counts2 = Vec::from(d_counts);
 
     let treesize = calculate_tree_size(&ll_lengths, &d_lengths);
     let datasize = calculate_block_symbol_size_given_counts(
@@ -967,7 +972,7 @@ fn add_lz77_data<W>(
     d_symbols: &[u32],
     d_lengths: &[u32],
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -1018,7 +1023,7 @@ fn add_lz77_block_auto_type<W>(
     lend: usize,
     expected_data_size: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -1119,7 +1124,7 @@ fn add_all_blocks<W>(
     final_block: bool,
     in_data: &[u8],
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -1147,7 +1152,7 @@ fn blocksplit_attempt<W>(
     instart: usize,
     inend: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -1234,7 +1239,7 @@ fn add_non_compressed_block<W>(
     instart: usize,
     inend: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> io::Result<()>
+) -> Result<(), Error>
 where
     W: Write,
 {
@@ -1287,17 +1292,17 @@ where
     }
 
     /// For when you want to add a full byte.
-    fn add_byte(&mut self, byte: u8) -> io::Result<()> {
+    fn add_byte(&mut self, byte: u8) -> Result<(), Error> {
         self.add_bytes(&[byte])
     }
 
     /// For adding a slice of bytes.
-    fn add_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
+    fn add_bytes(&mut self, bytes: &[u8]) -> Result<(), Error> {
         self.len += bytes.len();
         self.out.write_all(bytes)
     }
 
-    fn add_bit(&mut self, bit: u8) -> io::Result<()> {
+    fn add_bit(&mut self, bit: u8) -> Result<(), Error> {
         self.bit |= bit << self.bp;
         self.bp += 1;
         if self.bp == 8 {
@@ -1307,7 +1312,7 @@ where
         }
     }
 
-    fn add_bits(&mut self, symbol: u32, length: u32) -> io::Result<()> {
+    fn add_bits(&mut self, symbol: u32, length: u32) -> Result<(), Error> {
         // TODO: make more efficient (add more bits at once)
         for i in 0..length {
             let bit = ((symbol >> i) & 1) as u8;
@@ -1319,7 +1324,7 @@ where
 
     /// Adds bits, like `add_bits`, but the order is inverted. The deflate specification
     /// uses both orders in one standard.
-    fn add_huffman_bits(&mut self, symbol: u32, length: u32) -> io::Result<()> {
+    fn add_huffman_bits(&mut self, symbol: u32, length: u32) -> Result<(), Error> {
         // TODO: make more efficient (add more bits at once)
         for i in 0..length {
             let bit = ((symbol >> (length - i - 1)) & 1) as u8;
@@ -1329,7 +1334,7 @@ where
         Ok(())
     }
 
-    fn finish_partial_bits(&mut self) -> io::Result<()> {
+    fn finish_partial_bits(&mut self) -> Result<(), Error> {
         if self.bp != 0 {
             let bytes = &[self.bit];
             self.add_bytes(bytes)?;

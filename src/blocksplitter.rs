@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use log::{debug, log_enabled};
 
 use crate::{

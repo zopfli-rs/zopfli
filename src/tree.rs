@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 /// Converts a series of Huffman tree bitlengths, to the bit values of the symbols.
 pub fn lengths_to_symbols(lengths: &[u32], max_bits: u32) -> Vec<u32> {
     let mut bl_count = vec![0; (max_bits + 1) as usize];
