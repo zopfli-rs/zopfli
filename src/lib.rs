@@ -42,6 +42,7 @@ use std::io::{self, ErrorKind, Read, Write};
 use crate::deflate::{deflate, BlockType};
 
 /// Options for the Zopfli compression algorithm.
+#[derive(Debug, Clone)]
 pub struct Options {
     /// Maximum amount of times to rerun forward and backward pass to optimize LZ77
     /// compression cost.
@@ -67,6 +68,7 @@ impl Default for Options {
 }
 
 /// The output file format to use to store data compressed with Zopfli.
+#[derive(Debug, Copy, Clone)]
 pub enum Format {
     /// The gzip file format, as defined in
     /// [RFC 1952](https://datatracker.ietf.org/doc/html/rfc1952).
@@ -97,7 +99,7 @@ pub enum Format {
 /// options, and writes the result to a sink in the defined output format.
 pub fn compress<R, W>(
     options: &Options,
-    output_format: &Format,
+    output_format: Format,
     in_data: R,
     out: W,
 ) -> io::Result<()>
@@ -105,7 +107,7 @@ where
     R: Read,
     W: Write,
 {
-    match *output_format {
+    match output_format {
         #[cfg(feature = "gzip")]
         Format::Gzip => gzip::gzip_compress(options, in_data, out),
         #[cfg(feature = "zlib")]
