@@ -1,7 +1,5 @@
 use std::io::{self, Read, Write};
 
-use byteorder::{LittleEndian, WriteBytesExt};
-
 use crate::deflate::{deflate, BlockType};
 use crate::util::HashingAndCountingRead;
 use crate::Options;
@@ -27,12 +25,11 @@ where
 
     let in_data = HashingAndCountingRead::new(in_data, &mut crc_hasher, Some(&mut insize));
 
-    out.by_ref().write_all(HEADER)?;
+    out.write_all(HEADER)?;
 
     deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
 
-    out.by_ref()
-        .write_u32::<LittleEndian>(crc_hasher.finalize())?;
+    out.write_all(&crc_hasher.finalize().to_le_bytes())?;
 
-    out.write_u32::<LittleEndian>(insize)
+    out.write_all(&insize.to_le_bytes())
 }

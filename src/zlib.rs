@@ -1,4 +1,3 @@
-use byteorder::{BigEndian, WriteBytesExt};
 use std::io::{self, Read, Write};
 
 use crate::deflate::{deflate, BlockType};
@@ -13,7 +12,7 @@ where
     let cmf = 120; /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
     let fdict = 0;
-    let mut cmfflg = 256 * cmf + fdict * 32 + flevel * 64;
+    let mut cmfflg: u16 = 256 * cmf + fdict * 32 + flevel * 64;
     let fcheck = 31 - cmfflg % 31;
     cmfflg += fcheck;
 
@@ -21,9 +20,9 @@ where
 
     let in_data = HashingAndCountingRead::new(in_data, &mut rolling_adler, None);
 
-    out.by_ref().write_u16::<BigEndian>(cmfflg)?;
+    out.write_all(&cmfflg.to_be_bytes())?;
 
     deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
 
-    out.write_u32::<BigEndian>(rolling_adler.finish())
+    out.write_all(&rolling_adler.finish().to_be_bytes())
 }
