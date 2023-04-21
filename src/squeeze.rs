@@ -36,7 +36,7 @@ fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
             9
         }
     } else {
-        let dbits = get_dist_extra_bits(dist as i32);
+        let dbits = get_dist_extra_bits(dist);
         let lbits = get_length_extra_bits(litlen as usize);
         let lsym = get_length_symbol(litlen as usize);
         let mut cost = 0;
@@ -58,8 +58,8 @@ fn get_cost_stat(litlen: u32, dist: u32, stats: &SymbolStats) -> f64 {
     } else {
         let lsym = get_length_symbol(litlen as usize) as usize;
         let lbits = get_length_extra_bits(litlen as usize) as f64;
-        let dsym = get_dist_symbol(dist as i32) as usize;
-        let dbits = get_dist_extra_bits(dist as i32) as f64;
+        let dsym = get_dist_symbol(dist) as usize;
+        let dbits = get_dist_extra_bits(dist) as f64;
         lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
     }
 }
@@ -179,7 +179,7 @@ impl SymbolStats {
                 LitLen::Literal(lit) => self.litlens[lit as usize] += 1,
                 LitLen::LengthDist(len, dist) => {
                     self.litlens[get_length_symbol(len as usize) as usize] += 1;
-                    self.dists[get_dist_symbol(dist as i32) as usize] += 1;
+                    self.dists[get_dist_symbol(dist as u32) as usize] += 1;
                 }
             }
         }

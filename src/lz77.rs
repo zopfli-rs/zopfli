@@ -113,9 +113,9 @@ impl Lz77Store {
             LitLen::LengthDist(length, dist) => {
                 let len_sym = get_length_symbol(length as usize);
                 self.ll_symbol.push(len_sym as u16);
-                self.d_symbol.push(get_dist_symbol(dist as i32) as u16);
+                self.d_symbol.push(get_dist_symbol(dist as u32) as u16);
                 self.ll_counts[llstart + len_sym as usize] += 1;
-                self.d_counts[dstart + get_dist_symbol(dist as i32) as usize] += 1;
+                self.d_counts[dstart + get_dist_symbol(dist as u32) as usize] += 1;
             }
         }
     }
@@ -667,13 +667,17 @@ fn get_length_score(length: i32, distance: i32) -> i32 {
     }
 }
 
+#[cfg(debug_assertions)]
 fn verify_len_dist(data: &[u8], pos: usize, dist: u16, length: u16) {
     for i in 0..length {
         let d1 = data[pos - (dist as usize) + (i as usize)];
         let d2 = data[pos + (i as usize)];
         if d1 != d2 {
-            debug_assert_eq!(d1, d2);
+            assert_eq!(d1, d2);
             break;
         }
     }
 }
+
+#[cfg(not(debug_assertions))]
+fn verify_len_dist(_data: &[u8], _pos: usize, _dist: u16, _length: u16) {}
