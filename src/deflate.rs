@@ -1053,7 +1053,7 @@ where
         fixedcost = calculate_block_size(&fixedstore, 0, fixedstore.size(), BlockType::Fixed);
     }
 
-    if uncompressedcost < fixedcost && uncompressedcost < dyncost {
+    if uncompressedcost <= fixedcost && uncompressedcost <= dyncost {
         add_lz77_block(
             BlockType::Uncompressed,
             final_block,
@@ -1064,7 +1064,7 @@ where
             expected_data_size,
             bitwise_writer,
         )
-    } else if fixedcost < dyncost {
+    } else if fixedcost <= dyncost {
         if expensivefixed {
             add_lz77_block(
                 BlockType::Fixed,

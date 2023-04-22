@@ -39,14 +39,8 @@ fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
         let dbits = get_dist_extra_bits(dist);
         let lbits = get_length_extra_bits(litlen);
         let lsym = get_length_symbol(litlen);
-        let mut cost = 0;
-        if lsym <= 279 {
-            cost += 7;
-        } else {
-            cost += 8;
-        }
-        cost += 5; // Every dist symbol has length 5.
-        cost + dbits + lbits
+        // Every dist symbol has length 5.
+        7 + (lsym > 279) as usize + 5 + dbits + lbits
     };
     result as f64
 }
@@ -295,8 +289,6 @@ where
         *cost = f32::INFINITY;
     }
     costs[0] = 0.0; /* Because it's the start. */
-
-    length_array[0] = 0;
 
     let mut i = instart;
     let mut leng;

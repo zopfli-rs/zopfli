@@ -519,13 +519,13 @@ where
 
     let (bestdist, bestlength) = find_longest_match_loop(h, array, pos, size, limit, sublen);
 
-    s.store_in_longest_match_cache(pos, limit, sublen, bestdist as u16, bestlength as u16);
+    s.store_in_longest_match_cache(pos, limit, sublen, bestdist, bestlength);
 
-    debug_assert!(bestlength <= limit);
+    debug_assert!(bestlength <= limit as u16);
 
-    debug_assert!(pos + bestlength <= size);
-    longest_match.distance = bestdist as u16;
-    longest_match.length = bestlength as u16;
+    debug_assert!(pos + bestlength as usize <= size);
+    longest_match.distance = bestdist;
+    longest_match.length = bestlength;
     longest_match.from_cache = false;
     longest_match.limit = limit;
     longest_match
@@ -538,18 +538,17 @@ fn find_longest_match_loop(
     size: usize,
     limit: usize,
     sublen: &mut Option<&mut [u16]>,
-) -> (i32, usize) {
+) -> (u16, u16) {
     let mut which_hash = Which::Hash1;
-    let mut pp = h.head_at(h.val(which_hash) as usize, which_hash); /* During the whole loop, p == hprev[pp]. */
-    let mut p = h.prev_at(pp as usize, which_hash);
-
     let hpos = pos & ZOPFLI_WINDOW_MASK;
-    debug_assert_eq!(pp as usize, hpos);
 
-    let mut dist = if (p as i32) < pp {
-        pp - (p as i32)
+    let mut pp = hpos; /* During the whole loop, p == hprev[pp]. */
+    let mut p = h.prev_at(pp, which_hash);
+
+    let mut dist = if p < pp {
+        pp - p
     } else {
-        (ZOPFLI_WINDOW_SIZE - (p as usize)) as i32 + pp
+        ZOPFLI_WINDOW_SIZE - p + pp
     };
 
     let mut bestlength = 1;
@@ -560,21 +559,18 @@ fn find_longest_match_loop(
     let mut match_offset;
 
     /* Go through all distances. */
-    while (dist as usize) < ZOPFLI_WINDOW_SIZE {
+    while dist < ZOPFLI_WINDOW_SIZE && chain_counter > 0 {
         let mut currentlength = 0;
 
-        debug_assert!((p as usize) < ZOPFLI_WINDOW_SIZE);
-        debug_assert_eq!(p, h.prev_at(pp as usize, which_hash));
-        debug_assert_eq!(
-            h.hash_val_at(p as usize, which_hash),
-            h.val(which_hash) as i32
-        );
+        debug_assert!(p < ZOPFLI_WINDOW_SIZE);
+        debug_assert_eq!(p, h.prev_at(pp, which_hash));
+        debug_assert_eq!(h.hash_val_at(p, which_hash), h.val(which_hash) as i32);
 
         if dist > 0 {
             debug_assert!(pos < size);
-            debug_assert!((dist as usize) <= pos);
+            debug_assert!(dist <= pos);
             scan_offset = pos;
-            match_offset = pos - (dist as usize);
+            match_offset = pos - dist;
 
             /* Testing the byte at position bestlength first, goes slightly faster. */
             if pos + bestlength >= size
@@ -582,12 +578,8 @@ fn find_longest_match_loop(
             {
                 let same0 = h.same[pos & ZOPFLI_WINDOW_MASK];
                 if same0 > 2 && array[scan_offset] == array[match_offset] {
-                    let same1 = h.same[(pos - (dist as usize)) & ZOPFLI_WINDOW_MASK];
-                    let same = [same0, same1, limit as u16]
-                        .iter()
-                        .min()
-                        .map(|x| *x as usize)
-                        .unwrap();
+                    let same1 = h.same[(pos - dist) & ZOPFLI_WINDOW_MASK];
+                    let same = cmp::min(cmp::min(same0, same1), limit as u16) as usize;
                     scan_offset += same;
                     match_offset += same;
                 }
@@ -612,30 +604,27 @@ fn find_longest_match_loop(
         /* Switch to the other hash once this will be more efficient. */
         if which_hash == Which::Hash1
             && bestlength >= h.same[hpos] as usize
-            && h.val(Which::Hash2) as i32 == h.hash_val_at(p as usize, Which::Hash2)
+            && h.val(Which::Hash2) as i32 == h.hash_val_at(p, Which::Hash2)
         {
             /* Now use the hash that encodes the length and first byte. */
             which_hash = Which::Hash2;
         }
 
-        pp = p as i32;
-        p = h.prev_at(p as usize, which_hash);
-        if (p as i32) == pp {
+        pp = p;
+        p = h.prev_at(p, which_hash);
+        if p == pp {
             break; /* Uninited prev value. */
         }
 
-        dist += if (p as i32) < pp {
-            pp - (p as i32)
+        dist += if p < pp {
+            pp - p
         } else {
-            (ZOPFLI_WINDOW_SIZE - (p as usize)) as i32 + pp
+            ZOPFLI_WINDOW_SIZE - p + pp
         };
 
         chain_counter -= 1;
-        if chain_counter == 0 {
-            break;
-        }
     }
-    (bestdist, bestlength)
+    (bestdist as u16, bestlength as u16)
 }
 
 /// Gets a score of the length given the distance. Typically, the score of the

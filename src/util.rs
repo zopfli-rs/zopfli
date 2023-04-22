@@ -12,7 +12,7 @@ pub const ZOPFLI_WINDOW_SIZE: usize = 32768;
 
 /// The window mask used to wrap indices into the window. This is why the
 /// window size must be a power of two.
-pub const ZOPFLI_WINDOW_MASK: usize = 32767; // ZOPFLI_WINDOW_SIZE - 1
+pub const ZOPFLI_WINDOW_MASK: usize = ZOPFLI_WINDOW_SIZE - 1;
 
 /// Maximum length that can be encoded in deflate.
 pub const ZOPFLI_MAX_MATCH: usize = 258;

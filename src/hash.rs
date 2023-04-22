@@ -17,7 +17,7 @@ pub struct SmallerHashThing {
 }
 
 pub struct HashThing {
-    head: Vec<i32>, /* Hash value to index of its most recent occurrence. */
+    head: Vec<i16>, /* Hash value to index of its most recent occurrence. */
     prev_and_hashval: Vec<SmallerHashThing>,
     val: u16, /* Current hash value. */
 }
@@ -70,7 +70,7 @@ impl HashThing {
             prev,
             hashval: Some(hashval),
         };
-        self.head[index] = hpos as i32;
+        self.head[index] = hpos as i16;
     }
 }
 
@@ -135,18 +135,11 @@ impl ZopfliHash {
         self.hash2.update(hpos);
     }
 
-    pub fn head_at(&self, index: usize, which: Which) -> i32 {
-        match which {
-            Which::Hash1 => self.hash1.head[index],
-            Which::Hash2 => self.hash2.head[index],
-        }
-    }
-
-    pub fn prev_at(&self, index: usize, which: Which) -> u16 {
-        match which {
+    pub fn prev_at(&self, index: usize, which: Which) -> usize {
+        (match which {
             Which::Hash1 => self.hash1.prev_and_hashval[index].prev,
             Which::Hash2 => self.hash2.prev_and_hashval[index].prev,
-        }
+        }) as usize
     }
 
     pub fn hash_val_at(&self, index: usize, which: Which) -> i32 {
