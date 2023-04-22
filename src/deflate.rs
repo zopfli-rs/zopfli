@@ -371,11 +371,11 @@ fn calculate_block_symbol_size_small(
             LitLen::LengthDist(litlens_i, dists_i) => {
                 debug_assert!(litlens_i < 259);
                 let ll_symbol = get_length_symbol(litlens_i as usize);
-                let d_symbol = get_dist_symbol(dists_i as u32);
-                result += ll_lengths[ll_symbol as usize];
-                result += d_lengths[d_symbol as usize];
-                result += get_length_symbol_extra_bits(ll_symbol as usize);
-                result += get_dist_symbol_extra_bits(d_symbol as usize);
+                let d_symbol = get_dist_symbol(dists_i);
+                result += ll_lengths[ll_symbol];
+                result += d_lengths[d_symbol];
+                result += get_length_symbol_extra_bits(ll_symbol);
+                result += get_dist_symbol_extra_bits(d_symbol);
             }
         }
     }
@@ -990,20 +990,19 @@ where
             LitLen::LengthDist(len, dist) => {
                 let litlen = len as usize;
                 let lls = get_length_symbol(litlen);
-                let ds = get_dist_symbol(dist as u32);
+                let ds = get_dist_symbol(dist);
                 debug_assert!((3..=288).contains(&litlen));
-                debug_assert!(ll_lengths[lls as usize] > 0);
-                debug_assert!(d_lengths[ds as usize] > 0);
-                bitwise_writer
-                    .add_huffman_bits(ll_symbols[lls as usize], ll_lengths[lls as usize])?;
+                debug_assert!(ll_lengths[lls] > 0);
+                debug_assert!(d_lengths[ds] > 0);
+                bitwise_writer.add_huffman_bits(ll_symbols[lls], ll_lengths[lls])?;
                 bitwise_writer.add_bits(
                     get_length_extra_bits_value(litlen),
-                    get_length_extra_bits(litlen),
+                    get_length_extra_bits(litlen) as u32,
                 )?;
-                bitwise_writer.add_huffman_bits(d_symbols[ds as usize], d_lengths[ds as usize])?;
+                bitwise_writer.add_huffman_bits(d_symbols[ds], d_lengths[ds])?;
                 bitwise_writer.add_bits(
                     get_dist_extra_bits_value(dist) as u32,
-                    get_dist_extra_bits(dist as u32),
+                    get_dist_extra_bits(dist) as u32,
                 )?;
                 testlength += litlen;
             }

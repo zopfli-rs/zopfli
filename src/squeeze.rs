@@ -28,7 +28,7 @@ const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 use crate::math::F64MathExt;
 
 /// Cost model which should exactly match fixed tree.
-fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
+fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -37,8 +37,8 @@ fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
         }
     } else {
         let dbits = get_dist_extra_bits(dist);
-        let lbits = get_length_extra_bits(litlen as usize);
-        let lsym = get_length_symbol(litlen as usize);
+        let lbits = get_length_extra_bits(litlen);
+        let lsym = get_length_symbol(litlen);
         let mut cost = 0;
         if lsym <= 279 {
             cost += 7;
@@ -52,13 +52,13 @@ fn get_cost_fixed(litlen: u32, dist: u32) -> f64 {
 }
 
 /// Cost model based on symbol statistics.
-fn get_cost_stat(litlen: u32, dist: u32, stats: &SymbolStats) -> f64 {
+fn get_cost_stat(litlen: usize, dist: u16, stats: &SymbolStats) -> f64 {
     if dist == 0 {
-        stats.ll_symbols[litlen as usize]
+        stats.ll_symbols[litlen]
     } else {
-        let lsym = get_length_symbol(litlen as usize) as usize;
-        let lbits = get_length_extra_bits(litlen as usize) as f64;
-        let dsym = get_dist_symbol(dist) as usize;
+        let lsym = get_length_symbol(litlen);
+        let lbits = get_length_extra_bits(litlen) as f64;
+        let dsym = get_dist_symbol(dist);
         let dbits = get_dist_extra_bits(dist) as f64;
         lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
     }
@@ -178,8 +178,8 @@ impl SymbolStats {
             match litlen {
                 LitLen::Literal(lit) => self.litlens[lit as usize] += 1,
                 LitLen::LengthDist(len, dist) => {
-                    self.litlens[get_length_symbol(len as usize) as usize] += 1;
-                    self.dists[get_dist_symbol(dist as u32) as usize] += 1;
+                    self.litlens[get_length_symbol(len as usize)] += 1;
+                    self.dists[get_dist_symbol(dist)] += 1;
                 }
             }
         }
@@ -217,7 +217,7 @@ fn add_weighed_stat_freqs(
 /// distance symbols.
 fn get_cost_model_min_cost<F>(costmodel: F) -> f64
 where
-    F: Fn(u32, u32) -> f64,
+    F: Fn(usize, u16) -> f64,
 {
     let mut bestlength = 0; // length that has lowest cost in the cost model
     let mut bestdist = 0; // distance that has lowest cost in the cost model
@@ -227,29 +227,29 @@ where
     // different symbols affect the cost model so only these need to be checked.
     // See RFC 1951 section 3.2.5. Compressed blocks (length and distance codes).
 
-    let dsymbols = [
+    const DSYMBOLS: [u16; 30] = [
         1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537,
         2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
     ];
 
-    let mut mincost = f64::MAX;
+    let mut mincost = f64::INFINITY;
     for i in 3..259 {
         let c = costmodel(i, 1);
         if c < mincost {
-            bestlength = i as i32;
+            bestlength = i;
             mincost = c;
         }
     }
 
-    mincost = f64::MAX;
-    for &dsym in dsymbols.iter().take(30) {
-        let c = costmodel(3, dsym as u32);
+    mincost = f64::INFINITY;
+    for dsym in DSYMBOLS {
+        let c = costmodel(3, dsym);
         if c < mincost {
             bestdist = dsym;
             mincost = c;
         }
     }
-    costmodel(bestlength as u32, bestdist as u32)
+    costmodel(bestlength, bestdist)
 }
 
 /// Performs the forward pass for "squeeze". Gets the most optimal length to reach
@@ -272,7 +272,7 @@ fn get_best_lengths<F, C>(
     costs: &mut Vec<f32>,
 ) -> (f64, Vec<u16>)
 where
-    F: Fn(u32, u32) -> f64,
+    F: Fn(usize, u16) -> f64,
     C: Cache,
 {
     // Best cost to get here so far.
@@ -314,7 +314,7 @@ where
             && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
             && h.same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH as u16
         {
-            let symbolcost = costmodel(ZOPFLI_MAX_MATCH as u32, 1);
+            let symbolcost = costmodel(ZOPFLI_MAX_MATCH, 1);
             // Set the length to reach each one to ZOPFLI_MAX_MATCH, and the cost to
             // the cost corresponding to that length. Doing this, we skip
             // ZOPFLI_MAX_MATCH values to avoid calling ZopfliFindLongestMatch.
@@ -341,7 +341,7 @@ where
 
         // Literal.
         if i < inend {
-            let new_cost = costmodel(arr[i] as u32, 0) + costs[j] as f64;
+            let new_cost = costmodel(arr[i] as usize, 0) + costs[j] as f64;
             debug_assert!(new_cost >= 0.0);
             if new_cost < costs[j + 1] as f64 {
                 costs[j + 1] = new_cost as f32;
@@ -359,7 +359,7 @@ where
                 continue;
             }
 
-            let new_cost = costmodel(k as u32, sublength as u32) + costs[j] as f64;
+            let new_cost = costmodel(k, sublength) + costs[j] as f64;
             debug_assert!(new_cost >= 0.0);
             if new_cost < costs[j + k] as f64 {
                 debug_assert!(k <= ZOPFLI_MAX_MATCH);
@@ -422,13 +422,13 @@ fn lz77_optimal_run<F, C>(
     h: &mut ZopfliHash,
     costs: &mut Vec<f32>,
 ) where
-    F: Fn(u32, u32) -> f64,
+    F: Fn(usize, u16) -> f64,
     C: Cache,
 {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace_backwards(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
-    debug_assert!(cost < f64::MAX);
+    debug_assert!(cost < f64::INFINITY);
 }
 
 /// Does the same as `lz77_optimal`, but optimized for the fixed tree of the
@@ -491,7 +491,7 @@ where
 
     let mut beststats = SymbolStats::default();
 
-    let mut bestcost = f64::MAX;
+    let mut bestcost = f64::INFINITY;
     let mut lastcost = 0.0;
     /* Try randomizing the costs a bit once the size stabilizes. */
     let mut ran_state = RanState::new();

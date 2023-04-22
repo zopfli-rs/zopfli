@@ -1,4 +1,4 @@
-const LENGTH_SYMBOL_TABLE: [u32; 259] = [
+const LENGTH_SYMBOL_TABLE: [usize; 259] = [
     0, 0, 0, 257, 258, 259, 260, 261, 262, 263, 264, 265, 265, 266, 266, 267, 267, 268, 268, 269,
     269, 269, 269, 270, 270, 270, 270, 271, 271, 271, 271, 272, 272, 272, 272, 273, 273, 273, 273,
     273, 273, 273, 273, 274, 274, 274, 274, 274, 274, 274, 274, 275, 275, 275, 275, 275, 275, 275,
@@ -17,13 +17,13 @@ const LENGTH_SYMBOL_TABLE: [u32; 259] = [
 
 /// Gets the symbol for the given length, cfr. the DEFLATE spec.
 /// Returns symbol in range [257-285] (inclusive).
-pub fn get_length_symbol(length: usize) -> u32 {
+pub fn get_length_symbol(length: usize) -> usize {
     LENGTH_SYMBOL_TABLE[length]
 }
 
 /// Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec.
-pub fn get_dist_extra_bits(dist: u32) -> u32 {
-    match dist {
+pub fn get_dist_extra_bits(dist: u16) -> usize {
+    (match dist {
         0..=4 => 0,
         5..=8 => 1,
         9..=16 => 2,
@@ -38,7 +38,7 @@ pub fn get_dist_extra_bits(dist: u32) -> u32 {
         4097..=8192 => 11,
         8193..=16384 => 12,
         _ => 13,
-    }
+    }) as usize
 }
 
 /// Gets value of the extra bits for the given dist, cfr. the DEFLATE spec.
@@ -61,8 +61,8 @@ pub fn get_dist_extra_bits_value(dist: u16) -> u16 {
     }
 }
 
-pub fn get_dist_symbol(dist: u32) -> u32 {
-    match dist {
+pub fn get_dist_symbol(dist: u16) -> usize {
+    (match dist {
         0..=4 => dist - 1,
         5..=6 => 4,
         7..=8 => 5,
@@ -90,10 +90,10 @@ pub fn get_dist_symbol(dist: u32) -> u32 {
         12289..=16384 => 27,
         16385..=24576 => 28,
         _ => 29,
-    }
+    }) as usize
 }
 
-const LENGTH_EXTRA_BITS: [u32; 259] = [
+const LENGTH_EXTRA_BITS: [usize; 259] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -106,7 +106,7 @@ const LENGTH_EXTRA_BITS: [u32; 259] = [
 ];
 
 /// Gets the amount of extra bits for the given length, cfr. the DEFLATE spec.
-pub fn get_length_extra_bits(l: usize) -> u32 {
+pub fn get_length_extra_bits(l: usize) -> usize {
     LENGTH_EXTRA_BITS[l]
 }
 

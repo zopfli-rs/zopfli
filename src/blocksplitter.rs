@@ -16,7 +16,7 @@ where
     F: Fn(usize) -> f64,
 {
     if end - start < 1024 {
-        let mut best = f64::MAX;
+        let mut best = f64::INFINITY;
         let mut result = start;
         for i in start..end {
             let v = f(i);
@@ -33,12 +33,12 @@ where
         let num = 9; /* Good value: 9. ?!?!?!?! */
         let mut p = vec![0; num];
         let mut vp = vec![0.0; num];
-        let mut lastbest = f64::MAX;
+        let mut lastbest = f64::INFINITY;
         let mut pos = start;
 
         while end - start > num {
             let mut besti = 0;
-            let mut best = f64::MAX;
+            let mut best = f64::INFINITY;
             let multiplier = (end - start) / (num + 1);
             for i in 0..num {
                 p[i] = start + (i + 1) * multiplier;
