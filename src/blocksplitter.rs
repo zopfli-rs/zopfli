@@ -30,17 +30,17 @@ where
         /* Try to find minimum faster by recursively checking multiple points. */
         let mut start = start;
         let mut end = end;
-        let num = 9; /* Good value: 9. ?!?!?!?! */
-        let mut p = vec![0; num];
-        let mut vp = vec![0.0; num];
+        const NUM: usize = 9; /* Good value: 9. ?!?!?!?! */
+        let mut p = [0; NUM];
+        let mut vp = [0.0; NUM];
         let mut lastbest = f64::INFINITY;
         let mut pos = start;
 
-        while end - start > num {
+        while end - start > NUM {
             let mut besti = 0;
             let mut best = f64::INFINITY;
-            let multiplier = (end - start) / (num + 1);
-            for i in 0..num {
+            let multiplier = (end - start) / (NUM + 1);
+            for i in 0..NUM {
                 p[i] = start + (i + 1) * multiplier;
                 vp[i] = f(p[i]);
                 if vp[i] < best {
@@ -53,7 +53,7 @@ where
             }
 
             start = if besti == 0 { start } else { p[besti - 1] };
-            end = if besti == num - 1 { end } else { p[besti + 1] };
+            end = if besti == NUM - 1 { end } else { p[besti + 1] };
 
             pos = p[besti];
             lastbest = best;

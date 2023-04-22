@@ -24,30 +24,32 @@ pub struct HashThing {
 
 impl HashThing {
     fn new() -> HashThing {
-        let mut prev_and_hashval = Vec::with_capacity(ZOPFLI_WINDOW_SIZE);
-        for p in 0..ZOPFLI_WINDOW_SIZE as u16 {
-            prev_and_hashval.push(SmallerHashThing {
-                prev: p,
-                hashval: None,
-            });
-        }
         HashThing {
             head: vec![-1; 65536],
-            prev_and_hashval,
+            prev_and_hashval: (0..ZOPFLI_WINDOW_SIZE)
+                .map(|p| SmallerHashThing {
+                    prev: p as u16,
+                    hashval: None,
+                })
+                .collect(),
             val: 0,
         }
     }
 
     fn reset(&mut self) {
         self.val = 0;
-        self.head.clear();
-        self.head.resize(65536, -1);
-        self.prev_and_hashval = (0..ZOPFLI_WINDOW_SIZE as u16)
-            .map(|p| SmallerHashThing {
+
+        self.head.fill(-1);
+
+        let mut p = 0;
+        self.prev_and_hashval.fill_with(|| {
+            let thing = SmallerHashThing {
                 prev: p,
                 hashval: None,
-            })
-            .collect();
+            };
+            p += 1;
+            thing
+        });
     }
 
     fn update(&mut self, hpos: usize) {

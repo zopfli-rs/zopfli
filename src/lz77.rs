@@ -260,7 +260,7 @@ impl Lz77Store {
         }
 
         let mut pos = instart;
-        for &item in &path {
+        for item in path.into_iter().rev() {
             let mut length = item;
             debug_assert!(pos < inend);
 

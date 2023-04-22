@@ -292,7 +292,7 @@ where
 
     costs.resize(blocksize + 1, 0.0);
     for cost in costs.iter_mut().take(blocksize + 1).skip(1) {
-        *cost = f32::MAX;
+        *cost = f32::INFINITY;
     }
     costs[0] = 0.0; /* Because it's the start. */
 
@@ -378,12 +378,12 @@ where
 /// `length_array`. The `length_array` must contain the optimal length to reach that
 /// byte. The path will be filled with the lengths to use, so its data size will be
 /// the amount of lz77 symbols.
-fn trace_backwards(size: usize, length_array: &[u16]) -> Vec<u16> {
+fn trace(size: usize, length_array: &[u16]) -> Vec<u16> {
     let mut index = size;
     if size == 0 {
         return vec![];
     }
-    let mut path = vec![]; // TODO: with capacity
+    let mut path = Vec::with_capacity(index);
 
     while index > 0 {
         let lai = length_array[index];
@@ -395,8 +395,6 @@ fn trace_backwards(size: usize, length_array: &[u16]) -> Vec<u16> {
         index -= laiu;
     }
 
-    /* Mirror result. */
-    path.reverse();
     path
 }
 
@@ -426,7 +424,7 @@ fn lz77_optimal_run<F, C>(
     C: Cache,
 {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
-    let path = trace_backwards(inend - instart, &length_array);
+    let path = trace(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
     debug_assert!(cost < f64::INFINITY);
 }
