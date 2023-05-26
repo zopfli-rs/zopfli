@@ -37,7 +37,7 @@
 extern crate alloc;
 
 pub use deflate::{BlockType, DeflateEncoder};
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 use proptest::prelude::*;
 
 mod blocksplitter;
@@ -69,7 +69,7 @@ pub use io::{Error, ErrorKind, Write};
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
 pub struct Options {
     /// Maximum amount of times to rerun forward and backward pass to optimize LZ77
     /// compression cost.
@@ -78,7 +78,7 @@ pub struct Options {
     ///
     /// Default value: 15.
     #[cfg_attr(
-        test,
+        all(test, feature = "std"),
         proptest(
             strategy = "(1..=10u8).prop_map(|iteration_count| NonZeroU8::new(iteration_count).unwrap())"
         )
@@ -146,7 +146,7 @@ pub fn compress<R: std::io::Read, W: Write>(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod test {
     use std::io;
 
