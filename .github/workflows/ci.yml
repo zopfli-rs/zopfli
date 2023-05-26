@@ -58,7 +58,7 @@ jobs:
 
       - name: Run tests (no-std)
         if: matrix.conf == 'nightly'
-        run: cargo test --no-default-features --features gzip,zlib,nightly
+        run: cargo test --release --no-default-features --features nightly
 
       - name: Generate documentation
         if: matrix.conf == 'nightly'
