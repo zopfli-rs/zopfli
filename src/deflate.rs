@@ -234,6 +234,7 @@ where
 
 /// The type of data blocks to generate for a DEFLATE stream.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum BlockType {
     /// Non-compressed blocks (BTYPE=00).
     ///

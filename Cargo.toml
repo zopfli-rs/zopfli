@@ -19,6 +19,8 @@ typed-arena = { version = "2.0.2", default-features = false }
 log = "0.4.17"
 
 [dev-dependencies]
+proptest = "1.2.0"
+proptest-derive = "0.3.0"
 miniz_oxide = "0.7.1"
 
 [features]

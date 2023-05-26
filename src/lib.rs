@@ -37,6 +37,8 @@
 extern crate alloc;
 
 pub use deflate::{BlockType, DeflateEncoder};
+#[cfg(test)]
+use proptest::prelude::*;
 
 mod blocksplitter;
 mod cache;
@@ -67,6 +69,7 @@ pub use io::{Error, ErrorKind, Write};
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Options {
     /// Maximum amount of times to rerun forward and backward pass to optimize LZ77
     /// compression cost.
@@ -74,6 +77,12 @@ pub struct Options {
     /// it will be too slow.
     ///
     /// Default value: 15.
+    #[cfg_attr(
+        test,
+        proptest(
+            strategy = "(1..=10u8).prop_map(|iteration_count| NonZeroU8::new(iteration_count).unwrap())"
+        )
+    )]
     pub iteration_count: NonZeroU8,
     /// Maximum amount of blocks to split into (0 for unlimited, but this can give
     /// extreme results that hurt compression on some files).
@@ -134,5 +143,33 @@ pub fn compress<R: std::io::Read, W: Write>(
         #[cfg(feature = "zlib")]
         Format::Zlib => zlib::zlib_compress(options, in_data, out),
         Format::Deflate => deflate::deflate(options, BlockType::Dynamic, in_data, out),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io;
+
+    use miniz_oxide::inflate;
+    use proptest::proptest;
+
+    use super::*;
+
+    proptest! {
+        #[test]
+        fn deflating_is_reversible(
+            options: Options,
+            btype: BlockType,
+            data in prop::collection::vec(any::<u8>(), 0..128 * 1024)
+        ) {
+            let mut compressed_data = Vec::with_capacity(data.len());
+
+            let mut encoder = DeflateEncoder::new(&options, btype, &mut compressed_data);
+            io::copy(&mut &*data, &mut encoder).unwrap();
+            encoder.finish().unwrap();
+
+            let decompressed_data = inflate::decompress_to_vec(&compressed_data).expect("Could not inflate compressed stream");
+            prop_assert_eq!(data, decompressed_data, "Decompressed data should match input data");
+        }
     }
 }
