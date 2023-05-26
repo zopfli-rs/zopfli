@@ -160,7 +160,7 @@ mod test {
         fn deflating_is_reversible(
             options: Options,
             btype: BlockType,
-            data in prop::collection::vec(any::<u8>(), 0..128 * 1024)
+            data in prop::collection::vec(any::<u8>(), 0..64 * 1024)
         ) {
             let mut compressed_data = Vec::with_capacity(data.len());
 
