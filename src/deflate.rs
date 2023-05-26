@@ -186,7 +186,7 @@ pub fn deflate<R: std::io::Read, W: Write>(
 /// Like deflate, but allows to specify start and end byte with instart and
 /// inend. Only that part is compressed, but earlier bytes are still used for the
 /// back window.
-fn deflate_part<W>(
+fn deflate_part<W: Write>(
     options: &Options,
     btype: BlockType,
     final_block: bool,
@@ -194,10 +194,7 @@ fn deflate_part<W>(
     instart: usize,
     inend: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     /* If btype=Dynamic is specified, it tries all block types. If a lesser btype is
     given, then however it forces that one. Neither of the lesser types needs
     block splitting as they have no dynamic huffman trees. */
@@ -609,17 +606,14 @@ fn calculate_tree_size(ll_lengths: &[u32], d_lengths: &[u32]) -> usize {
 
 /// Encodes the Huffman tree and returns how many bits its encoding takes and returns output.
 // TODO: This return value is unused.
-fn encode_tree<W>(
+fn encode_tree<W: Write>(
     ll_lengths: &[u32],
     d_lengths: &[u32],
     use_16: bool,
     use_17: bool,
     use_18: bool,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<usize, Error>
-where
-    W: Write,
-{
+) -> Result<usize, Error> {
     let mut hlit = 29; /* 286 - 257 */
     let mut hdist = 29; /* 32 - 1, but gzip does not like hdist > 29.*/
 
@@ -769,14 +763,11 @@ where
     Ok(result_size)
 }
 
-fn add_dynamic_tree<W>(
+fn add_dynamic_tree<W: Write>(
     ll_lengths: &[u32],
     d_lengths: &[u32],
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     let mut best = 0;
     let mut bestsize = 0;
 
@@ -813,7 +804,7 @@ where
 ///   set it to `0` to not do the assertion.
 /// `bitwise_writer`: writer responsible for appending bits
 #[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
-fn add_lz77_block<W>(
+fn add_lz77_block<W: Write>(
     btype: BlockType,
     final_block: bool,
     in_data: &[u8],
@@ -822,10 +813,7 @@ fn add_lz77_block<W>(
     lend: usize,
     expected_data_size: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     if btype == BlockType::Uncompressed {
         let length = lz77.get_byte_range(lstart, lend);
         let pos = if lstart == lend { 0 } else { lz77.pos[lstart] };
@@ -996,7 +984,7 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
 /// end code 256. `expected_data_size` is the uncompressed block size, used for
 /// assert, but you can set it to `0` to not do the assertion.
 #[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
-fn add_lz77_data<W>(
+fn add_lz77_data<W: Write>(
     lz77: &Lz77Store,
     lstart: usize,
     lend: usize,
@@ -1006,10 +994,7 @@ fn add_lz77_data<W>(
     d_symbols: &[u32],
     d_lengths: &[u32],
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     let mut testlength = 0;
 
     for &item in &lz77.litlens[lstart..lend] {
@@ -1047,7 +1032,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
-fn add_lz77_block_auto_type<W>(
+fn add_lz77_block_auto_type<W: Write>(
     options: &Options,
     final_block: bool,
     in_data: &[u8],
@@ -1056,10 +1041,7 @@ fn add_lz77_block_auto_type<W>(
     lend: usize,
     expected_data_size: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     let uncompressedcost = calculate_block_size(lz77, lstart, lend, BlockType::Uncompressed);
     let mut fixedcost = calculate_block_size(lz77, lstart, lend, BlockType::Fixed);
     let dyncost = calculate_block_size(lz77, lstart, lend, BlockType::Dynamic);
@@ -1150,17 +1132,14 @@ pub fn calculate_block_size_auto_type(lz77: &Lz77Store, lstart: usize, lend: usi
     uncompressedcost.min(fixedcost).min(dyncost)
 }
 
-fn add_all_blocks<W>(
+fn add_all_blocks<W: Write>(
     splitpoints: &[usize],
     lz77: &Lz77Store,
     options: &Options,
     final_block: bool,
     in_data: &[u8],
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     let mut last = 0;
     for &item in splitpoints.iter() {
         add_lz77_block_auto_type(options, false, in_data, lz77, last, item, 0, bitwise_writer)?;
@@ -1178,17 +1157,14 @@ where
     )
 }
 
-fn blocksplit_attempt<W>(
+fn blocksplit_attempt<W: Write>(
     options: &Options,
     final_block: bool,
     in_data: &[u8],
     instart: usize,
     inend: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     let mut totalcost = 0.0;
     let mut lz77 = Lz77Store::new();
 
@@ -1309,17 +1285,14 @@ fn add_non_compressed_block<W: Write>(
     Ok(())
 }
 
-pub struct BitwiseWriter<W> {
+struct BitwiseWriter<W> {
     bit: u8,
     bp: u8,
     len: usize,
     out: W,
 }
 
-impl<W> BitwiseWriter<W>
-where
-    W: Write,
-{
+impl<W: Write> BitwiseWriter<W> {
     fn new(out: W) -> BitwiseWriter<W> {
         BitwiseWriter {
             bit: 0,

@@ -11,10 +11,7 @@ use crate::{
 /// Finds minimum of function `f(i)` where `i` is of type `usize`, `f(i)` is of type
 /// `f64`, `i` is in range `start-end` (excluding `end`).
 /// Returns the index to the minimum and the minimum value.
-fn find_minimum<F>(f: F, start: usize, end: usize) -> (usize, f64)
-where
-    F: Fn(usize) -> f64,
-{
+fn find_minimum<F: Fn(usize) -> f64>(f: F, start: usize, end: usize) -> (usize, f64) {
     if end - start < 1024 {
         let mut best = f64::INFINITY;
         let mut result = start;

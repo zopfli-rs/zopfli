@@ -56,10 +56,7 @@ impl<W> WriteStatistics<W> {
     }
 }
 
-impl<W> Write for WriteStatistics<W>
-where
-    W: Write,
-{
+impl<W: Write> Write for WriteStatistics<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let res = self.inner.write(buf);
         if let Ok(size) = res {

@@ -1,16 +1,10 @@
 use core::iter::Peekable;
 
-pub struct FlagLastIterator<I>
-where
-    I: Iterator,
-{
+pub struct FlagLastIterator<I: Iterator> {
     inner: Peekable<I>,
 }
 
-impl<I> Iterator for FlagLastIterator<I>
-where
-    I: Iterator,
-{
+impl<I: Iterator> Iterator for FlagLastIterator<I> {
     type Item = (I::Item, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -28,4 +22,4 @@ pub trait ToFlagLastIterator: Iterator + Sized {
     }
 }
 
-impl<T> ToFlagLastIterator for T where T: Iterator + Sized {}
+impl<T: Iterator + Sized> ToFlagLastIterator for T {}

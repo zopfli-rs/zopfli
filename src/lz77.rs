@@ -135,15 +135,13 @@ impl Lz77Store {
     /// The result is placed in the Lz77Store.
     /// If instart is larger than 0, it uses values before instart as starting
     /// dictionary.
-    pub fn greedy<C>(
+    pub fn greedy<C: Cache>(
         &mut self,
         s: &mut ZopfliBlockState<C>,
         in_data: &[u8],
         instart: usize,
         inend: usize,
-    ) where
-        C: Cache,
-    {
+    ) {
         if instart == inend {
             return;
         }
@@ -234,16 +232,14 @@ impl Lz77Store {
         }
     }
 
-    pub fn follow_path<C>(
+    pub fn follow_path<C: Cache>(
         &mut self,
         in_data: &[u8],
         instart: usize,
         inend: usize,
         path: Vec<u16>,
         s: &mut ZopfliBlockState<C>,
-    ) where
-        C: Cache,
-    {
+    ) {
         let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
 
         if instart == inend {
@@ -403,10 +399,7 @@ impl<'a> ZopfliBlockState<'a, NoCache> {
     }
 }
 
-impl<'a, C> ZopfliBlockState<'a, C>
-where
-    C: Cache,
-{
+impl<'a, C: Cache> ZopfliBlockState<'a, C> {
     /// Gets distance, length and sublen values from the cache if possible.
     /// Returns 1 if it got the values from the cache, 0 if not.
     /// Updates the limit value to a smaller one if possible with more limited
@@ -478,7 +471,7 @@ fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) 
     scan_offset
 }
 
-pub fn find_longest_match<C>(
+pub fn find_longest_match<C: Cache>(
     s: &mut ZopfliBlockState<C>,
     h: &mut ZopfliHash,
     array: &[u8],
@@ -486,10 +479,7 @@ pub fn find_longest_match<C>(
     size: usize,
     limit: usize,
     sublen: &mut Option<&mut [u16]>,
-) -> LongestMatch
-where
-    C: Cache,
-{
+) -> LongestMatch {
     let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
 
     if longest_match.from_cache {

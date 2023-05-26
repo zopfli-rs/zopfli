@@ -209,10 +209,7 @@ fn add_weighed_stat_freqs(
 
 /// Finds the minimum possible cost this cost model can return for valid length and
 /// distance symbols.
-fn get_cost_model_min_cost<F>(costmodel: F) -> f64
-where
-    F: Fn(usize, u16) -> f64,
-{
+fn get_cost_model_min_cost<F: Fn(usize, u16) -> f64>(costmodel: F) -> f64 {
     let mut bestlength = 0; // length that has lowest cost in the cost model
     let mut bestdist = 0; // distance that has lowest cost in the cost model
 
@@ -256,7 +253,7 @@ where
 /// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
-fn get_best_lengths<F, C>(
+fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],
     instart: usize,
@@ -264,11 +261,7 @@ fn get_best_lengths<F, C>(
     costmodel: F,
     h: &mut ZopfliHash,
     costs: &mut Vec<f32>,
-) -> (f64, Vec<u16>)
-where
-    F: Fn(usize, u16) -> f64,
-    C: Cache,
-{
+) -> (f64, Vec<u16>) {
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -402,7 +395,7 @@ fn trace(size: usize, length_array: &[u16]) -> Vec<u16> {
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 ///     This is not the actual cost.
 #[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
-fn lz77_optimal_run<F, C>(
+fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],
     instart: usize,
@@ -411,10 +404,7 @@ fn lz77_optimal_run<F, C>(
     store: &mut Lz77Store,
     h: &mut ZopfliHash,
     costs: &mut Vec<f32>,
-) where
-    F: Fn(usize, u16) -> f64,
-    C: Cache,
-{
+) {
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
@@ -429,15 +419,13 @@ fn lz77_optimal_run<F, C>(
 /// using with a fixed tree.
 /// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal_fixed<C>(
+pub fn lz77_optimal_fixed<C: Cache>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],
     instart: usize,
     inend: usize,
     store: &mut Lz77Store,
-) where
-    C: Cache,
-{
+) {
     s.blockstart = instart;
     s.blockend = inend;
     let mut h = ZopfliHash::new();
@@ -457,16 +445,13 @@ pub fn lz77_optimal_fixed<C>(
 /// Calculates lit/len and dist pairs for given data.
 /// If `instart` is larger than 0, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal<C>(
+pub fn lz77_optimal<C: Cache>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],
     instart: usize,
     inend: usize,
     numiterations: u8,
-) -> Lz77Store
-where
-    C: Cache,
-{
+) -> Lz77Store {
     /* Dist to get to here with smallest cost. */
     let mut currentstore = Lz77Store::new();
     let mut outputstore = currentstore.clone();
