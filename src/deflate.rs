@@ -15,161 +15,169 @@ use crate::{
         get_length_symbol, get_length_symbol_extra_bits,
     },
     tree::lengths_to_symbols,
-    util::{
-        read_to_fill, ZOPFLI_MASTER_BLOCK_SIZE, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE,
-    },
-    Error, Options, Read, Write,
+    util::{ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_SIZE},
+    Error, Options, Write,
 };
 
-/// Compresses according to the deflate specification and append the compressed
-/// result to the output.
+/// A DEFLATE encoder powered by the Zopfli algorithm that compresses data written
+/// to it to the specified sink. Most users will find using [`compress`](crate::compress)
+/// easier and more performant.
 ///
-/// `options`: global program options
-/// `btype`: the deflate block type. Use Dynamic for best compression.
-///   - Uncompressed: non compressed blocks (00)
-///   - Fixed: blocks with fixed tree (01)
-///   - Dynamic: blocks with dynamic tree (10)
-/// `in_data`: the input bytes
-/// `out`: pointer to the dynamic output array to which the result is appended. Must
-///   be freed after use.
-pub fn deflate<R, W>(
+/// The data will be compressed as soon as possible, without trying to fill a
+/// backreference window. As a consequence, frequent short writes may cause more
+/// DEFLATE blocks to be emitted with less optimal Huffman trees, which can hurt
+/// compression and runtime. If they are a concern, short writes can be conveniently
+/// dealt with by wrapping this encoder with a [`BufWriter`](std::io::BufWriter). An
+/// adequate write size would be >32 KiB, which allows the second complete chunk to
+/// leverage a full-sized backreference window.
+pub struct DeflateEncoder<'opts, W: Write> {
+    options: &'opts Options,
+    btype: BlockType,
+    have_chunk: bool,
+    chunk_start: usize,
+    window_and_chunk: Vec<u8>,
+    bitwise_writer: Option<BitwiseWriter<W>>,
+}
+
+impl<'opts, W: Write> DeflateEncoder<'opts, W> {
+    /// Creates a new Zopfli DEFLATE encoder that will operate according to the
+    /// specified options.
+    pub fn new(options: &'opts Options, btype: BlockType, sink: W) -> Self {
+        DeflateEncoder {
+            options,
+            btype,
+            have_chunk: false,
+            chunk_start: 0,
+            window_and_chunk: Vec::with_capacity(ZOPFLI_WINDOW_SIZE),
+            bitwise_writer: Some(BitwiseWriter::new(sink)),
+        }
+    }
+
+    /// Encodes any pending chunks of data and writes them to the sink,
+    /// consuming the encoder and returning the wrapped sink. The sink
+    /// will have received a complete DEFLATE stream when this method
+    /// returns.
+    ///
+    /// The encoder is automatically [`finish`](Self::finish)ed when
+    /// dropped, but explicitly finishing it with this method allows
+    /// handling I/O errors.
+    pub fn finish(mut self) -> Result<W, Error> {
+        self._finish().map(|writer| writer.unwrap())
+    }
+
+    /// Compresses the chunk stored at `window_and_chunk`. This includes
+    /// a rolling window of the last `ZOPFLI_WINDOW_SIZE` data bytes, if
+    /// available.
+    #[inline]
+    fn compress_chunk(&mut self, is_last: bool) -> Result<(), Error> {
+        deflate_part(
+            self.options,
+            self.btype,
+            is_last,
+            &self.window_and_chunk,
+            self.chunk_start,
+            self.window_and_chunk.len(),
+            self.bitwise_writer.as_mut().unwrap(),
+        )
+    }
+
+    /// Sets the next chunk that will be compressed by the next
+    /// call to `compress_chunk` and updates the rolling data window
+    /// accordingly.
+    fn set_chunk(&mut self, chunk: &[u8]) {
+        // Remove bytes exceeding the window size. Start with the
+        // oldest bytes, which are at the beginning of the buffer.
+        // The buffer length is then the position where the chunk
+        // we've just received starts
+        self.window_and_chunk.drain(
+            ..self
+                .window_and_chunk
+                .len()
+                .saturating_sub(ZOPFLI_WINDOW_SIZE),
+        );
+        self.chunk_start = self.window_and_chunk.len();
+
+        self.window_and_chunk.extend_from_slice(chunk);
+
+        self.have_chunk = true;
+    }
+
+    /// Encodes the last chunk and finishes any partial bits.
+    /// The encoder will be unusable for further compression
+    /// after this method returns. This is intended to be an
+    /// implementation detail of the `Drop` trait and
+    /// [`finish`](Self::finish) method.
+    fn _finish(&mut self) -> Result<Option<W>, Error> {
+        if self.bitwise_writer.is_none() {
+            return Ok(None);
+        }
+
+        self.compress_chunk(true)?;
+
+        let mut bitwise_writer = self.bitwise_writer.take().unwrap();
+        bitwise_writer.finish_partial_bits()?;
+
+        Ok(Some(bitwise_writer.out))
+    }
+}
+
+impl<W: Write> Write for DeflateEncoder<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
+        // Any previous chunk is known to be non-last at this point,
+        // so compress it now
+        if self.have_chunk {
+            self.compress_chunk(false)?;
+        }
+
+        // Set the chunk to be used for the next compression operation
+        // to this chunk. We don't know whether it's last or not yet
+        self.set_chunk(buf);
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.bitwise_writer.as_mut().unwrap().out.flush()
+    }
+}
+
+impl<W: Write> Drop for DeflateEncoder<'_, W> {
+    fn drop(&mut self) {
+        self._finish().ok();
+    }
+}
+
+/// Convenience function to efficiently compress data in DEFLATE format
+/// from an arbitrary source to an arbitrary destination.
+#[cfg(feature = "std")]
+pub fn deflate<R: std::io::Read, W: Write>(
     options: &Options,
     btype: BlockType,
     mut in_data: R,
     out: W,
-) -> Result<(), Error>
-where
-    R: Read,
-    W: Write,
-{
-    // The streaming compression algorithm implemented in this function is based on a sliding buffer
-    // that is used and structured as shown in the following ASCII art:
-    //
-    //             0 ┌────────┬───────┬─ ─ ─ ─ ─ ┐
-    // Iteration 0   │ Window │ Block │ Sentinel │
-    //               │  data  │ data  │   byte   │
-    //               └────────┴───────┴─ ─ ─ ─ ─ ┘ WINDOW_SIZE + MASTER_BLOCK_SIZE + 1
-    //                             \            │
-    //      Copy last WINDOW_SIZE   \           │
-    //           block bytes         \          │ Copy sentinel byte to beginning of block data
-    //                                V         V
-    //                               ┌────────┬───────┬─ ─ ─ ─ ─ ┐
-    // Iteration 1                   │ Window │ Block │ Sentinel │
-    //                               │  data  │ data  │   byte   │
-    //                               └────────┴───────┴─ ─ ─ ─ ─ ┘
-    //
-    // The input is read in blocks of MASTER_BLOCK_SIZE + 1 bytes. The last byte is used as
-    // a sentinel to know whether the stream ends at this master block without buffering
-    // previous master blocks. On the beginning of each iteration, the previous sentinel
-    // byte is copied to the beginning of the block data, to consume it for compression.
-    // If we read a full master block plus a new sentinel byte, there is a next master block
-    // at least one byte long, so the just read master block is non-last. If we can't read a
-    // full master block plus a new sentinel byte due to input EOF, the stream ends at this
-    // partial or full master block, so we know it is the last one.
-    //
-    // In addition to the above, a sliding window of the last WINDOW_SIZE bytes of the
-    // previous master block is kept, to allow the DEFLATE stream to reference data from
-    // the former master block, which is key to achieve the expected compression rates.
+) -> Result<(), Error> {
+    /// A block structure of huge, non-smart, blocks to divide the input into, to allow
+    /// operating on huge files without exceeding memory, such as the 1GB wiki9 corpus.
+    /// The whole compression algorithm, including the smarter block splitting, will
+    /// be executed independently on each huge block.
+    /// Dividing into huge blocks hurts compression, but not much relative to the size.
+    /// This must be equal or greater than `ZOPFLI_WINDOW_SIZE`.
+    const ZOPFLI_MASTER_BLOCK_SIZE: usize = 1_000_000;
 
-    const ZOPFLI_WINDOW_AND_BLOCK_SIZE: usize = ZOPFLI_WINDOW_SIZE + ZOPFLI_MASTER_BLOCK_SIZE;
+    // Wrap the encoder with a buffer to guarantee the data is compressed in big chunks,
+    // which is necessary for decent performance and good compression ratio
+    let mut deflater = std::io::BufWriter::with_capacity(
+        ZOPFLI_MASTER_BLOCK_SIZE,
+        DeflateEncoder::new(options, btype, out),
+    );
 
-    let mut buffer = vec![0; ZOPFLI_WINDOW_AND_BLOCK_SIZE + 1];
+    std::io::copy(&mut in_data, &mut deflater)?;
+    deflater.into_inner()?.finish()?;
 
-    let mut have_window = false;
-    let mut sentinel_byte = None;
-
-    let mut bitwise_writer = BitwiseWriter::new(out);
-
-    loop {
-        // Inject previous sentinel byte as block data we've just read in this iteration.
-        let sentinel_byte_count = if let Some(sentinel_byte) = sentinel_byte.take() {
-            buffer[ZOPFLI_WINDOW_SIZE] = sentinel_byte;
-            1
-        } else {
-            0
-        };
-
-        // Read a new master block of data, plus a new sentinel byte.
-        match read_to_fill(
-            &mut in_data,
-            &mut buffer[ZOPFLI_WINDOW_SIZE + sentinel_byte_count..],
-        )? {
-            (true, _) => {
-                // We have read a full master block and a sentinel byte.
-
-                let (in_data, instart, inend) = if have_window {
-                    (
-                        &buffer[..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
-                        ZOPFLI_WINDOW_SIZE,
-                        ZOPFLI_WINDOW_AND_BLOCK_SIZE,
-                    )
-                } else {
-                    (
-                        &buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE],
-                        0,
-                        ZOPFLI_MASTER_BLOCK_SIZE,
-                    )
-                };
-
-                // The next block is at least one byte long due to the sentinel, so we know this block is not the last.
-                deflate_part(
-                    options,
-                    btype,
-                    false,
-                    in_data,
-                    instart,
-                    inend,
-                    &mut bitwise_writer,
-                )?;
-
-                // Update the DEFLATE sliding window with the latest bytes we've just read.
-                buffer.copy_within(
-                    ZOPFLI_WINDOW_AND_BLOCK_SIZE - ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_AND_BLOCK_SIZE,
-                    0,
-                );
-                have_window = true;
-
-                sentinel_byte = Some(buffer[buffer.len() - 1]);
-            }
-            (false, bytes_read) => {
-                // Due to EOF, we either have read a partial master block, or a full block without a sentinel byte.
-                // In both cases, no more blocks will follow.
-
-                let read_block_size = sentinel_byte_count + bytes_read;
-                let (in_data, instart, inend) = if have_window {
-                    (
-                        &buffer[..ZOPFLI_WINDOW_SIZE + read_block_size],
-                        ZOPFLI_WINDOW_SIZE,
-                        ZOPFLI_WINDOW_SIZE + read_block_size,
-                    )
-                } else {
-                    (
-                        &buffer[ZOPFLI_WINDOW_SIZE..ZOPFLI_WINDOW_SIZE + read_block_size],
-                        0,
-                        read_block_size,
-                    )
-                };
-
-                deflate_part(
-                    options,
-                    btype,
-                    true,
-                    in_data,
-                    instart,
-                    inend,
-                    &mut bitwise_writer,
-                )?;
-
-                break;
-            }
-        }
-    }
-
-    bitwise_writer.finish_partial_bits()
+    Ok(())
 }
 
-/// Deflate a part, to allow deflate() to use multiple master blocks if
-/// needed.
+/// Deflate a part, to allow for chunked, streaming compression with [`DeflateEncoder`].
 /// It is possible to call this function multiple times in a row, shifting
 /// instart and inend to next bytes of the data. If instart is larger than 0, then
 /// previous bytes are used as the initial dictionary for LZ77.
@@ -224,10 +232,29 @@ where
     }
 }
 
+/// The type of data blocks to generate for a DEFLATE stream.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum BlockType {
+    /// Non-compressed blocks (BTYPE=00).
+    ///
+    /// The input data will be divided into chunks up to 64 KiB big and
+    /// stored in the DEFLATE stream without compression. This is mainly
+    /// useful for test and development purposes.
     Uncompressed,
+    /// Compressed blocks with fixed Huffman codes (BTYPE=01).
+    ///
+    /// The input data will be compressed into DEFLATE blocks using a fixed
+    /// Huffman tree defined in the DEFLATE specification. This provides fast
+    /// but poor compression, as the Zopfli algorithm is not actually used.
     Fixed,
+    /// Select the most space-efficient block types for the input data.
+    /// This is the recommended type for the vast majority of Zopfli
+    /// applications.
+    ///
+    /// This mode lets the Zopfli algorithm choose the combination of block
+    /// types that minimizes data size. The emitted block types may be
+    /// [`Uncompressed`](Self::Uncompressed) or [`Fixed`](Self::Fixed), in
+    /// addition to compressed with dynamic Huffman codes (BTYPE=10).
     Dynamic,
 }
 
@@ -1352,6 +1379,8 @@ fn set_counts_to_count(counts: &mut [usize], count: usize, i: usize, stride: usi
 
 #[cfg(test)]
 mod test {
+    use miniz_oxide::inflate;
+
     use super::*;
 
     #[test]
@@ -1364,5 +1393,33 @@ mod test {
         set_counts_to_count(&mut counts, count, i, stride);
 
         assert_eq!(counts, vec![0, 1, 2, 100, 100, 100, 100, 100, 8, 9])
+    }
+
+    #[test]
+    fn weird_encoder_write_size_combinations_works() {
+        let mut compressed_data = vec![];
+
+        let default_options = Options::default();
+        let mut encoder =
+            DeflateEncoder::new(&default_options, BlockType::default(), &mut compressed_data);
+
+        encoder.write_all(&[0]).unwrap();
+        encoder.write_all(&[]).unwrap();
+        encoder.write_all(&[1, 2]).unwrap();
+        encoder.write_all(&[]).unwrap();
+        encoder.write_all(&[]).unwrap();
+        encoder.write_all(&[3]).unwrap();
+        encoder.write_all(&[4]).unwrap();
+
+        encoder.finish().unwrap();
+
+        let decompressed_data = inflate::decompress_to_vec(&compressed_data)
+            .expect("Could not inflate compressed stream");
+
+        assert_eq!(
+            &[0, 1, 2, 3, 4][..],
+            decompressed_data,
+            "Decompressed data should match input data"
+        );
     }
 }

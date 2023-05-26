@@ -1,14 +1,16 @@
+use std::io::Read;
+
 use crate::{
     deflate::{deflate, BlockType},
     util::HashingAndCountingRead,
-    Error, Options, Read, Write,
+    Error, Options, Write,
 };
 
-pub fn zlib_compress<R, W>(options: &Options, in_data: R, mut out: W) -> Result<(), Error>
-where
-    R: Read,
-    W: Write,
-{
+pub fn zlib_compress<R: Read, W: Write>(
+    options: &Options,
+    in_data: R,
+    mut out: W,
+) -> Result<(), Error> {
     let cmf = 120; /* CM 8, CINFO 7. See zlib spec.*/
     let flevel = 3;
     let fdict = 0;
@@ -22,7 +24,7 @@ where
 
     out.write_all(&cmfflg.to_be_bytes())?;
 
-    deflate(options, BlockType::Dynamic, in_data, out.by_ref())?;
+    deflate(options, BlockType::Dynamic, in_data, &mut out)?;
 
     out.write_all(&rolling_adler.finish().to_be_bytes())
 }

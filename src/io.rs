@@ -5,90 +5,6 @@ use core::{
     mem,
 };
 
-/// The `Read` trait allows for reading bytes from a source, modeled after its
-/// `std::io::Read` counterpart.
-///
-/// The documentation for this trait is taken from the aforementioned `std` trait.
-pub trait Read {
-    /// Pull some bytes from this source into the specified buffer, returning
-    /// how many bytes were read.
-    ///
-    /// This function does not provide any guarantees about whether it blocks
-    /// waiting for data, but if an object needs to block for a read and cannot,
-    /// it will typically signal this via an [`Err`] return value.
-    ///
-    /// If the return value of this method is `Ok(n)`, then implementations must
-    /// guarantee that `0 <= n <= buf.len()`. A nonzero `n` value indicates
-    /// that the buffer `buf` has been filled in with `n` bytes of data from this
-    /// source. If `n` is `0`, then it can indicate one of two scenarios:
-    ///
-    /// 1. This reader has reached its "end of file" and will likely no longer
-    ///    be able to produce bytes. Note that this does not mean that the
-    ///    reader will *always* no longer be able to produce bytes.
-    /// 2. The buffer specified was 0 bytes in length.
-    ///
-    /// It is not an error if the returned value `n` is smaller than the buffer size,
-    /// even when the reader is not at the end of the stream yet.
-    /// This may happen for example because fewer bytes are actually available right now
-    /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
-    ///
-    /// As this trait is safe to implement, callers cannot rely on `n <= buf.len()` for safety.
-    /// Extra care needs to be taken when `unsafe` functions are used to access the read bytes.
-    /// Callers have to ensure that no unchecked out-of-bounds accesses are possible even if
-    /// `n > buf.len()`.
-    ///
-    /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, so implementations cannot rely on any property of the
-    /// contents of `buf` being true. It is recommended that *implementations*
-    /// only write data to `buf` instead of reading its contents.
-    ///
-    /// Correspondingly, however, *callers* of this method must not assume any guarantees
-    /// about how the implementation uses `buf`. The trait is safe to implement,
-    /// so it is possible that the code that's supposed to write to the buffer might also read
-    /// from it. It is your responsibility to make sure that `buf` is initialized
-    /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
-    /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
-    ///
-    /// [`MaybeUninit<T>`]: core::mem::MaybeUninit
-    ///
-    /// # Errors
-    ///
-    /// If this function encounters any form of I/O or other error, an error
-    /// variant will be returned. If an error is returned then it must be
-    /// guaranteed that no bytes were read.
-    ///
-    /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the read
-    /// operation should be retried if there is nothing else to do.
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error>;
-}
-
-impl Read for &[u8] {
-    // Implementation taken from Rust's stdlib
-    #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-        let amt = cmp::min(buf.len(), self.len());
-        let (a, b) = self.split_at(amt);
-
-        // First check if the amount of bytes we want to read is small:
-        // `copy_from_slice` will generally expand to a call to `memcpy`, and
-        // for a single byte the overhead is significant.
-        if amt == 1 {
-            buf[0] = a[0];
-        } else {
-            buf[..amt].copy_from_slice(a);
-        }
-
-        *self = b;
-        Ok(amt)
-    }
-}
-
-impl<R: Read + ?Sized> Read for &mut R {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-        (**self).read(buf)
-    }
-}
-
 /// A trait for objects which are byte-oriented sinks, modeled after its
 /// `std::io::Write` counterpart.
 ///
@@ -122,6 +38,15 @@ pub trait Write {
     /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the
     /// write operation should be retried if there is nothing else to do.
     fn write(&mut self, buf: &[u8]) -> Result<usize, Error>;
+
+    /// Flush this output stream, ensuring that all intermediately buffered
+    /// contents reach their destination.
+    ///
+    /// # Errors
+    ///
+    /// It is considered an error if not all bytes could be written due to
+    /// I/O errors or EOF being reached.
+    fn flush(&mut self) -> Result<(), Error>;
 
     /// Attempts to write an entire buffer into this writer.
     ///
@@ -179,6 +104,11 @@ impl Write for &mut [u8] {
         Ok(amt)
     }
 
+    #[inline]
+    fn flush(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
     // Implementation taken from Rust's stdlib
     #[inline]
     fn write_all(&mut self, data: &[u8]) -> Result<(), Error> {
@@ -198,6 +128,11 @@ impl Write for Vec<u8> {
         Ok(buf.len())
     }
 
+    #[inline]
+    fn flush(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
     // Implementation taken from Rust's stdlib
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> {
@@ -211,12 +146,16 @@ impl<W: Write + ?Sized> Write for &mut W {
         (**self).write(buf)
     }
 
+    fn flush(&mut self) -> Result<(), Error> {
+        (**self).flush()
+    }
+
     fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> {
         (**self).write_all(buf)
     }
 }
 
-/// The error type for I/O operations of the `Read` and `Write` traits.
+/// The error type for I/O operations of the `Write` trait.
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,

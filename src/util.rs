@@ -1,4 +1,5 @@
-use crate::{Error, ErrorKind, Read};
+#[cfg(feature = "std")]
+use std::io::{Error, ErrorKind, Read};
 
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: usize = 288;
@@ -34,49 +35,20 @@ pub const ZOPFLI_CACHE_LENGTH: usize = 8;
 /// Good value: e.g. 8192.
 pub const ZOPFLI_MAX_CHAIN_HITS: usize = 8192;
 
-/// A block structure of huge, non-smart, blocks to divide the input into, to allow
-/// operating on huge files without exceeding memory, such as the 1GB wiki9 corpus.
-/// The whole compression algorithm, including the smarter block splitting, will
-/// be executed independently on each huge block.
-/// Dividing into huge blocks hurts compression, but not much relative to the size.
-/// This must be equal or greater than `ZOPFLI_WINDOW_SIZE`.
-pub const ZOPFLI_MASTER_BLOCK_SIZE: usize = 1000000;
-
-/// Reads all bytes from a source to a buffer until either the buffer is full or EOF is
-/// reached. The return value is a tuple whose first element signals whether the buffer
-/// was completely filled, and its second element the count of bytes read and placed into
-/// `buf`.
-pub fn read_to_fill<R: Read>(mut in_data: R, mut buf: &mut [u8]) -> Result<(bool, usize), Error> {
-    let mut bytes_read = 0;
-
-    while !buf.is_empty() {
-        match in_data.read(buf) {
-            Ok(0) => break,
-            Ok(n) => {
-                bytes_read += n;
-                buf = &mut buf[n..];
-            }
-            Err(err) if err.kind() == ErrorKind::Interrupted => {}
-            Err(err) => return Err(err),
-        }
-    }
-
-    Ok((buf.is_empty(), bytes_read))
-}
-
 /// A hasher that may be used by [`HashingAndCountingRead`].
+#[cfg(feature = "std")]
 pub trait Hasher {
     fn update(&mut self, data: &[u8]);
 }
 
-#[cfg(feature = "gzip")]
+#[cfg(all(feature = "std", feature = "gzip"))]
 impl Hasher for &mut crc32fast::Hasher {
     fn update(&mut self, data: &[u8]) {
         crc32fast::Hasher::update(self, data)
     }
 }
 
-#[cfg(feature = "zlib")]
+#[cfg(all(feature = "std", feature = "zlib"))]
 impl Hasher for &mut simd_adler32::Adler32 {
     fn update(&mut self, data: &[u8]) {
         simd_adler32::Adler32::write(self, data)
@@ -86,12 +58,14 @@ impl Hasher for &mut simd_adler32::Adler32 {
 /// A reader that wraps another reader, a hasher and an optional counter,
 /// updating the hasher state and incrementing a counter of bytes read so
 /// far for each block of data read.
+#[cfg(feature = "std")]
 pub struct HashingAndCountingRead<'counter, R: Read, H: Hasher> {
     inner: R,
     hasher: H,
     bytes_read: Option<&'counter mut u32>,
 }
 
+#[cfg(feature = "std")]
 impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
     pub fn new(inner: R, hasher: H, bytes_read: Option<&'counter mut u32>) -> Self {
         Self {
@@ -102,6 +76,7 @@ impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<R: Read, H: Hasher> Read for HashingAndCountingRead<'_, R, H> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
         match self.inner.read(buf) {

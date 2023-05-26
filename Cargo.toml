@@ -18,17 +18,20 @@ simd-adler32 = { version = "0.3.5", default-features = false, optional = true }
 typed-arena = { version = "2.0.2", default-features = false }
 log = "0.4.17"
 
+[dev-dependencies]
+miniz_oxide = "0.7.1"
+
 [features]
-default = ["gzip", "zlib", "std"]
-gzip = ["dep:crc32fast"]
-zlib = ["dep:simd-adler32"]
+default = ["gzip", "zlib"]
+gzip = ["std", "dep:crc32fast"]
+zlib = ["std", "dep:simd-adler32"]
 
 std = ["crc32fast?/std", "simd-adler32?/std"]
 nightly = ["crc32fast?/nightly", "simd-adler32?/nightly"]
 
 [[bin]]
 name = "zopfli"
-required-features = ["gzip", "zlib", "std"]
+required-features = ["gzip", "zlib"]
 
 [profile.release]
 debug = true
@@ -36,4 +39,4 @@ debug = true
 # docs.rs uses a nightly toolchain, so it can leverage unstable rustdoc features.
 # Reference: https://docs.rs/about/builds
 [package.metadata.docs.rs]
-cargo-args = ["--no-default-features", "--features", "gzip,zlib,nightly"]
+cargo-args = ["--all-features"]

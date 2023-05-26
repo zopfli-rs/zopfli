@@ -12,8 +12,8 @@
 //! This crate exposes the following features. You can enable or disable them in your `Cargo.toml`
 //! as needed.
 //!
-//! - `gzip` (enabled by default): enables support for compression in the gzip format.
-//! - `zlib` (enabled by default): enables support for compression in the Zlib format.
+//! - `gzip` (enabled by default): enables support for compression in the gzip format. Implies `std`.
+//! - `zlib` (enabled by default): enables support for compression in the Zlib format. Implies `std`.
 //! - `std` (enabled by default): enables linking against the Rust standard library. When not enabled,
 //!                               the crate is built with the `#![no_std]` attribute and can be used
 //!                               in any environment where [`alloc`](https://doc.rust-lang.org/alloc/)
@@ -36,13 +36,15 @@
 #[cfg_attr(not(feature = "std"), macro_use)]
 extern crate alloc;
 
+pub use deflate::{BlockType, DeflateEncoder};
+
 mod blocksplitter;
 mod cache;
 mod deflate;
 #[cfg(feature = "gzip")]
 mod gzip;
 mod hash;
-#[cfg(not(feature = "std"))]
+#[cfg(any(doc, not(feature = "std")))]
 mod io;
 mod iter;
 mod katajainen;
@@ -57,11 +59,11 @@ mod util;
 mod zlib;
 
 use core::num::NonZeroU8;
-#[cfg(feature = "std")]
-use std::io::{Error, ErrorKind, Read, Write};
+#[cfg(all(not(doc), feature = "std"))]
+use std::io::{Error, Write};
 
-#[cfg(not(feature = "std"))]
-pub use io::{Error, ErrorKind, Read, Write};
+#[cfg(any(doc, not(feature = "std")))]
+pub use io::{Error, ErrorKind, Write};
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone)]
@@ -91,6 +93,7 @@ impl Default for Options {
 
 /// The output file format to use to store data compressed with Zopfli.
 #[derive(Debug, Copy, Clone)]
+#[cfg(feature = "std")]
 pub enum Format {
     /// The gzip file format, as defined in
     /// [RFC 1952](https://datatracker.ietf.org/doc/html/rfc1952).
@@ -103,14 +106,13 @@ pub enum Format {
     /// [RFC 1950](https://datatracker.ietf.org/doc/html/rfc1950).
     ///
     /// The zlib format has less header overhead than gzip, but it
-    /// stores less metadata about the compressed data and may not
-    /// be as fit for purpose.
+    /// stores less metadata.
     #[cfg(feature = "zlib")]
     Zlib,
     /// The raw DEFLATE stream format, as defined in
     /// [RFC 1951](https://datatracker.ietf.org/doc/html/rfc1951).
     ///
-    /// Raw DEFLATE streams are not meant to be stored raw because
+    /// Raw DEFLATE streams are not meant to be stored as-is because
     /// they lack error detection and correction metadata. They
     /// usually are embedded in other file formats, such as gzip
     /// and zlib.
@@ -119,21 +121,18 @@ pub enum Format {
 
 /// Compresses data from a source with the Zopfli algorithm, using the specified
 /// options, and writes the result to a sink in the defined output format.
-pub fn compress<R, W>(
+#[cfg(feature = "std")]
+pub fn compress<R: std::io::Read, W: Write>(
     options: &Options,
     output_format: Format,
     in_data: R,
     out: W,
-) -> Result<(), Error>
-where
-    R: Read,
-    W: Write,
-{
+) -> Result<(), Error> {
     match output_format {
         #[cfg(feature = "gzip")]
         Format::Gzip => gzip::gzip_compress(options, in_data, out),
         #[cfg(feature = "zlib")]
         Format::Zlib => zlib::zlib_compress(options, in_data, out),
-        Format::Deflate => deflate::deflate(options, deflate::BlockType::Dynamic, in_data, out),
+        Format::Deflate => deflate::deflate(options, BlockType::Dynamic, in_data, out),
     }
 }
