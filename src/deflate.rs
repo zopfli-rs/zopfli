@@ -258,6 +258,12 @@ pub enum BlockType {
     Dynamic,
 }
 
+impl Default for BlockType {
+    fn default() -> Self {
+        Self::Dynamic
+    }
+}
+
 fn fixed_tree() -> (Vec<u32>, Vec<u32>) {
     let mut ll = Vec::with_capacity(ZOPFLI_NUM_LL);
     ll.resize(144, 8);
