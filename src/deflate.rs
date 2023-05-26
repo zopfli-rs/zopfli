@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use core::cmp;
+use core::{cmp, iter};
 
 use log::{debug, log_enabled};
 
@@ -1258,20 +1258,29 @@ where
 }
 
 /// Since an uncompressed block can be max 65535 in size, it actually adds
-/// multible blocks if needed.
-fn add_non_compressed_block<W>(
+/// multiple blocks if needed.
+fn add_non_compressed_block<W: Write>(
     final_block: bool,
     in_data: &[u8],
     instart: usize,
     inend: usize,
     bitwise_writer: &mut BitwiseWriter<W>,
-) -> Result<(), Error>
-where
-    W: Write,
-{
+) -> Result<(), Error> {
     let in_data = &in_data[instart..inend];
 
-    for (chunk, is_final) in in_data.chunks(65535).flag_last() {
+    let in_data_chunks = in_data.chunks(65535).size_hint().0;
+
+    for (chunk, is_final) in in_data
+        .chunks(65535)
+        .flag_last()
+        // Make sure that we output at least one chunk if this is the final block
+        .chain(iter::once((&[][..], true)))
+        .take(if final_block {
+            cmp::max(in_data_chunks, 1)
+        } else {
+            in_data_chunks
+        })
+    {
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
