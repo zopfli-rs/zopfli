@@ -68,7 +68,7 @@ use std::io::{Error, Write};
 pub use io::{Error, ErrorKind, Write};
 
 /// Options for the Zopfli compression algorithm.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
 pub struct Options {
     /// Maximum amount of times to rerun forward and backward pass to optimize LZ77
