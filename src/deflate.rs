@@ -141,7 +141,7 @@ impl<W: Write> Write for DeflateEncoder<'_, W> {
     }
 }
 
-impl<W: Write> Drop for DeflateEncoder<'_, W> {
+impl<W: Write> Drop for DeflateEncoder<W> {
     fn drop(&mut self) {
         self._finish().ok();
     }
