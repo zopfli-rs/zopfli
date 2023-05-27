@@ -30,8 +30,8 @@ use crate::{
 /// dealt with by wrapping this encoder with a [`BufWriter`](std::io::BufWriter). An
 /// adequate write size would be >32 KiB, which allows the second complete chunk to
 /// leverage a full-sized backreference window.
-pub struct DeflateEncoder<'opts, W: Write> {
-    options: &'opts Options,
+pub struct DeflateEncoder<W: Write> {
+    options: Options,
     btype: BlockType,
     have_chunk: bool,
     chunk_start: usize,
@@ -39,10 +39,10 @@ pub struct DeflateEncoder<'opts, W: Write> {
     bitwise_writer: Option<BitwiseWriter<W>>,
 }
 
-impl<'opts, W: Write> DeflateEncoder<'opts, W> {
+impl<W: Write> DeflateEncoder<W> {
     /// Creates a new Zopfli DEFLATE encoder that will operate according to the
     /// specified options.
-    pub fn new(options: &'opts Options, btype: BlockType, sink: W) -> Self {
+    pub fn new(options: Options, btype: BlockType, sink: W) -> Self {
         DeflateEncoder {
             options,
             btype,
@@ -71,7 +71,7 @@ impl<'opts, W: Write> DeflateEncoder<'opts, W> {
     #[inline]
     fn compress_chunk(&mut self, is_last: bool) -> Result<(), Error> {
         deflate_part(
-            self.options,
+            &self.options,
             self.btype,
             is_last,
             &self.window_and_chunk,
@@ -151,7 +151,7 @@ impl<W: Write> Drop for DeflateEncoder<'_, W> {
 /// from an arbitrary source to an arbitrary destination.
 #[cfg(feature = "std")]
 pub fn deflate<R: std::io::Read, W: Write>(
-    options: &Options,
+    options: Options,
     btype: BlockType,
     mut in_data: R,
     out: W,
@@ -1390,7 +1390,7 @@ mod test {
 
         let default_options = Options::default();
         let mut encoder =
-            DeflateEncoder::new(&default_options, BlockType::default(), &mut compressed_data);
+            DeflateEncoder::new(default_options, BlockType::default(), &mut compressed_data);
 
         encoder.write_all(&[0]).unwrap();
         encoder.write_all(&[]).unwrap();
