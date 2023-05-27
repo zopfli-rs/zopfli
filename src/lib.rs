@@ -164,7 +164,7 @@ mod test {
         ) {
             let mut compressed_data = Vec::with_capacity(data.len());
 
-            let mut encoder = DeflateEncoder::new(&options, btype, &mut compressed_data);
+            let mut encoder = DeflateEncoder::new(options, btype, &mut compressed_data);
             io::copy(&mut &*data, &mut encoder).unwrap();
             encoder.finish().unwrap();
 
