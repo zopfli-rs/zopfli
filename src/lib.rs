@@ -139,10 +139,10 @@ pub fn compress<R: std::io::Read, W: Write>(
 ) -> Result<(), Error> {
     match output_format {
         #[cfg(feature = "gzip")]
-        Format::Gzip => gzip::gzip_compress(options, in_data, out),
+        Format::Gzip => gzip::gzip_compress(*options, in_data, out),
         #[cfg(feature = "zlib")]
-        Format::Zlib => zlib::zlib_compress(options, in_data, out),
-        Format::Deflate => deflate::deflate(options, BlockType::Dynamic, in_data, out),
+        Format::Zlib => zlib::zlib_compress(*options, in_data, out),
+        Format::Deflate => deflate::deflate(*options, BlockType::Dynamic, in_data, out),
     }
 }
 

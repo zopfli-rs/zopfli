@@ -151,7 +151,7 @@ impl<W: Write> Drop for DeflateEncoder<W> {
 /// from an arbitrary source to an arbitrary destination.
 #[cfg(feature = "std")]
 pub fn deflate<R: std::io::Read, W: Write>(
-    options: &Options,
+    options: Options,
     btype: BlockType,
     mut in_data: R,
     out: W,
@@ -168,7 +168,7 @@ pub fn deflate<R: std::io::Read, W: Write>(
     // which is necessary for decent performance and good compression ratio
     let mut deflater = std::io::BufWriter::with_capacity(
         ZOPFLI_MASTER_BLOCK_SIZE,
-        DeflateEncoder::new(options.clone(), btype, out),
+        DeflateEncoder::new(options, btype, out),
     );
 
     std::io::copy(&mut in_data, &mut deflater)?;

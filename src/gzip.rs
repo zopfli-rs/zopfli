@@ -18,7 +18,7 @@ static HEADER: &[u8] = &[
 
 /// Compresses the data according to the gzip specification, RFC 1952.
 pub fn gzip_compress<R: Read, W: Write>(
-    options: &Options,
+    options: Options,
     in_data: R,
     mut out: W,
 ) -> Result<(), Error> {

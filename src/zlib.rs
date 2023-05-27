@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub fn zlib_compress<R: Read, W: Write>(
-    options: &Options,
+    options: Options,
     in_data: R,
     mut out: W,
 ) -> Result<(), Error> {
