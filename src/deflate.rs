@@ -121,7 +121,7 @@ impl<W: Write> DeflateEncoder<W> {
     }
 }
 
-impl<W: Write> Write for DeflateEncoder<'_, W> {
+impl<W: Write> Write for DeflateEncoder<W> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
         // Any previous chunk is known to be non-last at this point,
         // so compress it now
