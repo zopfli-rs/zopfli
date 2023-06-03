@@ -12,7 +12,7 @@ use crate::{
     Options,
 };
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Copy)]
 pub enum LitLen {
     Literal(u16),
     LengthDist(u16, u16),
@@ -32,7 +32,7 @@ impl LitLen {
 /// Parameter dists: Contains the distances. A value is 0 to indicate that there is
 /// no dist and the corresponding litlens value is a literal instead of a length.
 /// Parameter size: The size of both the litlens and dists arrays.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Lz77Store {
     pub litlens: Vec<LitLen>,
 

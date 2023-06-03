@@ -1,5 +1,8 @@
 use alloc::vec::Vec;
-use core::{cell::Cell, cmp::Ordering};
+use core::{
+    cell::Cell,
+    cmp::{self, Ordering},
+};
 
 use typed_arena::Arena;
 
@@ -13,14 +16,12 @@ struct Thing<'a> {
     lists: Vec<List<'a>>,
 }
 
-#[derive(Debug)]
 struct Node<'a> {
     weight: usize,
     count: usize,
     tail: Cell<Option<&'a Node<'a>>>,
 }
 
-#[derive(Debug)]
 struct Leaf {
     weight: usize,
     count: usize,
@@ -42,10 +43,10 @@ impl PartialOrd for Leaf {
     }
 }
 
-#[derive(Debug, Clone)]
-struct List<'a> {
-    lookahead0: &'a Node<'a>,
-    lookahead1: &'a Node<'a>,
+#[derive(Clone)]
+struct List<'arena> {
+    lookahead0: &'arena Node<'arena>,
+    lookahead1: &'arena Node<'arena>,
 }
 
 /// Calculates the bitlengths for the Huffman tree, based on the counts of each
@@ -54,15 +55,16 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     let num_freqs = frequencies.len();
 
     // Count used symbols and place them in the leaves.
-    let mut leaves: Vec<_> = frequencies
+    let mut leaves = frequencies
         .iter()
         .enumerate()
-        .filter(|&(_, &freq)| freq != 0)
-        .map(|(i, &freq)| Leaf {
-            weight: freq,
-            count: i,
+        .filter_map(|(i, &freq)| {
+            (freq != 0).then_some(Leaf {
+                weight: freq,
+                count: i,
+            })
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let num_symbols = leaves.len();
 
@@ -74,30 +76,20 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     //   return 1;  /* Error, too few maxbits to represent symbols. */
     // }
 
-    if num_symbols == 0 {
-        // There are no non-zero frequencies.
-        return vec![0; num_freqs];
-    }
-    if num_symbols == 1 {
+    if num_symbols <= 2 {
+        // The symbols for the non-zero frequencies can be represented
+        // with zero or one bits.
         let mut bit_lengths = vec![0; num_freqs];
-        bit_lengths[leaves[0].count] = 1;
-        return bit_lengths;
-    }
-    if num_symbols == 2 {
-        let mut bit_lengths = vec![0; num_freqs];
-        bit_lengths[leaves[0].count] = 1;
-        bit_lengths[leaves[1].count] = 1;
+        for i in 0..num_symbols {
+            bit_lengths[leaves[i].count] = 1;
+        }
         return bit_lengths;
     }
 
     // Sort the leaves from least frequent to most frequent.
     leaves.sort();
 
-    let max_bits = if num_symbols - 1 < max_bits {
-        num_symbols - 1
-    } else {
-        max_bits
-    };
+    let max_bits = cmp::min(num_symbols - 1, max_bits);
 
     let arena_capacity = max_bits * 2 * num_symbols;
     let node_arena: Arena<Node> = Arena::with_capacity(arena_capacity);

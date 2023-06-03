@@ -5,7 +5,7 @@ use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 const HASH_SHIFT: i32 = 5;
 const HASH_MASK: u16 = 32767;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Which {
     Hash1,
     Hash2,

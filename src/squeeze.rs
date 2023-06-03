@@ -77,7 +77,7 @@ impl RanState {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct SymbolStats {
     /* The literal and length symbols. */
     litlens: [usize; ZOPFLI_NUM_LL],
@@ -88,12 +88,6 @@ struct SymbolStats {
     ll_symbols: [f64; ZOPFLI_NUM_LL],
     /* Length of each dist symbol in bits. */
     d_symbols: [f64; ZOPFLI_NUM_D],
-}
-
-impl Clone for SymbolStats {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl Default for SymbolStats {
