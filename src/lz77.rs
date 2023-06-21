@@ -389,7 +389,11 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
 }
 
 impl<'a> ZopfliBlockState<'a, NoCache> {
-    pub const fn new_without_cache(options: &'a Options, blockstart: usize, blockend: usize) -> Self {
+    pub const fn new_without_cache(
+        options: &'a Options,
+        blockstart: usize,
+        blockend: usize,
+    ) -> Self {
         ZopfliBlockState {
             options,
             blockstart,
