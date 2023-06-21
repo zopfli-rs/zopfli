@@ -51,7 +51,7 @@ mod io;
 mod iter;
 mod katajainen;
 mod lz77;
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 mod math;
 mod squeeze;
 mod symbols;
