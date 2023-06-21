@@ -150,7 +150,7 @@ impl ZopfliHash {
         hashval.map_or(-1, |hv| hv as i32)
     }
 
-    pub fn val(&self, which: Which) -> u16 {
+    pub const fn val(&self, which: Which) -> u16 {
         match which {
             Which::Hash1 => self.hash1.val,
             Which::Hash2 => self.hash2.val,

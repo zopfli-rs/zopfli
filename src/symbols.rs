@@ -17,12 +17,12 @@ const LENGTH_SYMBOL_TABLE: [usize; 259] = [
 
 /// Gets the symbol for the given length, cfr. the DEFLATE spec.
 /// Returns symbol in range [257-285] (inclusive).
-pub fn get_length_symbol(length: usize) -> usize {
+pub const fn get_length_symbol(length: usize) -> usize {
     LENGTH_SYMBOL_TABLE[length]
 }
 
 /// Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec.
-pub fn get_dist_extra_bits(dist: u16) -> usize {
+pub const fn get_dist_extra_bits(dist: u16) -> usize {
     (match dist {
         0..=4 => 0,
         5..=8 => 1,
@@ -42,7 +42,7 @@ pub fn get_dist_extra_bits(dist: u16) -> usize {
 }
 
 /// Gets value of the extra bits for the given dist, cfr. the DEFLATE spec.
-pub fn get_dist_extra_bits_value(dist: u16) -> u16 {
+pub const fn get_dist_extra_bits_value(dist: u16) -> u16 {
     match dist {
         0..=4 => 0,
         5..=8 => (dist - 5) & 1,
@@ -61,7 +61,7 @@ pub fn get_dist_extra_bits_value(dist: u16) -> u16 {
     }
 }
 
-pub fn get_dist_symbol(dist: u16) -> usize {
+pub const fn get_dist_symbol(dist: u16) -> usize {
     (match dist {
         0..=4 => dist - 1,
         5..=6 => 4,
@@ -106,7 +106,7 @@ const LENGTH_EXTRA_BITS: [usize; 259] = [
 ];
 
 /// Gets the amount of extra bits for the given length, cfr. the DEFLATE spec.
-pub fn get_length_extra_bits(l: usize) -> usize {
+pub const fn get_length_extra_bits(l: usize) -> usize {
     LENGTH_EXTRA_BITS[l]
 }
 
@@ -124,7 +124,7 @@ const LENGTH_EXTRA_BITS_VALUE: [u32; 259] = [
 ];
 
 /// Gets value of the extra bits for the given length, cfr. the DEFLATE spec.
-pub fn get_length_extra_bits_value(l: usize) -> u32 {
+pub const fn get_length_extra_bits_value(l: usize) -> u32 {
     LENGTH_EXTRA_BITS_VALUE[l]
 }
 
@@ -133,7 +133,7 @@ const LENGTH_SYMBOL_EXTRA_BITS_TABLE: [u32; 29] = [
 ];
 
 /// Gets the amount of extra bits for the given length symbol.
-pub fn get_length_symbol_extra_bits(s: usize) -> u32 {
+pub const fn get_length_symbol_extra_bits(s: usize) -> u32 {
     LENGTH_SYMBOL_EXTRA_BITS_TABLE[s - 257]
 }
 
@@ -143,6 +143,6 @@ const DIST_SYMBOL_EXTRA_BITS_TABLE: [u32; 30] = [
 ];
 
 /// Gets the amount of extra bits for the given distance symbol.
-pub fn get_dist_symbol_extra_bits(s: usize) -> u32 {
+pub const fn get_dist_symbol_extra_bits(s: usize) -> u32 {
     DIST_SYMBOL_EXTRA_BITS_TABLE[s]
 }
