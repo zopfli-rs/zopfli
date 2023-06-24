@@ -511,10 +511,24 @@ pub fn lz77_optimal<C: Cache>(
             stats.calculate_entropy();
         }
         if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
-            stats = beststats;
-            stats.randomize_stat_freqs(&mut ran_state);
-            stats.calculate_entropy();
-            lastrandomstep = i;
+            if beststats
+                .litlens
+                .iter()
+                .copied()
+                .any(|litlen| litlen != beststats.litlens[0])
+                || beststats
+                    .dists
+                    .iter()
+                    .copied()
+                    .any(|dist| dist != beststats.dists[0])
+            {
+                stats = beststats;
+                stats.randomize_stat_freqs(&mut ran_state);
+                stats.calculate_entropy();
+                lastrandomstep = i;
+            } else {
+                break;
+            }
         }
         lastcost = cost;
     }
