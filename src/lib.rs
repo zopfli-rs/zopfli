@@ -60,7 +60,7 @@ mod util;
 #[cfg(feature = "zlib")]
 mod zlib;
 
-use core::num::NonZeroU8;
+use core::num::NonZeroU64;
 #[cfg(all(not(doc), feature = "std"))]
 use std::io::{Error, Write};
 
@@ -80,10 +80,13 @@ pub struct Options {
     #[cfg_attr(
         all(test, feature = "std"),
         proptest(
-            strategy = "(1..=10u8).prop_map(|iteration_count| NonZeroU8::new(iteration_count).unwrap())"
+            strategy = "(1..=10u64).prop_map(|iteration_count| NonZeroU64::new(iteration_count))"
         )
     )]
-    pub iteration_count: NonZeroU8,
+    pub iteration_count: Option<NonZeroU64>,
+    /// Stop after rerunning forward and backward pass this many times without finding
+    /// a smaller representation of the block.
+    pub iterations_without_improvement: Option<NonZeroU64>,
     /// Maximum amount of blocks to split into (0 for unlimited, but this can give
     /// extreme results that hurt compression on some files).
     ///
@@ -94,7 +97,8 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
-            iteration_count: NonZeroU8::new(15).unwrap(),
+            iteration_count: Some(NonZeroU64::new(15).unwrap()),
+            iterations_without_improvement: None,
             maximum_block_splits: 15,
         }
     }
