@@ -130,7 +130,6 @@ impl SymbolStats {
         let mut changed = false;
         while !changed {
             changed = randomize_freqs(&mut self.litlens, state);
-
             // Pull into a separate variable to prevent short-circuiting
             let dists_changed = randomize_freqs(&mut self.dists, state);
             changed |= dists_changed;
@@ -530,7 +529,14 @@ pub fn lz77_optimal<C: Cache>(
         let laststats = stats;
         stats.clear_freqs();
         stats.get_statistics(&currentstore);
-        if current_iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
+        if lastrandomstep != -1 {
+            /* This makes it converge slower but better. Do it only once the
+            randomness kicks in so that if the user does few iterations, it gives a
+            better result sooner. */
+            stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
+            stats.calculate_entropy();
+        }
+        if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
             if beststats
                 .litlens
                 .iter()
@@ -543,18 +549,38 @@ pub fn lz77_optimal<C: Cache>(
                     .any(|dist| dist != beststats.dists[0])
             {
                 stats = beststats;
-                stats.randomize_stat_freqs(&mut ran_state);
+                /// Returns true if it actually made a change.
+                fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) -> bool {
+                    let n = freqs.len();
+                    let mut i = 0;
+                    let end = n;
+                    let mut changed = false;
+                    while i < end {
+                        if (state.random_marsaglia() >> 4) % 3 == 0 {
+                            let index = state.random_marsaglia() as usize % n;
+                            if freqs[i] != freqs[index] {
+                                freqs[i] = freqs[index];
+                                changed = true;
+                            }
+                        }
+                        i += 1;
+                    }
+                    changed
+                }
+                let mut changed = false;
+                while !changed {
+                    changed = randomize_freqs(&mut stats.litlens, &mut ran_state);
+
+                    // Pull into a separate variable to prevent short-circuiting
+                    let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
+                    changed |= dists_changed;
+                }
+                stats.litlens[256] = 1;
                 stats.calculate_entropy();
                 lastrandomstep = current_iteration;
             } else {
                 break;
             }
-        } else if lastrandomstep != u64::MAX {
-            /* This makes it converge slower but better. Do it only once the
-            randomness kicks in so that if the user does few iterations, it gives a
-            better result sooner. */
-            stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
-            stats.calculate_entropy();
         }
         lastcost = cost;
     }
