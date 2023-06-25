@@ -528,9 +528,9 @@ pub fn lz77_optimal<C: Cache>(
                     let end = n;
                     let mut changed = false;
                     while i < end {
-                        if (state.random_marsaglia() >> 4) % 3 == 0 {
+                        if i != 256 && (state.random_marsaglia() >> 4) % 3 == 0 {
                             let index = state.random_marsaglia() as usize % n;
-                            if freqs[i] != freqs[index] {
+                            if i != index && freqs[i] != freqs[index] {
                                 freqs[i] = freqs[index];
                                 changed = true;
                             }
@@ -547,7 +547,7 @@ pub fn lz77_optimal<C: Cache>(
                     let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
                     changed |= dists_changed;
                 }
-                stats.litlens[256] = 1;
+                stats.litlens[256] = 1; // End symbol.
                 stats.calculate_entropy();
                 lastrandomstep = current_iteration;
             } else {
