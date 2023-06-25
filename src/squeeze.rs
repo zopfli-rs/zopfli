@@ -504,7 +504,7 @@ pub fn lz77_optimal<C: Cache>(
                     let end = n;
                     let mut changed = false;
                     while i < end {
-                        if i != 256 && (state.random_marsaglia() >> 4) % 3 == 0 {
+                        if (state.random_marsaglia() >> 4) % 3 == 0 && i != 256 {
                             let index = state.random_marsaglia() as usize % n;
                             if i != index && freqs[i] != freqs[index] {
                                 freqs[i] = freqs[index];
