@@ -485,17 +485,17 @@ pub fn lz77_optimal<C: Cache>(
         stats.clear_freqs();
         stats.get_statistics(&currentstore);
         if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
-            if beststats
-                .litlens
+            // If they're all the same frequency, that frequency must be 1
+            // because of the end symbol. If that's the case, there's nothing
+            // to change by randomizing.
+            let can_randomize_litlens = beststats.litlens.iter().copied().any(|litlen| litlen != 1);
+            let can_randomize_dists = beststats
+                .dists
                 .iter()
+                .skip(1)
                 .copied()
-                .any(|litlen| litlen != beststats.litlens[0])
-                || beststats
-                    .dists
-                    .iter()
-                    .copied()
-                    .any(|dist| dist != beststats.dists[0])
-            {
+                .any(|dist| dist != beststats.dists[0]);
+            if can_randomize_litlens || can_randomize_dists {
                 stats = beststats;
                 /// Returns true if it actually made a change.
                 fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) -> bool {
@@ -517,15 +517,19 @@ pub fn lz77_optimal<C: Cache>(
                 }
                 let mut changed = false;
                 while !changed {
-                    changed = randomize_freqs(&mut stats.litlens, &mut ran_state);
-
-                    // Pull into a separate variable to prevent short-circuiting
-                    let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
-                    changed |= dists_changed;
+                    if can_randomize_litlens {
+                        changed = randomize_freqs(&mut stats.litlens, &mut ran_state);
+                    }
+                    if can_randomize_dists {
+                        // Pull into a separate variable to prevent short-circuiting
+                        let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
+                        changed |= dists_changed;
+                    }
                 }
                 stats.calculate_entropy();
                 lastrandomstep = i;
             } else {
+                // No way to further improve the result
                 break;
             }
         } else if lastrandomstep != -1 {
