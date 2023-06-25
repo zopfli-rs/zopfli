@@ -458,7 +458,8 @@ pub fn lz77_optimal<C: Cache>(
     in_data: &[u8],
     instart: usize,
     inend: usize,
-    numiterations: u8,
+    max_iterations: Option<u64>,
+    max_iterations_without_improvement: Option<u64>,
 ) -> Lz77Store {
     /* Dist to get to here with smallest cost. */
     let mut currentstore = Lz77Store::new();
@@ -478,13 +479,15 @@ pub fn lz77_optimal<C: Cache>(
     let mut lastcost = 0.0;
     /* Try randomizing the costs a bit once the size stabilizes. */
     let mut ran_state = RanState::new();
-    let mut lastrandomstep = -1;
+    let mut lastrandomstep = u64::MAX;
 
     /* Do regular deflate, then loop multiple shortest path runs, each time using
     the statistics of the previous run. */
     /* Repeat statistics with each time the cost model from the previous stat
     run. */
-    for i in 0..numiterations as i32 {
+    let mut current_iteration: u64 = 0;
+    let mut iterations_without_improvement: u64 = 0;
+    loop {
         currentstore.reset();
         lz77_optimal_run(
             s,
@@ -499,26 +502,39 @@ pub fn lz77_optimal<C: Cache>(
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
 
         if cost < bestcost {
+            iterations_without_improvement = 0;
             /* Copy to the output store. */
             outputstore = currentstore.clone();
             beststats = stats;
             bestcost = cost;
 
-            debug!("Iteration {}: {} bit", i, cost);
+            debug!("Iteration {}: {} bit", current_iteration, cost);
         } else {
-            trace!("Iteration {}: {} bit", i, cost);
+            iterations_without_improvement += 1;
+            trace!("Iteration {}: {} bit", current_iteration, cost);
+            if let Some(max_iterations_without_improvement) = max_iterations_without_improvement {
+                if iterations_without_improvement >= max_iterations_without_improvement {
+                    break;
+                }
+            }
+        }
+        current_iteration += 1;
+        if let Some(max_iterations) = max_iterations {
+            if current_iteration >= max_iterations {
+                break;
+            }
         }
         let laststats = stats;
         stats.clear_freqs();
         stats.get_statistics(&currentstore);
-        if lastrandomstep != -1 {
+        if lastrandomstep != u64::MAX {
             /* This makes it converge slower but better. Do it only once the
             randomness kicks in so that if the user does few iterations, it gives a
             better result sooner. */
             stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
             stats.calculate_entropy();
         }
-        if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
+        if current_iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
             if beststats
                 .litlens
                 .iter()
@@ -533,7 +549,7 @@ pub fn lz77_optimal<C: Cache>(
                 stats = beststats;
                 stats.randomize_stat_freqs(&mut ran_state);
                 stats.calculate_entropy();
-                lastrandomstep = i;
+                lastrandomstep = current_iteration;
             } else {
                 break;
             }
