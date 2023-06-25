@@ -529,7 +529,7 @@ pub fn lz77_optimal<C: Cache>(
         let laststats = stats;
         stats.clear_freqs();
         stats.get_statistics(&currentstore);
-        if lastrandomstep != -1 {
+        if lastrandomstep != u64::MAX {
             /* This makes it converge slower but better. Do it only once the
             randomness kicks in so that if the user does few iterations, it gives a
             better result sooner. */
