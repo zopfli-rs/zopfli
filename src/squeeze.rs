@@ -108,36 +108,6 @@ impl Default for SymbolStats {
 }
 
 impl SymbolStats {
-    fn randomize_stat_freqs(&mut self, state: &mut RanState) {
-        /// Returns true if it actually made a change.
-        fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) -> bool {
-            let n = freqs.len();
-            let mut i = 0;
-            let end = n;
-            let mut changed = false;
-            while i < end {
-                if (state.random_marsaglia() >> 4) % 3 == 0 {
-                    let index = state.random_marsaglia() as usize % n;
-                    if freqs[i] != freqs[index] {
-                        freqs[i] = freqs[index];
-                        changed = true;
-                    }
-                }
-                i += 1;
-            }
-            changed
-        }
-        let mut changed = false;
-        while !changed {
-            changed = randomize_freqs(&mut self.litlens, state);
-
-            // Pull into a separate variable to prevent short-circuiting
-            let dists_changed = randomize_freqs(&mut self.dists, state);
-            changed |= dists_changed;
-        }
-        self.litlens[256] = 1; // End symbol.
-    }
-
     /// Calculates the entropy of each symbol, based on the counts of each symbol. The
     /// result is similar to the result of length_limited_code_lengths, but with the
     /// actual theoritical bit lengths according to the entropy. Since the resulting
@@ -527,7 +497,33 @@ pub fn lz77_optimal<C: Cache>(
                     .any(|dist| dist != beststats.dists[0])
             {
                 stats = beststats;
-                stats.randomize_stat_freqs(&mut ran_state);
+                /// Returns true if it actually made a change.
+                fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) -> bool {
+                    let n = freqs.len();
+                    let mut i = 0;
+                    let end = n;
+                    let mut changed = false;
+                    while i < end {
+                        if (state.random_marsaglia() >> 4) % 3 == 0 {
+                            let index = state.random_marsaglia() as usize % n;
+                            if freqs[i] != freqs[index] {
+                                freqs[i] = freqs[index];
+                                changed = true;
+                            }
+                        }
+                        i += 1;
+                    }
+                    changed
+                }
+                let mut changed = false;
+                while !changed {
+                    changed = randomize_freqs(&mut stats.litlens, &mut ran_state);
+
+                    // Pull into a separate variable to prevent short-circuiting
+                    let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
+                    changed |= dists_changed;
+                }
+                stats.litlens[256] = 1;
                 stats.calculate_entropy();
                 lastrandomstep = i;
             } else {
