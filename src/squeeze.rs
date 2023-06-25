@@ -511,13 +511,6 @@ pub fn lz77_optimal<C: Cache>(
         let laststats = stats;
         stats.clear_freqs();
         stats.get_statistics(&currentstore);
-        if lastrandomstep != -1 {
-            /* This makes it converge slower but better. Do it only once the
-            randomness kicks in so that if the user does few iterations, it gives a
-            better result sooner. */
-            stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
-            stats.calculate_entropy();
-        }
         if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
             if beststats
                 .litlens
@@ -537,6 +530,12 @@ pub fn lz77_optimal<C: Cache>(
             } else {
                 break;
             }
+        } else if lastrandomstep != -1 {
+            /* This makes it converge slower but better. Do it only once the
+            randomness kicks in so that if the user does few iterations, it gives a
+            better result sooner. */
+            stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
+            stats.calculate_entropy();
         }
         lastcost = cost;
     }
