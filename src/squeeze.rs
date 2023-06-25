@@ -130,7 +130,10 @@ impl SymbolStats {
         let mut changed = false;
         while !changed {
             changed = randomize_freqs(&mut self.litlens, state);
-            changed |= randomize_freqs(&mut self.dists, state);
+
+            // Pull into a separate variable to prevent short-circuiting
+            let dists_changed = randomize_freqs(&mut self.dists, state);
+            changed |= dists_changed;
         }
         self.litlens[256] = 1; // End symbol.
     }
