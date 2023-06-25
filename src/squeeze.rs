@@ -109,21 +109,29 @@ impl Default for SymbolStats {
 
 impl SymbolStats {
     fn randomize_stat_freqs(&mut self, state: &mut RanState) {
-        fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) {
+        /// Returns true if it actually made a change.
+        fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) -> bool {
             let n = freqs.len();
             let mut i = 0;
             let end = n;
-
+            let mut changed = false;
             while i < end {
                 if (state.random_marsaglia() >> 4) % 3 == 0 {
                     let index = state.random_marsaglia() as usize % n;
-                    freqs[i] = freqs[index];
+                    if freqs[i] != freqs[index] {
+                        freqs[i] = freqs[index];
+                        changed = true;
+                    }
                 }
                 i += 1;
             }
+            changed
         }
-        randomize_freqs(&mut self.litlens, state);
-        randomize_freqs(&mut self.dists, state);
+        let mut changed = false;
+        while !changed {
+            changed = randomize_freqs(&mut self.litlens, state);
+            changed |= randomize_freqs(&mut self.dists, state);
+        }
         self.litlens[256] = 1; // End symbol.
     }
 

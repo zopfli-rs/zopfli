@@ -15,8 +15,19 @@ done
 mkdir -p test/temp_compressed/
 mv test/data/*.gz test/temp_compressed/
 
-# Compare newly compressed data with expected
-diff -r test/results/ test/temp_compressed/
+# Compare newly compressed data size with expected
+cd test/results
+find . -type f | while read -r file; do
+  reference_size=$(stat -c%s "../../test/temp_compressed/$file")
+  current_result_size=$(stat -c%s "$file")
+  if [[ $current_result_size > $reference_size ]]; then
+    echo "File $file is larger than expected ($current_result_size vs $reference_size bytes)"
+    exit 1
+  elif [[ $current_result_size < $reference_size ]]; then
+    echo "Compression ratio improved for $file! ($current_result_size vs $reference_size bytes)"
+  fi
+done
+cd ../..
 
 # Verify that all compressed files decompress back to the input sources
 mkdir -p test/temp_decompressed/
