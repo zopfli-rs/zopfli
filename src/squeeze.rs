@@ -523,7 +523,6 @@ pub fn lz77_optimal<C: Cache>(
                     let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
                     changed |= dists_changed;
                 }
-                stats.litlens[256] = 1; // End symbol.
                 stats.calculate_entropy();
                 lastrandomstep = i;
             } else {
