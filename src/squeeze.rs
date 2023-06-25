@@ -536,7 +536,7 @@ pub fn lz77_optimal<C: Cache>(
             stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
             stats.calculate_entropy();
         }
-        if i > 5 && (cost - lastcost).abs() < f64::EPSILON {
+        if current_iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
             if beststats
                 .litlens
                 .iter()
