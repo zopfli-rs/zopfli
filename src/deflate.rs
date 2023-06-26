@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use core::{cmp, iter};
+use core::{cmp, iter, num::NonZeroU64};
 
 use log::{debug, log_enabled};
 
@@ -1186,7 +1186,14 @@ fn blocksplit_attempt<W: Write>(
     for &item in &splitpoints_uncompressed {
         let mut s = ZopfliBlockState::new(options, last, item);
 
-        let store = lz77_optimal(&mut s, in_data, last, item, options.iteration_count.get());
+        let store = lz77_optimal(
+            &mut s,
+            in_data,
+            last,
+            item,
+            options.iteration_count.map(NonZeroU64::get),
+            options.iterations_without_improvement.map(NonZeroU64::get),
+        );
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);
@@ -1202,7 +1209,14 @@ fn blocksplit_attempt<W: Write>(
 
     let mut s = ZopfliBlockState::new(options, last, inend);
 
-    let store = lz77_optimal(&mut s, in_data, last, inend, options.iteration_count.get());
+    let store = lz77_optimal(
+        &mut s,
+        in_data,
+        last,
+        inend,
+        options.iteration_count.map(NonZeroU64::get),
+        options.iterations_without_improvement.map(NonZeroU64::get),
+    );
     totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
     // ZopfliAppendLZ77Store(&store, &lz77);
