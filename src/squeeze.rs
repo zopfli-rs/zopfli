@@ -500,9 +500,11 @@ pub fn lz77_optimal<C: Cache>(
         let laststats = stats;
         stats.clear_freqs();
         stats.get_statistics(&currentstore);
-        if lastrandomstep != u64::MAX {
+        if lastrandomstep != u64::MAX
+            || (!max_iterations.is_some_and(|max| max <= 15)
+                && !max_iterations_without_improvement.is_some_and(|max| max <= 5)) {
             /* This makes it converge slower but better. Do it only once the
-            randomness kicks in so that if the user does few iterations, it gives a
+            randomness kicks in if doing few iterations, to give a
             better result sooner. */
             stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
             stats.calculate_entropy();
