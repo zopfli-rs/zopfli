@@ -9,8 +9,11 @@
 
 use alloc::vec::Vec;
 use core::cmp;
+use std::ops::DerefMut;
+use lockfree_object_pool::LinearObjectPool;
 
 use log::{debug, trace};
+use once_cell::sync::Lazy;
 
 use crate::{
     cache::Cache,
@@ -22,6 +25,10 @@ use crate::{
 };
 
 const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
+
+const LZ77_STORE_POOL: Lazy<LinearObjectPool<Lz77Store>> = Lazy::new(|| LinearObjectPool::new(
+    Lz77Store::new, Lz77Store::reset
+));
 
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)] // False-positive
@@ -440,13 +447,12 @@ pub fn lz77_optimal<C: Cache>(
     max_iterations_without_improvement: Option<u64>,
 ) -> Lz77Store {
     /* Dist to get to here with smallest cost. */
-    let mut currentstore = Lz77Store::new();
-    let mut outputstore = currentstore.clone();
+    let mut outputstore = Lz77Store::new();
 
     /* Initial run. */
-    currentstore.greedy(s, in_data, instart, inend);
+    outputstore.greedy(s, in_data, instart, inend);
     let mut stats = SymbolStats::default();
-    stats.get_statistics(&currentstore);
+    stats.get_statistics(&outputstore);
 
     let mut h = ZopfliHash::new();
     let mut costs = Vec::with_capacity(inend - instart + 1);
@@ -466,14 +472,14 @@ pub fn lz77_optimal<C: Cache>(
     let mut current_iteration: u64 = 0;
     let mut iterations_without_improvement: u64 = 0;
     loop {
-        currentstore.reset();
+        let currentstore = LZ77_STORE_POOL.pull().deref_mut();
         lz77_optimal_run(
             s,
             in_data,
             instart,
             inend,
             |a, b| get_cost_stat(a, b, &stats),
-            &mut currentstore,
+            currentstore,
             &mut h,
             &mut costs,
         );
