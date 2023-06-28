@@ -467,6 +467,9 @@ pub fn lz77_optimal<C: Cache>(
     let mut ran_state = RanState::new();
     let mut lastrandomstep = u64::MAX;
 
+    let costs_vec_pool =
+        LinearObjectPool::new(move || Vec::with_capacity(inend - instart + 1), Vec::clear);
+
     /* Do regular deflate, then loop multiple shortest path runs, each time using
     the statistics of the previous run. */
     /* Repeat statistics with each time the cost model from the previous stat
@@ -475,7 +478,7 @@ pub fn lz77_optimal<C: Cache>(
     let mut iterations_without_improvement: u64 = 0;
     #[allow(clippy::borrow_interior_mutable_const)]
     loop {
-        let mut costs = Vec::with_capacity(inend - instart + 1);
+        let mut costs = costs_vec_pool.pull();
         let pool = &*LZ77_STORE_POOL;
         let mut currentstore = pool.pull();
         lz77_optimal_run(
