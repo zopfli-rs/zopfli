@@ -9,7 +9,9 @@
 
 use alloc::vec::Vec;
 use core::cmp;
-use std::ops::DerefMut;
+use core::ops::DerefMut;
+use genevo::prelude::*;
+use genevo::genetic::Genotype;
 
 use lockfree_object_pool::LinearObjectPool;
 use log::{debug, trace};
@@ -83,7 +85,7 @@ impl RanState {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct SymbolTable {
     /* The literal and length symbols. */
     litlens: [usize; ZOPFLI_NUM_LL],
@@ -432,6 +434,31 @@ pub fn lz77_optimal_fixed<C: Cache>(
         &mut h,
         &mut costs,
     );
+}
+
+impl Genotype for SymbolTable {
+    type Dna = usize;
+}
+
+impl From<SymbolTable> for SymbolStats {
+    fn from(value: SymbolTable) -> Self {
+        let mut stats = SymbolStats {
+            table: value,
+            ..Default::default()
+        };
+        stats.calculate_entropy();
+        stats
+    }
+}
+
+impl Phenotype<SymbolTable> for SymbolStats {
+    fn genes(&self) -> SymbolTable {
+        *self.table
+    }
+
+    fn derive(&self, new_genes: SymbolTable) -> Self {
+        SymbolStats::from(new_genes)
+    }
 }
 
 /// Calculates lit/len and dist pairs for given data.
