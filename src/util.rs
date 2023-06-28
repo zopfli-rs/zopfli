@@ -56,7 +56,6 @@ impl Hasher for &mut simd_adler32::Adler32 {
 /// A reader that wraps another reader, a hasher and an optional counter,
 /// updating the hasher state and incrementing a counter of bytes read so
 /// far for each block of data read.
-#[cfg(feature = "std")]
 pub struct HashingAndCountingRead<'counter, R: Read, H: Hasher> {
     inner: R,
     hasher: H,
