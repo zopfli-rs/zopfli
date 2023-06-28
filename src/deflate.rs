@@ -149,7 +149,6 @@ impl<W: Write> Drop for DeflateEncoder<W> {
 
 /// Convenience function to efficiently compress data in DEFLATE format
 /// from an arbitrary source to an arbitrary destination.
-#[cfg(feature = "std")]
 pub fn deflate<R: std::io::Read, W: Write>(
     options: Options,
     btype: BlockType,
@@ -231,7 +230,7 @@ fn deflate_part<W: Write>(
 
 /// The type of data blocks to generate for a DEFLATE stream.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum BlockType {
     /// Non-compressed blocks (BTYPE=00).
     ///

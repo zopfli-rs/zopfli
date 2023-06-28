@@ -56,10 +56,6 @@ jobs:
       - name: Run tests
         run: make zopfli && make test
 
-      - name: Run tests (no-std)
-        if: matrix.conf == 'nightly'
-        run: cargo test --release --no-default-features --features nightly
-
       - name: Generate documentation
         if: matrix.conf == 'nightly'
         run: cargo doc --no-deps

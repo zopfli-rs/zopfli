@@ -29,10 +29,6 @@ const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 static LZ77_STORE_POOL: Lazy<LinearObjectPool<Lz77Store>> =
     Lazy::new(|| LinearObjectPool::new(Lz77Store::new, Lz77Store::reset));
 
-#[cfg(not(feature = "std"))]
-#[allow(unused_imports)] // False-positive
-use crate::math::F64MathExt;
-
 /// Cost model which should exactly match fixed tree.
 const fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
     let result = if dist == 0 {

@@ -1,4 +1,3 @@
-#[cfg(feature = "std")]
 use std::io::{Error, ErrorKind, Read};
 
 /// Number of distinct literal/length symbols in DEFLATE
@@ -36,19 +35,18 @@ pub const ZOPFLI_CACHE_LENGTH: usize = 8;
 pub const ZOPFLI_MAX_CHAIN_HITS: usize = 8192;
 
 /// A hasher that may be used by [`HashingAndCountingRead`].
-#[cfg(feature = "std")]
 pub trait Hasher {
     fn update(&mut self, data: &[u8]);
 }
 
-#[cfg(all(feature = "std", feature = "gzip"))]
+#[cfg(feature = "gzip")]
 impl Hasher for &mut crc32fast::Hasher {
     fn update(&mut self, data: &[u8]) {
         crc32fast::Hasher::update(self, data)
     }
 }
 
-#[cfg(all(feature = "std", feature = "zlib"))]
+#[cfg(feature = "zlib")]
 impl Hasher for &mut simd_adler32::Adler32 {
     fn update(&mut self, data: &[u8]) {
         simd_adler32::Adler32::write(self, data)
@@ -65,7 +63,6 @@ pub struct HashingAndCountingRead<'counter, R: Read, H: Hasher> {
     bytes_read: Option<&'counter mut u32>,
 }
 
-#[cfg(feature = "std")]
 impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
     pub fn new(inner: R, hasher: H, bytes_read: Option<&'counter mut u32>) -> Self {
         Self {
@@ -76,7 +73,6 @@ impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<R: Read, H: Hasher> Read for HashingAndCountingRead<'_, R, H> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
         match self.inner.read(buf) {

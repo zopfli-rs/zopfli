@@ -25,7 +25,6 @@
 //!              Currently, this feature improves rustdoc generation and enables the namesake feature
 //!              on `crc32fast` and `simd-adler32`, but this may change in the future.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(
     feature = "nightly",
     feature(doc_auto_cfg),
@@ -33,11 +32,11 @@
     feature(core_intrinsics)
 )]
 
-#[cfg_attr(not(feature = "std"), macro_use)]
+#[macro_use]
 extern crate alloc;
 
 pub use deflate::{BlockType, DeflateEncoder};
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 use proptest::prelude::*;
 
 mod blocksplitter;
@@ -46,13 +45,11 @@ mod deflate;
 #[cfg(feature = "gzip")]
 mod gzip;
 mod hash;
-#[cfg(any(doc, not(feature = "std")))]
+#[cfg(doc)]
 mod io;
 mod iter;
 mod katajainen;
 mod lz77;
-#[cfg(not(feature = "std"))]
-mod math;
 mod squeeze;
 mod symbols;
 mod tree;
@@ -61,15 +58,15 @@ mod util;
 mod zlib;
 
 use core::num::NonZeroU64;
-#[cfg(all(not(doc), feature = "std"))]
+#[cfg(not(doc))]
 use std::io::{Error, Write};
 
-#[cfg(any(doc, not(feature = "std")))]
+#[cfg(doc)]
 pub use io::{Error, ErrorKind, Write};
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Options {
     /// Maximum amount of times to rerun forward and backward pass to optimize LZ77
     /// compression cost.
@@ -78,7 +75,7 @@ pub struct Options {
     ///
     /// Default value: 15.
     #[cfg_attr(
-        all(test, feature = "std"),
+        test,
         proptest(
             strategy = "(1..=10u64).prop_map(|iteration_count| NonZeroU64::new(iteration_count))"
         )
@@ -106,7 +103,6 @@ impl Default for Options {
 
 /// The output file format to use to store data compressed with Zopfli.
 #[derive(Debug, Copy, Clone)]
-#[cfg(feature = "std")]
 pub enum Format {
     /// The gzip file format, as defined in
     /// [RFC 1952](https://datatracker.ietf.org/doc/html/rfc1952).
@@ -134,7 +130,6 @@ pub enum Format {
 
 /// Compresses data from a source with the Zopfli algorithm, using the specified
 /// options, and writes the result to a sink in the defined output format.
-#[cfg(feature = "std")]
 pub fn compress<R: std::io::Read, W: Write>(
     options: &Options,
     output_format: &Format,
@@ -150,7 +145,7 @@ pub fn compress<R: std::io::Read, W: Write>(
     }
 }
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod test {
     use std::io;
 
