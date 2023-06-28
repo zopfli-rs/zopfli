@@ -390,13 +390,13 @@ fn trace(size: usize, length_array: &[u16]) -> Vec<u16> {
 fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],
-    instart: usize,
-    inend: usize,
     costmodel: F,
     store: &mut Lz77Store,
     h: &mut ZopfliHash,
     costs: &mut Vec<f32>,
 ) {
+    let instart = s.blockstart;
+    let inend = s.blockend;
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
@@ -425,8 +425,6 @@ pub fn lz77_optimal_fixed<C: Cache>(
     lz77_optimal_run(
         s,
         in_data,
-        instart,
-        inend,
         get_cost_fixed,
         store,
         &mut h,
@@ -465,11 +463,11 @@ impl Phenotype<SymbolTable> for SymbolStats {
 pub fn lz77_optimal<C: Cache>(
     s: &mut ZopfliBlockState<C>,
     in_data: &[u8],
-    instart: usize,
-    inend: usize,
     max_iterations: Option<u64>,
     max_iterations_without_improvement: Option<u64>,
 ) -> Lz77Store {
+    let instart = s.blockstart;
+    let inend = s.blockend;
     /* Dist to get to here with smallest cost. */
     let mut outputstore = Lz77Store::new();
 
@@ -502,8 +500,6 @@ pub fn lz77_optimal<C: Cache>(
         lz77_optimal_run(
             s,
             in_data,
-            instart,
-            inend,
             |a, b| get_cost_stat(a, b, &stats),
             currentstore.deref_mut(),
             &mut h,
