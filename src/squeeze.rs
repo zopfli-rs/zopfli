@@ -475,7 +475,6 @@ pub fn lz77_optimal<C: Cache>(
     let mut iterations_without_improvement: u64 = 0;
     #[allow(clippy::borrow_interior_mutable_const)]
     loop {
-        let mut costs = costs_vec_pool.pull();
         let pool = &*LZ77_STORE_POOL;
         let mut currentstore = pool.pull();
         lz77_optimal_run(
