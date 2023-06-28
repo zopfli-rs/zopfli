@@ -77,30 +77,36 @@ impl RanState {
     }
 }
 
-#[derive(Copy)]
-struct SymbolStats {
+#[derive(Copy,Clone,Debug)]
+struct SymbolTable {
     /* The literal and length symbols. */
     litlens: [usize; ZOPFLI_NUM_LL],
     /* The 32 unique dist symbols, not the 32768 possible dists. */
     dists: [usize; ZOPFLI_NUM_D],
+}
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        SymbolTable {
+            litlens: [0; ZOPFLI_NUM_LL],
+            dists: [0; ZOPFLI_NUM_D]
+        }
+    }
+}
+
+#[derive(Copy,Clone,Debug)]
+struct SymbolStats {
+    table: SymbolTable,
     /* Length of each lit/len symbol in bits. */
     ll_symbols: [f64; ZOPFLI_NUM_LL],
     /* Length of each dist symbol in bits. */
     d_symbols: [f64; ZOPFLI_NUM_D],
 }
 
-impl Clone for SymbolStats {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
 impl Default for SymbolStats {
     fn default() -> SymbolStats {
         SymbolStats {
-            litlens: [0; ZOPFLI_NUM_LL],
-            dists: [0; ZOPFLI_NUM_D],
+            table: Default::default(),
             ll_symbols: [0.0; ZOPFLI_NUM_LL],
             d_symbols: [0.0; ZOPFLI_NUM_D],
         }
@@ -143,39 +149,38 @@ impl SymbolStats {
             }
         }
 
-        calculate_and_store_entropy(&self.litlens, &mut self.ll_symbols);
-        calculate_and_store_entropy(&self.dists, &mut self.d_symbols);
+        calculate_and_store_entropy(&self.table.litlens, &mut self.ll_symbols);
+        calculate_and_store_entropy(&self.table.dists, &mut self.d_symbols);
     }
 
     /// Appends the symbol statistics from the store.
     fn get_statistics(&mut self, store: &Lz77Store) {
         for &litlen in &store.litlens {
             match litlen {
-                LitLen::Literal(lit) => self.litlens[lit as usize] += 1,
+                LitLen::Literal(lit) => self.table.litlens[lit as usize] += 1,
                 LitLen::LengthDist(len, dist) => {
-                    self.litlens[get_length_symbol(len as usize)] += 1;
-                    self.dists[get_dist_symbol(dist)] += 1;
+                    self.table.litlens[get_length_symbol(len as usize)] += 1;
+                    self.table.dists[get_dist_symbol(dist)] += 1;
                 }
             }
         }
-        self.litlens[256] = 1; /* End symbol. */
+        self.table.litlens[256] = 1; /* End symbol. */
 
         self.calculate_entropy();
     }
 
     fn clear_freqs(&mut self) {
-        self.litlens = [0; ZOPFLI_NUM_LL];
-        self.dists = [0; ZOPFLI_NUM_D];
+        self.table = Default::default();
     }
 }
 
 fn add_weighed_stat_freqs(
-    stats1: &SymbolStats,
+    stats1: &SymbolTable,
     w1: f64,
-    stats2: &SymbolStats,
+    stats2: &SymbolTable,
     w2: f64,
-) -> SymbolStats {
-    let mut result = SymbolStats::default();
+) -> SymbolTable {
+    let mut result = SymbolTable::default();
 
     for i in 0..ZOPFLI_NUM_LL {
         result.litlens[i] =
@@ -506,20 +511,21 @@ pub fn lz77_optimal<C: Cache>(
             /* This makes it converge slower but better. Do it only once the
             randomness kicks in if doing few iterations, to give a
             better result sooner. */
-            stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
+            stats.table = add_weighed_stat_freqs(&stats.table, 1.0, &laststats.table, 0.5);
             stats.calculate_entropy();
         }
         if current_iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
             // If they're all the same frequency, that frequency must be 1
             // because of the end symbol. If that's the case, there's nothing
             // to change by randomizing.
-            let can_randomize_litlens = beststats.litlens.iter().copied().any(|litlen| litlen != 1);
+            let can_randomize_litlens = beststats.table.litlens.iter().copied().any(|litlen| litlen != 1);
             let can_randomize_dists = beststats
+                .table
                 .dists
                 .iter()
                 .skip(1)
                 .copied()
-                .any(|dist| dist != beststats.dists[0]);
+                .any(|dist| dist != beststats.table.dists[0]);
             if can_randomize_litlens || can_randomize_dists {
                 stats = beststats;
                 /// Returns true if it actually made a change.
@@ -543,11 +549,11 @@ pub fn lz77_optimal<C: Cache>(
                 let mut changed = false;
                 while !changed {
                     if can_randomize_litlens {
-                        changed = randomize_freqs(&mut stats.litlens, &mut ran_state);
+                        changed = randomize_freqs(&mut stats.table.litlens, &mut ran_state);
                     }
                     if can_randomize_dists {
                         // Pull into a separate variable to prevent short-circuiting
-                        let dists_changed = randomize_freqs(&mut stats.dists, &mut ran_state);
+                        let dists_changed = randomize_freqs(&mut stats.table.dists, &mut ran_state);
                         changed |= dists_changed;
                     }
                 }
