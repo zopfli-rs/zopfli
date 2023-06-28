@@ -391,7 +391,7 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
             lmc: Arc::new(Mutex::new(ZopfliLongestMatchCache::new(
                 blockend - blockstart,
             ))),
-            costs_vec: Vec::with_capacity(blockend - blockstart + 1)
+            costs_vec: Vec::with_capacity(blockend - blockstart + 1),
         }
     }
 }
@@ -409,7 +409,7 @@ impl<'a> ZopfliBlockState<'a, NoCache> {
             blockstart,
             blockend,
             lmc: Arc::new(Mutex::new(NoCache)),
-            costs_vec: Vec::with_capacity(blockend - blockstart + 1)
+            costs_vec: Vec::with_capacity(blockend - blockstart + 1),
         }
     }
 }
