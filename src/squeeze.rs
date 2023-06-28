@@ -8,11 +8,9 @@
 //! solution.
 
 use alloc::vec::Vec;
-use core::cmp;
-use core::ops::DerefMut;
-use genevo::prelude::*;
-use genevo::genetic::Genotype;
+use core::{cmp, ops::DerefMut};
 
+use genevo::{genetic::Genotype, prelude::*};
 use lockfree_object_pool::LinearObjectPool;
 use log::{debug, trace};
 use once_cell::sync::Lazy;
