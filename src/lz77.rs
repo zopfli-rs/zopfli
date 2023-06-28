@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::cmp;
+use std::iter;
 use std::sync::{Arc, Mutex};
 
 use crate::{
@@ -391,7 +392,7 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
             lmc: Arc::new(Mutex::new(ZopfliLongestMatchCache::new(
                 blockend - blockstart,
             ))),
-            costs_vec: Vec::with_capacity(blockend - blockstart + 1),
+            costs_vec: iter::repeat(0.0).take(blockend - blockstart + 1).collect(),
         }
     }
 }
@@ -409,7 +410,7 @@ impl<'a> ZopfliBlockState<'a, NoCache> {
             blockstart,
             blockend,
             lmc: Arc::new(Mutex::new(NoCache)),
-            costs_vec: Vec::with_capacity(blockend - blockstart + 1),
+            costs_vec: iter::repeat(0.0).take(blockend - blockstart + 1).collect(),
         }
     }
 }

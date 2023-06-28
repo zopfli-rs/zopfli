@@ -1184,13 +1184,14 @@ fn blocksplit_attempt<W: Write>(
     let mut last = instart;
     for &item in &splitpoints_uncompressed {
         let mut s = ZopfliBlockState::new(options, in_data, last, item);
-
+        debug_assert!(s.costs_vec.len() == inend - instart + 1);
         let store = lz77_optimal(
             &mut s,
             in_data,
             options.iteration_count.map(NonZeroU64::get),
             options.iterations_without_improvement.map(NonZeroU64::get),
         );
+        debug_assert!(s.costs_vec.len() == inend - instart + 1);
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
         // ZopfliAppendLZ77Store(&store, &lz77);

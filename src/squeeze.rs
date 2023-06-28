@@ -246,9 +246,9 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
     let in_data = s.data;
     let instart = s.blockstart;
     let inend = s.blockend;
-
     // Best cost to get here so far.
     let blocksize = inend - instart;
+    debug_assert!(s.costs_vec.len() == blocksize + 1);
     let mut length_array = vec![0; blocksize + 1];
     if instart == inend {
         return (0.0, length_array);
@@ -387,6 +387,7 @@ fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
 ) {
     let instart = s.blockstart;
     let inend = s.blockend;
+    debug_assert!(s.costs_vec.len() == inend - instart + 1);
     let in_data = s.data;
     let (cost, length_array) = get_best_lengths(s, costmodel, h);
     let path = trace(inend - instart, &length_array);
@@ -443,6 +444,7 @@ pub fn lz77_optimal<C: Cache>(
 ) -> Lz77Store {
     let instart = s.blockstart;
     let inend = s.blockend;
+    debug_assert!(s.costs_vec.len() == inend - instart + 1);
     /* Dist to get to here with smallest cost. */
     let mut outputstore = Lz77Store::new();
 
