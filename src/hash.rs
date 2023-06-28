@@ -5,7 +5,7 @@ use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 const HASH_SHIFT: i32 = 5;
 const HASH_MASK: u16 = 32767;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Which {
     Hash1,
     Hash2,
@@ -150,7 +150,7 @@ impl ZopfliHash {
         hashval.map_or(-1, |hv| hv as i32)
     }
 
-    pub fn val(&self, which: Which) -> u16 {
+    pub const fn val(&self, which: Which) -> u16 {
         match which {
             Which::Hash1 => self.hash1.val,
             Which::Hash2 => self.hash2.val,

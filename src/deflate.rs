@@ -1307,7 +1307,7 @@ struct BitwiseWriter<W> {
 }
 
 impl<W: Write> BitwiseWriter<W> {
-    fn new(out: W) -> BitwiseWriter<W> {
+    const fn new(out: W) -> BitwiseWriter<W> {
         BitwiseWriter {
             bit: 0,
             bp: 0,
@@ -1316,7 +1316,7 @@ impl<W: Write> BitwiseWriter<W> {
         }
     }
 
-    fn bytes_written(&self) -> usize {
+    const fn bytes_written(&self) -> usize {
         self.len + if self.bp > 0 { 1 } else { 0 }
     }
 

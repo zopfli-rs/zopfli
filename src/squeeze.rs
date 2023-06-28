@@ -28,7 +28,7 @@ const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 use crate::math::F64MathExt;
 
 /// Cost model which should exactly match fixed tree.
-fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
+const fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
     let result = if dist == 0 {
         if litlen <= 143 {
             8
@@ -65,7 +65,7 @@ struct RanState {
 }
 
 impl RanState {
-    fn new() -> RanState {
+    const fn new() -> RanState {
         RanState { m_w: 1, m_z: 2 }
     }
 

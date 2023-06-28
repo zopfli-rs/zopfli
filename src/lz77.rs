@@ -12,14 +12,14 @@ use crate::{
     Options,
 };
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Copy)]
 pub enum LitLen {
     Literal(u16),
     LengthDist(u16, u16),
 }
 
 impl LitLen {
-    pub fn size(&self) -> usize {
+    pub const fn size(&self) -> usize {
         match *self {
             LitLen::Literal(_) => 1,
             LitLen::LengthDist(len, _) => len as usize,
@@ -32,7 +32,7 @@ impl LitLen {
 /// Parameter dists: Contains the distances. A value is 0 to indicate that there is
 /// no dist and the corresponding litlens value is a literal instead of a length.
 /// Parameter size: The size of both the litlens and dists arrays.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Lz77Store {
     pub litlens: Vec<LitLen>,
 
@@ -46,7 +46,7 @@ pub struct Lz77Store {
 }
 
 impl Lz77Store {
-    pub fn new() -> Lz77Store {
+    pub const fn new() -> Lz77Store {
         Lz77Store {
             litlens: vec![],
 
@@ -389,7 +389,11 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
 }
 
 impl<'a> ZopfliBlockState<'a, NoCache> {
-    pub fn new_without_cache(options: &'a Options, blockstart: usize, blockend: usize) -> Self {
+    pub const fn new_without_cache(
+        options: &'a Options,
+        blockstart: usize,
+        blockend: usize,
+    ) -> Self {
         ZopfliBlockState {
             options,
             blockstart,
@@ -436,7 +440,7 @@ pub struct LongestMatch {
 }
 
 impl LongestMatch {
-    pub fn new(limit: usize) -> Self {
+    pub const fn new(limit: usize) -> Self {
         LongestMatch {
             distance: 0,
             length: 0,
@@ -452,7 +456,7 @@ impl LongestMatch {
 /// `scan` is the position to compare; `match` is the earlier position to compare.
 /// `end` is the last possible byte, beyond which to stop looking.
 /// `safe_end` is a few (8) bytes before end, for comparing multiple bytes at once.
-fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) -> usize {
+const fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) -> usize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
     // /* 8 checks at once per array bounds check (usize is 64-bit). */
@@ -636,7 +640,7 @@ fn find_longest_match_loop(
 ///  rather unpredictable way
 /// -the first zopfli run, so it affects the chance of the first run being closer
 ///  to the optimal output
-fn get_length_score(length: i32, distance: i32) -> i32 {
+const fn get_length_score(length: i32, distance: i32) -> i32 {
     // At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
     // on tested files.
     if distance > 1024 {

@@ -51,7 +51,7 @@ struct WriteStatistics<W> {
 }
 
 impl<W> WriteStatistics<W> {
-    fn new(inner: W) -> Self {
+    const fn new(inner: W) -> Self {
         WriteStatistics { inner, count: 0 }
     }
 }
