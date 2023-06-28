@@ -240,22 +240,20 @@ fn get_cost_model_min_cost<F: Fn(usize, u16) -> f64>(costmodel: F) -> f64 {
 /// Performs the forward pass for "squeeze". Gets the most optimal length to reach
 /// every byte from a previous byte, using cost calculations.
 /// `s`: the `ZopfliBlockState`
-/// `in_data`: the input data array
-/// `instart`: where to start
-/// `inend`: where to stop (not inclusive)
 /// `costmodel`: function to calculate the cost of some lit/len/dist pair.
 /// `length_array`: output array of size `(inend - instart)` which will receive the best
 ///     length to reach this byte from a previous byte.
 /// returns the cost that was, according to the `costmodel`, needed to get to the end.
 fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
     s: &mut ZopfliBlockState<C>,
-    in_data: &[u8],
-    instart: usize,
-    inend: usize,
     costmodel: F,
     h: &mut ZopfliHash,
     costs: &mut Vec<f32>,
 ) -> (f64, Vec<u16>) {
+    let in_data = s.data;
+    let instart = s.blockstart;
+    let inend = s.blockend;
+
     // Best cost to get here so far.
     let blocksize = inend - instart;
     let mut length_array = vec![0; blocksize + 1];
@@ -399,7 +397,7 @@ fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
     let instart = s.blockstart;
     let inend = s.blockend;
     let in_data = s.data;
-    let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
+    let (cost, length_array) = get_best_lengths(s, costmodel, h, costs);
     let path = trace(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
     debug_assert!(cost < f64::INFINITY);
