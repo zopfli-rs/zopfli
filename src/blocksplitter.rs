@@ -231,7 +231,7 @@ pub fn blocksplit(
     /* Unintuitively, Using a simple LZ77 method here instead of lz77_optimal
     results in better blocks. */
     {
-        let mut state = ZopfliBlockState::new_without_cache(options, instart, inend);
+        let mut state = ZopfliBlockState::new_without_cache(options, in_data, instart, inend);
         store.greedy(&mut state, in_data, instart, inend);
     }
 
