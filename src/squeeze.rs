@@ -391,7 +391,6 @@ fn trace(size: usize, length_array: &[u16]) -> Vec<u16> {
 #[allow(clippy::too_many_arguments)] // Not feasible to refactor in a more readable way
 fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
     s: &mut ZopfliBlockState<C>,
-    in_data: &[u8],
     costmodel: F,
     store: &mut Lz77Store,
     h: &mut ZopfliHash,
@@ -399,6 +398,7 @@ fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
 ) {
     let instart = s.blockstart;
     let inend = s.blockend;
+    let in_data = s.data;
     let (cost, length_array) = get_best_lengths(s, in_data, instart, inend, costmodel, h, costs);
     let path = trace(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
@@ -413,25 +413,12 @@ fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
 /// using with a fixed tree.
 /// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
-pub fn lz77_optimal_fixed<C: Cache>(
-    s: &mut ZopfliBlockState<C>,
-    in_data: &[u8],
-    instart: usize,
-    inend: usize,
-    store: &mut Lz77Store,
-) {
-    s.blockstart = instart;
-    s.blockend = inend;
+pub fn lz77_optimal_fixed<C: Cache>(s: &mut ZopfliBlockState<C>, store: &mut Lz77Store) {
+    let instart = s.blockstart;
+    let inend = s.blockend;
     let mut h = ZopfliHash::new();
     let mut costs = Vec::with_capacity(inend - instart);
-    lz77_optimal_run(
-        s,
-        in_data,
-        get_cost_fixed,
-        store,
-        &mut h,
-        &mut costs,
-    );
+    lz77_optimal_run(s, get_cost_fixed, store, &mut h, &mut costs);
 }
 
 /// Calculates lit/len and dist pairs for given data.
@@ -475,7 +462,6 @@ pub fn lz77_optimal<C: Cache>(
         currentstore.reset();
         lz77_optimal_run(
             s,
-            in_data,
             |a, b| get_cost_stat(a, b, &stats),
             &mut currentstore,
             &mut h,
