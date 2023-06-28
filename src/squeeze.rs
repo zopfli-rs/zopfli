@@ -242,7 +242,6 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
     s: &mut ZopfliBlockState<C>,
     costmodel: F,
     h: &mut ZopfliHash,
-    costs: &mut Vec<f32>,
 ) -> (f64, Vec<u16>) {
     let in_data = s.data;
     let instart = s.blockstart;
@@ -263,11 +262,10 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
         h.update(arr, i);
     }
 
-    costs.resize(blocksize + 1, 0.0);
-    for cost in costs.iter_mut().take(blocksize + 1).skip(1) {
+    for cost in s.costs_vec.iter_mut().take(blocksize + 1).skip(1) {
         *cost = f32::INFINITY;
     }
-    costs[0] = 0.0; /* Because it's the start. */
+    s.costs_vec[0] = 0.0; /* Because it's the start. */
 
     let mut i = instart;
     let mut leng;
@@ -291,7 +289,7 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
             // ZOPFLI_MAX_MATCH values to avoid calling ZopfliFindLongestMatch.
 
             for _ in 0..ZOPFLI_MAX_MATCH {
-                costs[j + ZOPFLI_MAX_MATCH] = costs[j] + symbolcost as f32;
+                s.costs_vec[j + ZOPFLI_MAX_MATCH] = s.costs_vec[j] + symbolcost as f32;
                 length_array[j + ZOPFLI_MAX_MATCH] = ZOPFLI_MAX_MATCH as u16;
                 i += 1;
                 j += 1;
@@ -312,37 +310,37 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
 
         // Literal.
         if i < inend {
-            let new_cost = costmodel(arr[i] as usize, 0) + costs[j] as f64;
+            let new_cost = costmodel(arr[i] as usize, 0) + s.costs_vec[j] as f64;
             debug_assert!(new_cost >= 0.0);
-            if new_cost < costs[j + 1] as f64 {
-                costs[j + 1] = new_cost as f32;
+            if new_cost < s.costs_vec[j + 1] as f64 {
+                s.costs_vec[j + 1] = new_cost as f32;
                 length_array[j + 1] = 1;
             }
         }
         // Lengths.
         let kend = cmp::min(leng as usize, inend - i);
-        let mincostaddcostj = mincost + costs[j] as f64;
+        let mincostaddcostj = mincost + s.costs_vec[j] as f64;
 
         for (k, &sublength) in sublen.iter().enumerate().take(kend + 1).skip(3) {
             // Calling the cost model is expensive, avoid this if we are already at
             // the minimum possible cost that it can return.
-            if costs[j + k] as f64 <= mincostaddcostj {
+            if s.costs_vec[j + k] as f64 <= mincostaddcostj {
                 continue;
             }
 
-            let new_cost = costmodel(k, sublength) + costs[j] as f64;
+            let new_cost = costmodel(k, sublength) + s.costs_vec[j] as f64;
             debug_assert!(new_cost >= 0.0);
-            if new_cost < costs[j + k] as f64 {
+            if new_cost < s.costs_vec[j + k] as f64 {
                 debug_assert!(k <= ZOPFLI_MAX_MATCH);
-                costs[j + k] = new_cost as f32;
+                s.costs_vec[j + k] = new_cost as f32;
                 length_array[j + k] = k as u16;
             }
         }
         i += 1;
     }
 
-    debug_assert!(costs[blocksize] >= 0.0);
-    (costs[blocksize] as f64, length_array)
+    debug_assert!(s.costs_vec[blocksize] >= 0.0);
+    (s.costs_vec[blocksize] as f64, length_array)
 }
 
 /// Calculates the optimal path of lz77 lengths to use, from the calculated
@@ -386,12 +384,11 @@ fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
     costmodel: F,
     store: &mut Lz77Store,
     h: &mut ZopfliHash,
-    costs: &mut Vec<f32>,
 ) {
     let instart = s.blockstart;
     let inend = s.blockend;
     let in_data = s.data;
-    let (cost, length_array) = get_best_lengths(s, costmodel, h, costs);
+    let (cost, length_array) = get_best_lengths(s, costmodel, h);
     let path = trace(inend - instart, &length_array);
     store.follow_path(in_data, instart, inend, path, s);
     debug_assert!(cost < f64::INFINITY);
@@ -406,11 +403,8 @@ fn lz77_optimal_run<F: Fn(usize, u16) -> f64, C: Cache>(
 /// If `instart` is larger than `0`, it uses values before `instart` as starting
 /// dictionary.
 pub fn lz77_optimal_fixed<C: Cache>(s: &mut ZopfliBlockState<C>, store: &mut Lz77Store) {
-    let instart = s.blockstart;
-    let inend = s.blockend;
     let mut h = ZopfliHash::new();
-    let mut costs = Vec::with_capacity(inend - instart);
-    lz77_optimal_run(s, get_cost_fixed, store, &mut h, &mut costs);
+    lz77_optimal_run(s, get_cost_fixed, store, &mut h);
 }
 
 impl Genotype for SymbolTable {
@@ -482,7 +476,6 @@ pub fn lz77_optimal<C: Cache>(
             |a, b| get_cost_stat(a, b, &stats),
             currentstore.deref_mut(),
             &mut h,
-            &mut s.costs_vec,
         );
         let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
 
