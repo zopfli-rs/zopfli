@@ -10,8 +10,8 @@
 use alloc::vec::Vec;
 use core::cmp;
 use std::ops::DerefMut;
-use lockfree_object_pool::LinearObjectPool;
 
+use lockfree_object_pool::LinearObjectPool;
 use log::{debug, trace};
 use once_cell::sync::Lazy;
 
@@ -26,9 +26,8 @@ use crate::{
 
 const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 
-const LZ77_STORE_POOL: Lazy<LinearObjectPool<Lz77Store>> = Lazy::new(|| LinearObjectPool::new(
-    Lz77Store::new, Lz77Store::reset
-));
+static LZ77_STORE_POOL: Lazy<LinearObjectPool<Lz77Store>> =
+    Lazy::new(|| LinearObjectPool::new(Lz77Store::new, Lz77Store::reset));
 
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)] // False-positive
@@ -471,15 +470,17 @@ pub fn lz77_optimal<C: Cache>(
     run. */
     let mut current_iteration: u64 = 0;
     let mut iterations_without_improvement: u64 = 0;
+    #[allow(clippy::borrow_interior_mutable_const)]
     loop {
-        let currentstore = LZ77_STORE_POOL.pull().deref_mut();
+        let pool = &*LZ77_STORE_POOL;
+        let mut currentstore = pool.pull();
         lz77_optimal_run(
             s,
             in_data,
             instart,
             inend,
             |a, b| get_cost_stat(a, b, &stats),
-            currentstore,
+            currentstore.deref_mut(),
             &mut h,
             &mut costs,
         );
