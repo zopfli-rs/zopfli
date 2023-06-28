@@ -1,7 +1,9 @@
 use alloc::vec::Vec;
 use core::cmp;
-use std::iter;
-use std::sync::{Arc, Mutex};
+use std::{
+    iter,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     cache::{Cache, NoCache, ZopfliLongestMatchCache},
