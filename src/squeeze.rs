@@ -77,7 +77,7 @@ impl RanState {
     }
 }
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 struct SymbolTable {
     /* The literal and length symbols. */
     litlens: [usize; ZOPFLI_NUM_LL],
@@ -89,12 +89,12 @@ impl Default for SymbolTable {
     fn default() -> Self {
         SymbolTable {
             litlens: [0; ZOPFLI_NUM_LL],
-            dists: [0; ZOPFLI_NUM_D]
+            dists: [0; ZOPFLI_NUM_D],
         }
     }
 }
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 struct SymbolStats {
     table: SymbolTable,
     /* Length of each lit/len symbol in bits. */
@@ -507,7 +507,8 @@ pub fn lz77_optimal<C: Cache>(
         stats.get_statistics(&currentstore);
         if lastrandomstep != u64::MAX
             || (!max_iterations.is_some_and(|max| max <= 15)
-                && !max_iterations_without_improvement.is_some_and(|max| max <= 5)) {
+                && !max_iterations_without_improvement.is_some_and(|max| max <= 5))
+        {
             /* This makes it converge slower but better. Do it only once the
             randomness kicks in if doing few iterations, to give a
             better result sooner. */
@@ -518,7 +519,12 @@ pub fn lz77_optimal<C: Cache>(
             // If they're all the same frequency, that frequency must be 1
             // because of the end symbol. If that's the case, there's nothing
             // to change by randomizing.
-            let can_randomize_litlens = beststats.table.litlens.iter().copied().any(|litlen| litlen != 1);
+            let can_randomize_litlens = beststats
+                .table
+                .litlens
+                .iter()
+                .copied()
+                .any(|litlen| litlen != 1);
             let can_randomize_dists = beststats
                 .table
                 .dists
