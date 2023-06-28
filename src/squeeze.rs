@@ -451,7 +451,7 @@ impl From<SymbolTable> for SymbolStats {
 
 impl Phenotype<SymbolTable> for SymbolStats {
     fn genes(&self) -> SymbolTable {
-        *self.table
+        self.table
     }
 
     fn derive(&self, new_genes: SymbolTable) -> Self {
