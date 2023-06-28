@@ -454,7 +454,6 @@ pub fn lz77_optimal<C: Cache>(
     stats.get_statistics(&outputstore);
 
     let mut h = ZopfliHash::new();
-    let mut costs = Vec::with_capacity(inend - instart + 1);
 
     let mut beststats = SymbolStats::default();
 
@@ -472,6 +471,7 @@ pub fn lz77_optimal<C: Cache>(
     let mut iterations_without_improvement: u64 = 0;
     #[allow(clippy::borrow_interior_mutable_const)]
     loop {
+        let mut costs = Vec::with_capacity(inend - instart + 1);
         let pool = &*LZ77_STORE_POOL;
         let mut currentstore = pool.pull();
         lz77_optimal_run(
