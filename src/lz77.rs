@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::cmp;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     cache::{Cache, NoCache, ZopfliLongestMatchCache},
@@ -368,10 +369,11 @@ impl Lz77Store {
 /// Some state information for compressing a block.
 /// This is currently a bit under-used (with mainly only the longest match cache),
 /// but is kept for easy future expansion.
+#[derive(Clone)]
 pub struct ZopfliBlockState<'a, C> {
     pub options: &'a Options,
     /* Cache for length/distance pairs found so far. */
-    lmc: C,
+    lmc: Arc<Mutex<C>>,
     /* The start (inclusive) and end (not inclusive) of the current block. */
     pub blockstart: usize,
     pub blockend: usize,
@@ -383,52 +385,21 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
             options,
             blockstart,
             blockend,
-            lmc: ZopfliLongestMatchCache::new(blockend - blockstart),
+            lmc: Arc::new(Mutex::new(ZopfliLongestMatchCache::new(
+                blockend - blockstart,
+            ))),
         }
     }
 }
 
 impl<'a> ZopfliBlockState<'a, NoCache> {
-    pub const fn new_without_cache(
-        options: &'a Options,
-        blockstart: usize,
-        blockend: usize,
-    ) -> Self {
+    pub fn new_without_cache(options: &'a Options, blockstart: usize, blockend: usize) -> Self {
         ZopfliBlockState {
             options,
             blockstart,
             blockend,
-            lmc: NoCache,
+            lmc: Arc::new(Mutex::new(NoCache)),
         }
-    }
-}
-
-impl<'a, C: Cache> ZopfliBlockState<'a, C> {
-    /// Gets distance, length and sublen values from the cache if possible.
-    /// Returns 1 if it got the values from the cache, 0 if not.
-    /// Updates the limit value to a smaller one if possible with more limited
-    /// information from the cache.
-    fn try_get_from_longest_match_cache(
-        &self,
-        pos: usize,
-        limit: usize,
-        sublen: &mut Option<&mut [u16]>,
-    ) -> LongestMatch {
-        self.lmc.try_get(pos, limit, sublen, self.blockstart)
-    }
-
-    /// Stores the found sublen, distance and length in the longest match cache, if
-    /// possible.
-    fn store_in_longest_match_cache(
-        &mut self,
-        pos: usize,
-        limit: usize,
-        sublen: &mut Option<&mut [u16]>,
-        distance: u16,
-        length: u16,
-    ) {
-        self.lmc
-            .store(pos, limit, sublen, distance, length, self.blockstart)
     }
 }
 
@@ -484,7 +455,8 @@ pub fn find_longest_match<C: Cache>(
     limit: usize,
     sublen: &mut Option<&mut [u16]>,
 ) -> LongestMatch {
-    let mut longest_match = s.try_get_from_longest_match_cache(pos, limit, sublen);
+    let mut cache = s.lmc.lock().unwrap();
+    let mut longest_match = cache.try_get(pos, limit, sublen, s.blockstart);
 
     if longest_match.from_cache {
         debug_assert!(pos + (longest_match.length as usize) <= size);
@@ -513,8 +485,8 @@ pub fn find_longest_match<C: Cache>(
 
     let (bestdist, bestlength) = find_longest_match_loop(h, array, pos, size, limit, sublen);
 
-    s.store_in_longest_match_cache(pos, limit, sublen, bestdist, bestlength);
-
+    cache.store(pos, limit, sublen, bestdist, bestlength, s.blockstart);
+    drop(cache);
     debug_assert!(bestlength <= limit as u16);
 
     debug_assert!(pos + bestlength as usize <= size);
