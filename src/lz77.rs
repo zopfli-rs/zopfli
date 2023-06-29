@@ -16,7 +16,7 @@ use crate::{
     Options,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum LitLen {
     Literal(u16),
     LengthDist(u16, u16),
@@ -36,7 +36,7 @@ impl LitLen {
 /// Parameter dists: Contains the distances. A value is 0 to indicate that there is
 /// no dist and the corresponding litlens value is a literal instead of a length.
 /// Parameter size: The size of both the litlens and dists arrays.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Lz77Store {
     pub litlens: Vec<LitLen>,
 
@@ -372,7 +372,7 @@ impl Lz77Store {
 /// Some state information for compressing a block.
 /// This is currently a bit under-used (with mainly only the longest match cache),
 /// but is kept for easy future expansion.
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct ZopfliBlockState<'a, C> {
     pub options: &'a Options,
     pub data: &'a [u8],
@@ -382,6 +382,21 @@ pub struct ZopfliBlockState<'a, C> {
     pub blockstart: usize,
     pub blockend: usize,
     pub costs_vec: Vec<f32>,
+    pub best: Mutex<Option<(Lz77Store, f64)>>,
+}
+
+impl<'a, C> Clone for ZopfliBlockState<'a, C> {
+    fn clone(&self) -> Self {
+        ZopfliBlockState {
+            options: self.options,
+            data: self.data,
+            lmc: self.lmc.clone(),
+            blockstart: self.blockstart,
+            blockend: self.blockend,
+            costs_vec: self.costs_vec.clone(),
+            best: Mutex::new(self.best.lock().unwrap().clone()),
+        }
+    }
 }
 
 impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
@@ -395,6 +410,7 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
                 blockend - blockstart,
             ))),
             costs_vec: iter::repeat(0.0).take(blockend - blockstart + 1).collect(),
+            best: Mutex::new(None),
         }
     }
 }
@@ -413,6 +429,7 @@ impl<'a> ZopfliBlockState<'a, NoCache> {
             blockend,
             lmc: Arc::new(Mutex::new(NoCache)),
             costs_vec: iter::repeat(0.0).take(blockend - blockstart + 1).collect(),
+            best: Mutex::new(None),
         }
     }
 }

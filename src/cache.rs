@@ -1,5 +1,8 @@
 use alloc::vec::Vec;
-use core::cmp;
+use core::{
+    cmp,
+    fmt::{Debug, Formatter},
+};
 
 use crate::{
     lz77::LongestMatch,
@@ -16,6 +19,17 @@ pub struct ZopfliLongestMatchCache {
     length: Vec<u16>,
     dist: Vec<u16>,
     sublen: Vec<u8>,
+}
+
+impl Debug for ZopfliLongestMatchCache {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_fmt(format_args!(
+            "ZopfliLongestMatchCache(length.len()={}, dist.len()={}, sublen.len()={}",
+            self.length.len(),
+            self.dist.len(),
+            self.sublen.len()
+        ))
+    }
 }
 
 impl ZopfliLongestMatchCache {
@@ -116,7 +130,7 @@ impl ZopfliLongestMatchCache {
     }
 }
 
-pub trait Cache {
+pub trait Cache: Send + Debug {
     fn try_get(
         &self,
         pos: usize,
@@ -135,6 +149,7 @@ pub trait Cache {
     );
 }
 
+#[derive(Debug)]
 pub struct NoCache;
 
 impl Cache for NoCache {

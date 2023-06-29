@@ -8,12 +8,29 @@
 //! solution.
 
 use alloc::vec::Vec;
-use core::{cmp, ops::DerefMut};
+use core::{
+    cmp,
+    fmt::{Debug, Display, Formatter},
+    ops::DerefMut,
+};
 
-use genevo::{genetic::Genotype, prelude::*};
+use genevo::{
+    ga,
+    genetic::{Children, Genotype, Parents},
+    mutation::value::RandomGenomeMutation,
+    operator::{
+        prelude::{ElitistReinserter, RandomValueMutator},
+        CrossoverOp, GeneticOperator,
+    },
+    prelude::*,
+    selection::truncation::MaximizeSelector,
+    simulation::State,
+    termination::{StopFlag, Termination},
+};
 use lockfree_object_pool::LinearObjectPool;
-use log::{debug, trace};
+use log::debug;
 use once_cell::sync::Lazy;
+use ordered_float::OrderedFloat;
 
 use crate::{
     cache::Cache,
@@ -412,6 +429,53 @@ impl Genotype for SymbolTable {
     type Dna = usize;
 }
 
+impl RandomGenomeMutation for SymbolTable {
+    type Dna = usize;
+
+    fn mutate_genome<R>(
+        mut genome: Self,
+        mutation_rate: f64,
+        min_value: &<Self as Genotype>::Dna,
+        max_value: &<Self as Genotype>::Dna,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + Sized,
+    {
+        genome.litlens.iter_mut().for_each(|litlen| {
+            Self::mutate_plus_or_minus_1(mutation_rate, *min_value, *max_value, rng, litlen);
+        });
+        genome.dists.iter_mut().for_each(|dist| {
+            Self::mutate_plus_or_minus_1(mutation_rate, *min_value, *max_value, rng, dist);
+        });
+        genome
+    }
+}
+
+impl SymbolTable {
+    fn mutate_plus_or_minus_1<R>(
+        mutation_rate: f64,
+        min_value: usize,
+        max_value: usize,
+        rng: &mut R,
+        litlen: &mut usize,
+    ) where
+        R: Rng + Sized,
+    {
+        if rng.gen::<f64>() < mutation_rate {
+            if *litlen <= min_value {
+                *litlen += 1;
+            } else if *litlen >= max_value {
+                *litlen -= 1;
+            } else if rng.gen_bool(0.5) {
+                *litlen += 1;
+            } else {
+                *litlen -= 1;
+            }
+        }
+    }
+}
+
 impl From<SymbolTable> for SymbolStats {
     fn from(value: SymbolTable) -> Self {
         let mut stats = SymbolStats {
@@ -433,6 +497,212 @@ impl Phenotype<SymbolTable> for SymbolStats {
     }
 }
 
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+struct FloatAsFitness(OrderedFloat<f64>);
+
+impl Display for FloatAsFitness {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
+impl From<f64> for FloatAsFitness {
+    fn from(value: f64) -> Self {
+        FloatAsFitness(value.into())
+    }
+}
+
+impl From<FloatAsFitness> for f64 {
+    fn from(value: FloatAsFitness) -> f64 {
+        value.0.into()
+    }
+}
+
+impl Fitness for FloatAsFitness {
+    fn zero() -> Self {
+        0.0.into()
+    }
+
+    fn abs_diff(&self, other: &Self) -> Self {
+        f64::abs(self.0 .0 - other.0 .0).into()
+    }
+}
+
+impl<'a, C> FitnessFunction<SymbolTable, FloatAsFitness> for &'a ZopfliBlockState<'a, C>
+where
+    C: Cache,
+{
+    fn fitness_of(&self, a: &SymbolTable) -> FloatAsFitness {
+        let stats = SymbolStats::from(*a);
+        let pool = &*LZ77_STORE_POOL;
+        let mut currentstore = pool.pull();
+        let mut h = ZopfliHash::new();
+        lz77_optimal_run(
+            &mut (*self).to_owned(),
+            |a, b| get_cost_stat(a, b, &stats),
+            currentstore.deref_mut(),
+            &mut h,
+        );
+        let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
+        let mut best = self.best.lock().unwrap();
+        let best = best.deref_mut();
+        match best {
+            None => *best = Some((currentstore.clone(), cost)),
+            Some((ref mut best_store, ref mut best_cost)) => {
+                if cost < *best_cost {
+                    *best_cost = cost;
+                    *best_store = currentstore.clone();
+                }
+            }
+        }
+        (-cost).into()
+    }
+
+    fn average(&self, a: &[FloatAsFitness]) -> FloatAsFitness {
+        let mut total = 0.0;
+        a.iter().for_each(|value| total += value.0 .0);
+        (total / (a.len() as f64)).into()
+    }
+
+    fn highest_possible_fitness(&self) -> FloatAsFitness {
+        (-1.0).into()
+    }
+
+    fn lowest_possible_fitness(&self) -> FloatAsFitness {
+        f64::NEG_INFINITY.into()
+    }
+}
+
+#[derive(Debug)]
+pub struct SymbolTableBuilder {
+    first_guess: SymbolTable,
+    max_litlen_freq: usize,
+    max_dist_freq: usize,
+}
+
+impl GenomeBuilder<SymbolTable> for SymbolTableBuilder {
+    fn build_genome<R>(&self, index: usize, rng: &mut R) -> SymbolTable
+    where
+        R: Rng + Sized,
+    {
+        if index == 0 {
+            return self.first_guess;
+        }
+        let mut table = SymbolTable::default();
+        for litlen in table.litlens.iter_mut() {
+            *litlen = rng.gen_range(0..=self.max_litlen_freq);
+        }
+        for dist in table.dists.iter_mut() {
+            *dist = rng.gen_range(0..=self.max_dist_freq);
+        }
+        table
+    }
+}
+
+#[derive(Debug)]
+struct GenerationsWithoutImprovementLimiter {
+    current_best: f64,
+    generations_without_improvement: u64,
+    max_generations_without_improvement: Option<u64>,
+    generations: u64,
+    max_generations: Option<u64>,
+}
+
+impl GenerationsWithoutImprovementLimiter {
+    fn new(max_generations_without_improvement: Option<u64>, max_generations: Option<u64>) -> Self {
+        GenerationsWithoutImprovementLimiter {
+            current_best: f64::NEG_INFINITY,
+            generations_without_improvement: 0,
+            max_generations_without_improvement,
+            generations: 0,
+            max_generations,
+        }
+    }
+}
+
+impl<A, G> Termination<A> for GenerationsWithoutImprovementLimiter
+where
+    A: Algorithm<Output = ga::State<G, FloatAsFitness>>,
+    G: Genotype,
+{
+    fn evaluate(&mut self, state: &State<A>) -> StopFlag {
+        self.generations += 1;
+        if self
+            .max_generations
+            .is_some_and(|max_gens| self.generations >= max_gens)
+        {
+            StopFlag::StopNow("Maximum generations reached".into())
+        } else {
+            let fitness = state.result.best_solution.solution.fitness.0 .0;
+            if fitness >= -1.0 {
+                StopFlag::StopNow("Already only 1 bit".into())
+            } else if fitness > self.current_best {
+                self.current_best = fitness;
+                self.generations_without_improvement = 0;
+                StopFlag::Continue
+            } else {
+                self.generations_without_improvement += 1;
+                if self
+                    .max_generations_without_improvement
+                    .is_some_and(|max_gens| max_gens <= self.generations_without_improvement)
+                {
+                    StopFlag::StopNow("Generations-without-improvement limit reached".into())
+                } else {
+                    StopFlag::Continue
+                }
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+struct SymbolTableCrossBreeder {}
+
+impl GeneticOperator for SymbolTableCrossBreeder {
+    fn name() -> String {
+        "SymbolTableCrossBreeder".to_string()
+    }
+}
+
+fn generate_child_chromosomes<T, const N: usize, R>(
+    parent0: [T; N],
+    parent1: [T; N],
+    rng: &mut R,
+) -> [[T; N]; 4]
+where
+    T: Copy,
+    R: Rng + Sized,
+{
+    let cut_point = rng.gen_range(1..N as i32) as usize;
+    let mut hybrid_0 = parent0;
+    hybrid_0[cut_point..].copy_from_slice(&parent1[cut_point..]);
+    let mut hybrid_1 = parent1;
+    hybrid_1[cut_point..].copy_from_slice(&parent0[cut_point..]);
+    [parent0, parent1, hybrid_0, hybrid_1]
+}
+
+impl CrossoverOp<SymbolTable> for SymbolTableCrossBreeder {
+    fn crossover<R>(&self, parents: Parents<SymbolTable>, rng: &mut R) -> Children<SymbolTable>
+    where
+        R: Rng + Sized,
+    {
+        let litlens = generate_child_chromosomes(parents[0].litlens, parents[1].litlens, rng);
+        let dists = generate_child_chromosomes(parents[0].dists, parents[1].dists, rng);
+        litlens
+            .iter()
+            .flat_map(|litlens| {
+                dists.iter().map(|dists| SymbolTable {
+                    litlens: *litlens,
+                    dists: *dists,
+                })
+            })
+            .collect()
+    }
+}
+
+const POPULATION_SIZE: usize = 10;
+
 /// Calculates lit/len and dist pairs for given data.
 /// If `instart` is larger than 0, it uses values before `instart` as starting
 /// dictionary.
@@ -450,129 +720,66 @@ pub fn lz77_optimal<C: Cache>(
 
     /* Initial run. */
     outputstore.greedy(s, in_data, instart, inend);
-    let mut stats = SymbolStats::default();
-    stats.get_statistics(&outputstore);
-
-    let mut h = ZopfliHash::new();
-
-    let mut beststats = SymbolStats::default();
-
-    let mut bestcost = f64::INFINITY;
-    let mut lastcost = 0.0;
-    /* Try randomizing the costs a bit once the size stabilizes. */
-    let mut ran_state = RanState::new();
-    let mut lastrandomstep = u64::MAX;
-
-    /* Do regular deflate, then loop multiple shortest path runs, each time using
-    the statistics of the previous run. */
-    /* Repeat statistics with each time the cost model from the previous stat
-    run. */
-    let mut current_iteration: u64 = 0;
-    let mut iterations_without_improvement: u64 = 0;
-    #[allow(clippy::borrow_interior_mutable_const)]
+    let mut greedy_stats = SymbolStats::default();
+    greedy_stats.get_statistics(&outputstore);
+    let max_litlen_freq = greedy_stats.table.litlens.iter().max().unwrap() + 1;
+    let max_dist_freq = greedy_stats.table.dists.iter().max().unwrap() + 1;
+    let genome_builder = SymbolTableBuilder {
+        max_dist_freq,
+        max_litlen_freq,
+        first_guess: greedy_stats.table,
+    };
+    let initial_population = build_population()
+        .with_genome_builder(genome_builder)
+        .of_size(POPULATION_SIZE)
+        .uniform_at_random();
+    let algorithm = genetic_algorithm()
+        .with_evaluation(&*s)
+        .with_selection(MaximizeSelector::new(0.85, 12))
+        .with_crossover(SymbolTableCrossBreeder::default())
+        .with_mutation(RandomValueMutator::new(
+            0.2,
+            0,
+            max_litlen_freq.max(max_dist_freq),
+        ))
+        .with_reinsertion(ElitistReinserter::new(&*s, false, 0.85))
+        .with_initial_population(initial_population)
+        .build();
+    let mut genetic_algorithm_sim = simulate(algorithm)
+        .until(GenerationsWithoutImprovementLimiter::new(
+            max_iterations_without_improvement,
+            max_iterations,
+        ))
+        .build();
     loop {
-        let pool = &*LZ77_STORE_POOL;
-        let mut currentstore = pool.pull();
-        lz77_optimal_run(
-            s,
-            |a, b| get_cost_stat(a, b, &stats),
-            currentstore.deref_mut(),
-            &mut h,
-        );
-        let cost = calculate_block_size(&currentstore, 0, currentstore.size(), BlockType::Dynamic);
-
-        if cost < bestcost {
-            iterations_without_improvement = 0;
-            /* Copy to the output store. */
-            outputstore = currentstore.clone();
-            beststats = stats;
-            bestcost = cost;
-
-            debug!("Iteration {}: {} bit", current_iteration, cost);
-        } else {
-            iterations_without_improvement += 1;
-            trace!("Iteration {}: {} bit", current_iteration, cost);
-            if let Some(max_iterations_without_improvement) = max_iterations_without_improvement {
-                if iterations_without_improvement >= max_iterations_without_improvement {
-                    break;
-                }
+        match genetic_algorithm_sim.step() {
+            Ok(SimResult::Intermediate(step)) => {
+                let evaluated_population = step.result.evaluated_population;
+                let best_solution = step.result.best_solution;
+                debug!(
+                    "step: generation: {}, average_fitness: {}, \
+                     best fitness: {}, duration: {}, processing_time: {}",
+                    step.iteration,
+                    evaluated_population.average_fitness(),
+                    best_solution.solution.fitness,
+                    step.duration,
+                    step.processing_time,
+                );
             }
-        }
-        current_iteration += 1;
-        if let Some(max_iterations) = max_iterations {
-            if current_iteration >= max_iterations {
-                break;
+            Ok(SimResult::Final(step, processing_time, duration, stop_reason)) => {
+                debug!(
+                    "final result: generation: {},\
+                         best fitness: {}, duration: {}, processing_time: {}, stop_reason: {}",
+                    step.iteration,
+                    step.result.best_solution.solution.fitness,
+                    duration,
+                    processing_time,
+                    stop_reason
+                );
+                let best = s.best.lock().unwrap();
+                return best.clone().unwrap().0;
             }
+            Err(e) => panic!("{}", e),
         }
-        let laststats = stats;
-        stats.clear_freqs();
-        stats.get_statistics(&currentstore);
-        if lastrandomstep != u64::MAX
-            || (!max_iterations.is_some_and(|max| max <= 15)
-                && !max_iterations_without_improvement.is_some_and(|max| max <= 5))
-        {
-            /* This makes it converge slower but better. Do it only once the
-            randomness kicks in if doing few iterations, to give a
-            better result sooner. */
-            stats.table = add_weighed_stat_freqs(&stats.table, 1.0, &laststats.table, 0.5);
-            stats.calculate_entropy();
-        }
-        if current_iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
-            // If they're all the same frequency, that frequency must be 1
-            // because of the end symbol. If that's the case, there's nothing
-            // to change by randomizing.
-            let can_randomize_litlens = beststats
-                .table
-                .litlens
-                .iter()
-                .copied()
-                .any(|litlen| litlen != 1);
-            let can_randomize_dists = beststats
-                .table
-                .dists
-                .iter()
-                .skip(1)
-                .copied()
-                .any(|dist| dist != beststats.table.dists[0]);
-            if can_randomize_litlens || can_randomize_dists {
-                stats = beststats;
-                /// Returns true if it actually made a change.
-                fn randomize_freqs(freqs: &mut [usize], state: &mut RanState) -> bool {
-                    let n = freqs.len();
-                    let mut i = 0;
-                    let end = n;
-                    let mut changed = false;
-                    while i < end {
-                        if i != 256 && (state.random_marsaglia() >> 4) % 3 == 0 {
-                            let index = state.random_marsaglia() as usize % n;
-                            if i != index && freqs[i] != freqs[index] {
-                                freqs[i] = freqs[index];
-                                changed = true;
-                            }
-                        }
-                        i += 1;
-                    }
-                    changed
-                }
-                let mut changed = false;
-                while !changed {
-                    if can_randomize_litlens {
-                        changed = randomize_freqs(&mut stats.table.litlens, &mut ran_state);
-                    }
-                    if can_randomize_dists {
-                        // Pull into a separate variable to prevent short-circuiting
-                        let dists_changed = randomize_freqs(&mut stats.table.dists, &mut ran_state);
-                        changed |= dists_changed;
-                    }
-                }
-                stats.calculate_entropy();
-                lastrandomstep = current_iteration;
-            } else {
-                // No way to further improve the result
-                break;
-            }
-        }
-        lastcost = cost;
     }
-    outputstore
 }

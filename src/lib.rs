@@ -34,6 +34,7 @@
 
 #[macro_use]
 extern crate alloc;
+extern crate core;
 
 pub use deflate::{BlockType, DeflateEncoder};
 #[cfg(test)]
