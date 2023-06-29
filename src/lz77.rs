@@ -1,9 +1,6 @@
 use alloc::vec::Vec;
 use core::cmp;
-use std::{
-    iter,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use crate::{
     cache::{Cache, NoCache, ZopfliLongestMatchCache},
@@ -242,7 +239,7 @@ impl Lz77Store {
         instart: usize,
         inend: usize,
         path: Vec<u16>,
-        s: &mut ZopfliBlockState<C>,
+        s: &ZopfliBlockState<C>,
     ) {
         let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
 
@@ -381,7 +378,6 @@ pub struct ZopfliBlockState<'a, C> {
     /* The start (inclusive) and end (not inclusive) of the current block. */
     pub blockstart: usize,
     pub blockend: usize,
-    pub costs_vec: Vec<f32>,
     pub best: Mutex<Option<(Lz77Store, f64)>>,
 }
 
@@ -393,7 +389,6 @@ impl<'a, C> Clone for ZopfliBlockState<'a, C> {
             lmc: self.lmc.clone(),
             blockstart: self.blockstart,
             blockend: self.blockend,
-            costs_vec: self.costs_vec.clone(),
             best: Mutex::new(self.best.lock().unwrap().clone()),
         }
     }
@@ -409,7 +404,6 @@ impl<'a> ZopfliBlockState<'a, ZopfliLongestMatchCache> {
             lmc: Arc::new(Mutex::new(ZopfliLongestMatchCache::new(
                 blockend - blockstart,
             ))),
-            costs_vec: iter::repeat(0.0).take(blockend - blockstart + 1).collect(),
             best: Mutex::new(None),
         }
     }
@@ -428,7 +422,6 @@ impl<'a> ZopfliBlockState<'a, NoCache> {
             blockstart,
             blockend,
             lmc: Arc::new(Mutex::new(NoCache)),
-            costs_vec: iter::repeat(0.0).take(blockend - blockstart + 1).collect(),
             best: Mutex::new(None),
         }
     }
@@ -478,7 +471,7 @@ const fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: u
 }
 
 pub fn find_longest_match<C: Cache>(
-    s: &mut ZopfliBlockState<C>,
+    s: &ZopfliBlockState<C>,
     h: &mut ZopfliHash,
     array: &[u8],
     pos: usize,
