@@ -20,6 +20,7 @@ use crate::{
     symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol},
     util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE},
 };
+use crate::hash::HASH_POOL;
 
 const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 
@@ -422,7 +423,7 @@ pub fn lz77_optimal_fixed<C: Cache>(
 ) {
     s.blockstart = instart;
     s.blockend = inend;
-    let mut h = ZopfliHash::new();
+    let mut h = HASH_POOL.pull();
     let mut costs = Vec::with_capacity(inend - instart);
     lz77_optimal_run(
         s,
@@ -456,7 +457,7 @@ pub fn lz77_optimal<C: Cache>(
     let mut stats = SymbolStats::default();
     stats.get_statistics(&currentstore);
 
-    let mut h = ZopfliHash::new();
+    let mut h = HASH_POOL.pull();
     let mut costs = Vec::with_capacity(inend - instart + 1);
 
     let mut beststats = SymbolStats::default();
