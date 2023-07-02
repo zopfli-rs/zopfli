@@ -26,41 +26,7 @@ pub struct HashThing {
     val: u16, /* Current hash value. */
 }
 
-const EMPTY_HASH_THING: Lazy<Box<HashThing>> = Lazy::new(|| {
-    let mut prev_and_hashval = [SmallerHashThing {
-        prev: 0,
-        hashval: None,
-    }; ZOPFLI_WINDOW_SIZE];
-    for i in 0..(ZOPFLI_WINDOW_SIZE as u16) {
-        prev_and_hashval[i as usize].prev = i;
-    }
-    unsafe {
-        let layout = Layout::new::<HashThing>();
-        let ptr = alloc(layout) as *mut HashThing;
-        (*ptr).head = [-1; 65536];
-        (*ptr).prev_and_hashval = prev_and_hashval;
-        (*ptr).val = 0;
-        Box::from_raw(ptr)
-    }
-});
-
 impl HashThing {
-    fn reset(&mut self) {
-        self.val = 0;
-
-        self.head.fill(-1);
-
-        let mut p = 0;
-        self.prev_and_hashval.fill_with(|| {
-            let thing = SmallerHashThing {
-                prev: p,
-                hashval: None,
-            };
-            p += 1;
-            thing
-        });
-    }
-
     fn update(&mut self, hpos: usize) {
         let hashval = self.val;
         let index = self.val as usize;
@@ -83,28 +49,37 @@ impl HashThing {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct ZopfliHash {
     hash1: HashThing,
     hash2: HashThing,
     pub same: [u16; ZOPFLI_WINDOW_SIZE], /* Amount of repetitions of same byte after this .*/
 }
 
+const EMPTY_ZOPFLI_HASH: Lazy<Box<ZopfliHash>> = Lazy::new(|| unsafe {
+    let layout = Layout::new::<ZopfliHash>();
+    let ptr = alloc(layout) as *mut ZopfliHash;
+    for i in 0..ZOPFLI_WINDOW_SIZE {
+        (*ptr).hash1.prev_and_hashval[i].prev = i as u16;
+        (*ptr).hash2.prev_and_hashval[i].prev = i as u16;
+        (*ptr).hash1.prev_and_hashval[i].hashval = None;
+        (*ptr).hash2.prev_and_hashval[i].hashval = None;
+    }
+    (*ptr).hash1.head = [-1; 65536];
+    (*ptr).hash2.head = [-1; 65536];
+    (*ptr).hash1.val = 0;
+    (*ptr).hash2.val = 0;
+    (*ptr).same = [0; ZOPFLI_WINDOW_SIZE];
+    Box::from_raw(ptr)
+});
+
 impl ZopfliHash {
     pub fn new() -> Box<ZopfliHash> {
-        unsafe {
-            let layout = Layout::new::<ZopfliHash>();
-            let ptr = alloc(layout) as *mut ZopfliHash;
-            (*ptr).hash1 = **EMPTY_HASH_THING;
-            (*ptr).hash2 = **EMPTY_HASH_THING;
-            (*ptr).same = [0; ZOPFLI_WINDOW_SIZE];
-            Box::from_raw(ptr)
-        }
+        EMPTY_ZOPFLI_HASH.clone()
     }
 
     pub fn reset(&mut self) {
-        self.hash1.reset();
-        self.hash2.reset();
-        self.same = [0; ZOPFLI_WINDOW_SIZE];
+        *self = **EMPTY_ZOPFLI_HASH;
     }
 
     pub fn warmup(&mut self, arr: &[u8], pos: usize, end: usize) {
