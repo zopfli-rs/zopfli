@@ -1,4 +1,5 @@
 use std::alloc::{alloc, Layout};
+
 use once_cell::sync::Lazy;
 
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
@@ -27,7 +28,8 @@ pub struct HashThing {
 
 const EMPTY_HASH_THING: Lazy<Box<HashThing>> = Lazy::new(|| {
     let mut prev_and_hashval = [SmallerHashThing {
-        prev: 0, hashval: None
+        prev: 0,
+        hashval: None,
     }; ZOPFLI_WINDOW_SIZE];
     for i in 0..(ZOPFLI_WINDOW_SIZE as u16) {
         prev_and_hashval[i as usize].prev = i;
