@@ -3,7 +3,7 @@ use core::cmp;
 
 use crate::{
     cache::{Cache, NoCache, ZopfliLongestMatchCache},
-    hash::{Which, ZopfliHash},
+    hash::{Which, ZopfliHash, HASH_POOL},
     symbols::{get_dist_symbol, get_length_symbol},
     util::{
         ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL,
@@ -11,7 +11,6 @@ use crate::{
     },
     Options,
 };
-use crate::hash::HASH_POOL;
 
 #[derive(Clone, Copy)]
 pub enum LitLen {

@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+
 use lockfree_object_pool::LinearObjectPool;
 use once_cell::sync::Lazy;
 
@@ -160,5 +161,5 @@ impl ZopfliHash {
     }
 }
 
-pub static HASH_POOL: Lazy<LinearObjectPool<ZopfliHash>> = Lazy::new(|| LinearObjectPool::new(
-    ZopfliHash::new, |hash| hash.reset()));
+pub static HASH_POOL: Lazy<LinearObjectPool<ZopfliHash>> =
+    Lazy::new(|| LinearObjectPool::new(ZopfliHash::new, ZopfliHash::reset));

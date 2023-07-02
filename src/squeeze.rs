@@ -15,12 +15,11 @@ use log::{debug, trace};
 use crate::{
     cache::Cache,
     deflate::{calculate_block_size, BlockType},
-    hash::ZopfliHash,
+    hash::{ZopfliHash, HASH_POOL},
     lz77::{find_longest_match, LitLen, Lz77Store, ZopfliBlockState},
     symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol},
     util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE},
 };
-use crate::hash::HASH_POOL;
 
 const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
 
