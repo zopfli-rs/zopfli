@@ -423,7 +423,8 @@ pub fn lz77_optimal_fixed<C: Cache>(
 ) {
     s.blockstart = instart;
     s.blockend = inend;
-    let mut h = HASH_POOL.pull();
+    let hash_pool = &*HASH_POOL;
+    let mut h = hash_pool.pull();
     let mut costs = Vec::with_capacity(inend - instart);
     lz77_optimal_run(
         s,
@@ -457,7 +458,8 @@ pub fn lz77_optimal<C: Cache>(
     let mut stats = SymbolStats::default();
     stats.get_statistics(&currentstore);
 
-    let mut h = HASH_POOL.pull();
+    let hash_pool = &*HASH_POOL;
+    let mut h = hash_pool.pull();
     let mut costs = Vec::with_capacity(inend - instart + 1);
 
     let mut beststats = SymbolStats::default();

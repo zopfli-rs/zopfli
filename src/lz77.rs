@@ -147,7 +147,8 @@ impl Lz77Store {
             return;
         }
         let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
-        let mut h = HASH_POOL.pull();
+        let hash_pool = &*HASH_POOL;
+        let mut h = hash_pool.pull();
 
         let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);
@@ -247,7 +248,8 @@ impl Lz77Store {
             return;
         }
 
-        let mut h = HASH_POOL.pull();
+        let hash_pool = &*HASH_POOL;
+        let mut h = hash_pool.pull();
 
         let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);
