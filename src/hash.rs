@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use once_cell::sync::Lazy;
 
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
@@ -11,29 +11,36 @@ pub enum Which {
     Hash2,
 }
 
+#[derive(Copy, Clone)]
 pub struct SmallerHashThing {
     prev: u16,            /* Index to index of prev. occurrence of same hash. */
     hashval: Option<u16>, /* Index to hash value at this index. */
 }
 
+#[derive(Copy, Clone)]
 pub struct HashThing {
-    head: Vec<i16>, /* Hash value to index of its most recent occurrence. */
-    prev_and_hashval: Vec<SmallerHashThing>,
+    head: [i16; 65536], /* Hash value to index of its most recent occurrence. */
+    prev_and_hashval: [SmallerHashThing; ZOPFLI_WINDOW_SIZE],
     val: u16, /* Current hash value. */
 }
 
+const EMPTY_HASH_THING: Lazy<HashThing> = Lazy::new(|| {
+    let mut prev_and_hashval = [SmallerHashThing {
+        prev: 0, hashval: None
+    }; ZOPFLI_WINDOW_SIZE];
+    for i in 0..(ZOPFLI_WINDOW_SIZE as u16) {
+        prev_and_hashval[i as usize].prev = i;
+    }
+    HashThing {
+        head: [-1; 65536],
+        prev_and_hashval,
+        val: 0,
+    }
+});
+
 impl HashThing {
     fn new() -> HashThing {
-        HashThing {
-            head: vec![-1; 65536],
-            prev_and_hashval: (0..ZOPFLI_WINDOW_SIZE)
-                .map(|p| SmallerHashThing {
-                    prev: p as u16,
-                    hashval: None,
-                })
-                .collect(),
-            val: 0,
-        }
+        EMPTY_HASH_THING.clone()
     }
 
     fn reset(&mut self) {
