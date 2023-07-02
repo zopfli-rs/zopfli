@@ -1,6 +1,10 @@
-use alloc::boxed::Box;
-use std::alloc::{alloc, Layout};
+#[cfg(feature = "std")]
+use std::{
+    alloc::{alloc, Layout},
+    boxed::Box,
+};
 
+#[cfg(feature = "std")]
 use once_cell::sync::Lazy;
 
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
@@ -20,14 +24,52 @@ pub struct SmallerHashThing {
     hashval: Option<u16>, /* Index to hash value at this index. */
 }
 
+#[cfg(feature = "std")]
 #[derive(Copy, Clone)]
 pub struct HashThing {
     head: [i16; 65536], /* Hash value to index of its most recent occurrence. */
     prev_and_hashval: [SmallerHashThing; ZOPFLI_WINDOW_SIZE],
     val: u16, /* Current hash value. */
 }
+#[cfg(not(feature = "std"))]
+pub struct HashThing {
+    head: Vec<i16>, /* Hash value to index of its most recent occurrence. */
+    prev_and_hashval: Vec<SmallerHashThing>,
+    val: u16, /* Current hash value. */
+}
 
 impl HashThing {
+    #[cfg(not(feature = "std"))]
+    fn new() -> HashThing {
+        HashThing {
+            head: vec![-1; 65536],
+            prev_and_hashval: (0..ZOPFLI_WINDOW_SIZE)
+                .map(|p| SmallerHashThing {
+                    prev: p as u16,
+                    hashval: None,
+                })
+                .collect(),
+            val: 0,
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn reset(&mut self) {
+        self.val = 0;
+
+        self.head.fill(-1);
+
+        let mut p = 0;
+        self.prev_and_hashval.fill_with(|| {
+            let thing = SmallerHashThing {
+                prev: p,
+                hashval: None,
+            };
+            p += 1;
+            thing
+        });
+    }
+
     fn update(&mut self, hpos: usize) {
         let hashval = self.val;
         let index = self.val as usize;
@@ -57,6 +99,7 @@ pub struct ZopfliHash {
     pub same: [u16; ZOPFLI_WINDOW_SIZE], /* Amount of repetitions of same byte after this .*/
 }
 
+#[cfg(feature = "std")]
 const EMPTY_ZOPFLI_HASH: Lazy<Box<ZopfliHash>> = Lazy::new(|| unsafe {
     let layout = Layout::new::<ZopfliHash>();
     let ptr = alloc(layout) as *mut ZopfliHash;
@@ -75,12 +118,30 @@ const EMPTY_ZOPFLI_HASH: Lazy<Box<ZopfliHash>> = Lazy::new(|| unsafe {
 });
 
 impl ZopfliHash {
+    #[cfg(feature = "std")]
     pub fn new() -> Box<ZopfliHash> {
         EMPTY_ZOPFLI_HASH.clone()
     }
 
+    #[cfg(not(feature = "std"))]
+    pub fn new() -> ZopfliHash {
+        ZopfliHash {
+            hash1: HashThing::new(),
+            hash2: HashThing::new(),
+            same: [0; ZOPFLI_WINDOW_SIZE],
+        }
+    }
+
+    #[cfg(feature = "std")]
     pub fn reset(&mut self) {
         *self = **EMPTY_ZOPFLI_HASH;
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn reset(&mut self) {
+        self.hash1.reset();
+        self.hash2.reset();
+        self.same = [0; ZOPFLI_WINDOW_SIZE];
     }
 
     pub fn warmup(&mut self, arr: &[u8], pos: usize, end: usize) {
