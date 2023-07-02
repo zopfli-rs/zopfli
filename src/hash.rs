@@ -1,3 +1,5 @@
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::{
     alloc::{alloc, Layout},
@@ -92,7 +94,7 @@ impl HashThing {
     }
 }
 
-#[derive(Copy, Clone)]
+#[cfg_attr(feature = "std", derive(Copy, Clone))]
 pub struct ZopfliHash {
     hash1: HashThing,
     hash2: HashThing,
