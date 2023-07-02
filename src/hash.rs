@@ -1,3 +1,4 @@
+use std::alloc::{alloc, Layout};
 use once_cell::sync::Lazy;
 
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
@@ -24,25 +25,24 @@ pub struct HashThing {
     val: u16, /* Current hash value. */
 }
 
-const EMPTY_HASH_THING: Lazy<HashThing> = Lazy::new(|| {
+const EMPTY_HASH_THING: Lazy<Box<HashThing>> = Lazy::new(|| {
     let mut prev_and_hashval = [SmallerHashThing {
         prev: 0, hashval: None
     }; ZOPFLI_WINDOW_SIZE];
     for i in 0..(ZOPFLI_WINDOW_SIZE as u16) {
         prev_and_hashval[i as usize].prev = i;
     }
-    HashThing {
-        head: [-1; 65536],
-        prev_and_hashval,
-        val: 0,
+    unsafe {
+        let layout = Layout::new::<HashThing>();
+        let ptr = alloc(layout) as *mut HashThing;
+        (*ptr).head = [-1; 65536];
+        (*ptr).prev_and_hashval = prev_and_hashval;
+        (*ptr).val = 0;
+        Box::from_raw(ptr)
     }
 });
 
 impl HashThing {
-    fn new() -> HashThing {
-        EMPTY_HASH_THING.clone()
-    }
-
     fn reset(&mut self) {
         self.val = 0;
 
@@ -88,11 +88,14 @@ pub struct ZopfliHash {
 }
 
 impl ZopfliHash {
-    pub fn new() -> ZopfliHash {
-        ZopfliHash {
-            hash1: HashThing::new(),
-            hash2: HashThing::new(),
-            same: [0; ZOPFLI_WINDOW_SIZE],
+    pub fn new() -> Box<ZopfliHash> {
+        unsafe {
+            let layout = Layout::new::<ZopfliHash>();
+            let ptr = alloc(layout) as *mut ZopfliHash;
+            (*ptr).hash1 = **EMPTY_HASH_THING;
+            (*ptr).hash2 = **EMPTY_HASH_THING;
+            (*ptr).same = [0; ZOPFLI_WINDOW_SIZE];
+            Box::from_raw(ptr)
         }
     }
 
