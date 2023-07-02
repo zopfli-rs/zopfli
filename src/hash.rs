@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use lockfree_object_pool::LinearObjectPool;
+use once_cell::sync::Lazy;
 
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
@@ -159,5 +160,5 @@ impl ZopfliHash {
     }
 }
 
-pub const HASH_POOL: LinearObjectPool<ZopfliHash> = LinearObjectPool::new(
-    ZopfliHash::new, ZopfliHash::reset);
+pub static HASH_POOL: Lazy<LinearObjectPool<ZopfliHash>> = Lazy::new(|| LinearObjectPool::new(
+    ZopfliHash::new, |hash| hash.reset()));
