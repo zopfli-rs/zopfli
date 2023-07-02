@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use std::alloc::{alloc, Layout};
 
 use once_cell::sync::Lazy;
