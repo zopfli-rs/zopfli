@@ -66,6 +66,7 @@ use std::io::{Error, Write};
 
 #[cfg(any(doc, not(feature = "std")))]
 pub use io::{Error, ErrorKind, Write};
+use crate::hash::HASH_POOL;
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -148,6 +149,12 @@ pub fn compress<R: std::io::Read, W: Write>(
         Format::Zlib => zlib::zlib_compress(*options, in_data, out),
         Format::Deflate => deflate::deflate(*options, BlockType::Dynamic, in_data, out),
     }
+}
+
+/// Populates object pools for expensive objects that Zopfli uses. Call this on a background thread
+/// when you know ahead of time that compression will be needed.
+pub fn prewarm_object_pools() {
+    HASH_POOL.pull();
 }
 
 #[cfg(all(test, feature = "std"))]
