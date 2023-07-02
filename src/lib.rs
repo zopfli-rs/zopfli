@@ -66,6 +66,7 @@ use std::io::{Error, Write};
 
 #[cfg(any(doc, not(feature = "std")))]
 pub use io::{Error, ErrorKind, Write};
+
 use crate::hash::HASH_POOL;
 
 /// Options for the Zopfli compression algorithm.
