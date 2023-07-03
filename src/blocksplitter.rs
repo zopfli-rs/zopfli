@@ -2,11 +2,7 @@ use alloc::vec::Vec;
 
 use log::{debug, log_enabled};
 
-use crate::{
-    deflate::calculate_block_size_auto_type,
-    lz77::{Lz77Store, ZopfliBlockState},
-    Options,
-};
+use crate::{cache::NoCache, deflate::calculate_block_size_auto_type, lz77::Lz77Store};
 
 /// Finds minimum of function `f(i)` where `i` is of type `usize`, `f(i)` is of type
 /// `f64`, `i` is in range `start-end` (excluding `end`).
@@ -218,7 +214,6 @@ pub fn blocksplit_lz77(lz77: &Lz77Store, maxblocks: u16, splitpoints: &mut Vec<u
 /// npoints: pointer to amount of splitpoints, for the dynamic array. The amount of
 ///   blocks is the amount of splitpoitns + 1.
 pub fn blocksplit(
-    options: &Options,
     in_data: &[u8],
     instart: usize,
     inend: usize,
@@ -231,8 +226,7 @@ pub fn blocksplit(
     /* Unintuitively, Using a simple LZ77 method here instead of lz77_optimal
     results in better blocks. */
     {
-        let mut state = ZopfliBlockState::new_without_cache(options, instart, inend);
-        store.greedy(&mut state, in_data, instart, inend);
+        store.greedy(&mut NoCache, in_data, instart, inend);
     }
 
     let mut lz77splitpoints = Vec::with_capacity(maxblocks as usize);
