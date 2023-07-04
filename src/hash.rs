@@ -102,21 +102,27 @@ pub struct ZopfliHash {
 }
 
 #[cfg(feature = "std")]
-const EMPTY_ZOPFLI_HASH: Lazy<Box<ZopfliHash>> = Lazy::new(|| unsafe {
-    let layout = Layout::new::<ZopfliHash>();
-    let ptr = alloc(layout) as *mut ZopfliHash;
+const EMPTY_ZOPFLI_HASH: Lazy<Box<ZopfliHash>> = Lazy::new(|| {
+    let mut hash = unsafe {
+        let layout = Layout::new::<ZopfliHash>();
+        let ptr = alloc(layout) as *mut ZopfliHash;
+        if ptr.is_null() {
+            panic!("Failed to allocate a ZopfliHash on heap");
+        }
+        Box::from_raw(ptr)
+    };
     for i in 0..ZOPFLI_WINDOW_SIZE {
-        (*ptr).hash1.prev_and_hashval[i].prev = i as u16;
-        (*ptr).hash2.prev_and_hashval[i].prev = i as u16;
-        (*ptr).hash1.prev_and_hashval[i].hashval = None;
-        (*ptr).hash2.prev_and_hashval[i].hashval = None;
+        hash.hash1.prev_and_hashval[i].prev = i as u16;
+        hash.hash2.prev_and_hashval[i].prev = i as u16;
+        hash.hash1.prev_and_hashval[i].hashval = None;
+        hash.hash2.prev_and_hashval[i].hashval = None;
     }
-    (*ptr).hash1.head = [-1; 65536];
-    (*ptr).hash2.head = [-1; 65536];
-    (*ptr).hash1.val = 0;
-    (*ptr).hash2.val = 0;
-    (*ptr).same = [0; ZOPFLI_WINDOW_SIZE];
-    Box::from_raw(ptr)
+    hash.hash1.head = [-1; 65536];
+    hash.hash2.head = [-1; 65536];
+    hash.hash1.val = 0;
+    hash.hash2.val = 0;
+    hash.same = [0; ZOPFLI_WINDOW_SIZE];
+    hash
 });
 
 impl ZopfliHash {
