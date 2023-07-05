@@ -1,4 +1,7 @@
-use alloc::alloc::{alloc, handle_alloc_error, Layout};
+use alloc::{
+    alloc::{alloc, handle_alloc_error, Layout},
+    boxed::Box,
+};
 use core::ptr::{addr_of, addr_of_mut, NonNull};
 
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
