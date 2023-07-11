@@ -80,13 +80,15 @@ pub struct Options {
     #[cfg_attr(
         all(test, feature = "std"),
         proptest(
-            strategy = "(1..=10u64).prop_map(|iteration_count| NonZeroU64::new(iteration_count))"
+            strategy = "(1..=10u64).prop_map(|iteration_count| NonZeroU64::new(iteration_count).unwrap())"
         )
     )]
-    pub iteration_count: Option<NonZeroU64>,
+    pub iteration_count: NonZeroU64,
     /// Stop after rerunning forward and backward pass this many times without finding
     /// a smaller representation of the block.
-    pub iterations_without_improvement: Option<NonZeroU64>,
+    ///
+    /// Default value: practically infinite ([`NonZeroU64::MAX`])
+    pub iterations_without_improvement: NonZeroU64,
     /// Maximum amount of blocks to split into (0 for unlimited, but this can give
     /// extreme results that hurt compression on some files).
     ///
@@ -97,8 +99,8 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
-            iteration_count: Some(NonZeroU64::new(15).unwrap()),
-            iterations_without_improvement: None,
+            iteration_count: NonZeroU64::new(15).unwrap(),
+            iterations_without_improvement: NonZeroU64::MAX,
             maximum_block_splits: 15,
         }
     }

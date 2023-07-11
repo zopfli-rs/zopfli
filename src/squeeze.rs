@@ -443,8 +443,8 @@ pub fn lz77_optimal<C: Cache>(
     in_data: &[u8],
     instart: usize,
     inend: usize,
-    max_iterations: Option<u64>,
-    max_iterations_without_improvement: Option<u64>,
+    max_iterations: u64,
+    max_iterations_without_improvement: u64,
 ) -> Lz77Store {
     /* Dist to get to here with smallest cost. */
     let mut currentstore = Lz77Store::new();
@@ -497,17 +497,13 @@ pub fn lz77_optimal<C: Cache>(
         } else {
             iterations_without_improvement += 1;
             trace!("Iteration {}: {} bit", current_iteration, cost);
-            if let Some(max_iterations_without_improvement) = max_iterations_without_improvement {
-                if iterations_without_improvement >= max_iterations_without_improvement {
-                    break;
-                }
+            if iterations_without_improvement >= max_iterations_without_improvement {
+                break;
             }
         }
         current_iteration += 1;
-        if let Some(max_iterations) = max_iterations {
-            if current_iteration >= max_iterations {
-                break;
-            }
+        if current_iteration >= max_iterations {
+            break;
         }
         let laststats = stats;
         stats.clear_freqs();

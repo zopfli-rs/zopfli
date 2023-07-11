@@ -1196,8 +1196,8 @@ fn blocksplit_attempt<W: Write>(
             in_data,
             last,
             item,
-            options.iteration_count.map(NonZeroU64::get),
-            options.iterations_without_improvement.map(NonZeroU64::get),
+            options.iteration_count.get(),
+            options.iterations_without_improvement.get(),
         );
         totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
@@ -1217,8 +1217,8 @@ fn blocksplit_attempt<W: Write>(
         in_data,
         last,
         inend,
-        options.iteration_count.map(NonZeroU64::get),
-        options.iterations_without_improvement.map(NonZeroU64::get),
+        options.iteration_count.get(),
+        options.iterations_without_improvement.get(),
     );
     totalcost += calculate_block_size_auto_type(&store, 0, store.size());
 
