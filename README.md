@@ -28,7 +28,7 @@ You can also run `make zopfli`, which will run `cargo build` and then symlink `t
 
 ## Running the tests
 
-There are some unit tests, mostly around the boundary package merge algorithm implementation in katajainen.rs, that can be run with:
+There are some unit tests, mostly around the boundary package merge algorithm implementation in katajainen.rs, and a property-based test for compression reversibility. These tests can be run with:
 
 ```
 $ cargo test
