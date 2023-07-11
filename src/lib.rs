@@ -87,7 +87,7 @@ pub struct Options {
     /// Stop after rerunning forward and backward pass this many times without finding
     /// a smaller representation of the block.
     ///
-    /// Default value: practically infinite ([`NonZeroU64::MAX`])
+    /// Default value: practically infinite (maximum `u64` value)
     pub iterations_without_improvement: NonZeroU64,
     /// Maximum amount of blocks to split into (0 for unlimited, but this can give
     /// extreme results that hurt compression on some files).
@@ -100,7 +100,7 @@ impl Default for Options {
     fn default() -> Options {
         Options {
             iteration_count: NonZeroU64::new(15).unwrap(),
-            iterations_without_improvement: NonZeroU64::MAX,
+            iterations_without_improvement: NonZeroU64::new(u64::MAX).unwrap(),
             maximum_block_splits: 15,
         }
     }
