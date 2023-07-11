@@ -417,7 +417,7 @@ fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) 
     scan_offset
 }
 
-#[warn(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn find_longest_match<C: Cache>(
     lmc: &mut C,
     h: &mut ZopfliHash,
