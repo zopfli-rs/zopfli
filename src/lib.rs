@@ -139,7 +139,7 @@ pub enum Format {
 #[cfg(feature = "std")]
 pub fn compress<R: std::io::Read, W: Write>(
     options: &Options,
-    output_format: &Format,
+    output_format: Format,
     in_data: R,
     out: W,
 ) -> Result<(), Error> {

@@ -31,7 +31,7 @@ fn main() {
             .unwrap_or_else(|why| panic!("couldn't create output file {}: {}", out_filename, why));
         let mut out_file = WriteStatistics::new(BufWriter::new(out_file));
 
-        zopfli::compress(&options, &output_type, &file, &mut out_file).unwrap_or_else(|why| {
+        zopfli::compress(&options, output_type, &file, &mut out_file).unwrap_or_else(|why| {
             panic!("couldn't write to output file {}: {}", out_filename, why)
         });
 
