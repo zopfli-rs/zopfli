@@ -33,7 +33,7 @@ impl HashThing {
         let hashval = self.val;
         let index = self.val as usize;
         let head_index = self.head[index];
-        let prev = if head_index != -1
+        let prev = if head_index >= 0
             && self.prev_and_hashval[head_index as usize]
                 .hashval
                 .map_or(false, |hv| hv == self.val)
