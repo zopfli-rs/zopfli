@@ -463,7 +463,13 @@ fn calculate_block_symbol_size(
     } else {
         let (ll_counts, d_counts) = lz77.get_histogram(lstart, lend);
         calculate_block_symbol_size_given_counts(
-            &ll_counts, &d_counts, ll_lengths, d_lengths, lz77, lstart, lend,
+            &*ll_counts,
+            &*d_counts,
+            ll_lengths,
+            d_lengths,
+            lz77,
+            lstart,
+            lend,
         )
     }
 }
@@ -976,13 +982,19 @@ fn get_dynamic_lengths(lz77: &Lz77Store, lstart: usize, lend: usize) -> (f64, Ve
     let (mut ll_counts, d_counts) = lz77.get_histogram(lstart, lend);
     ll_counts[256] = 1; /* End symbol. */
 
-    let ll_lengths = length_limited_code_lengths(&ll_counts, 15);
-    let mut d_lengths = length_limited_code_lengths(&d_counts, 15);
+    let ll_lengths = length_limited_code_lengths(&*ll_counts, 15);
+    let mut d_lengths = length_limited_code_lengths(&*d_counts, 15);
 
     patch_distance_codes_for_buggy_decoders(&mut d_lengths[..]);
 
     try_optimize_huffman_for_rle(
-        lz77, lstart, lend, &ll_counts, &d_counts, ll_lengths, d_lengths,
+        lz77,
+        lstart,
+        lend,
+        &*ll_counts,
+        &*d_counts,
+        ll_lengths,
+        d_lengths,
     )
 }
 

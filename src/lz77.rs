@@ -6,8 +6,8 @@ use crate::{
     hash::{Which, ZopfliHash},
     symbols::{get_dist_symbol, get_length_symbol},
     util::{
-        ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL,
-        ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE,
+        boxed_array, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_NUM_D,
+        ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE,
     },
 };
 
@@ -288,9 +288,12 @@ impl Lz77Store {
         }
     }
 
-    fn get_histogram_at(&self, lpos: usize) -> (Vec<usize>, Vec<usize>) {
-        let mut ll = vec![0; ZOPFLI_NUM_LL];
-        let mut d = vec![0; ZOPFLI_NUM_D];
+    fn get_histogram_at(
+        &self,
+        lpos: usize,
+    ) -> (Box<[usize; ZOPFLI_NUM_LL]>, Box<[usize; ZOPFLI_NUM_D]>) {
+        let mut ll = boxed_array(0);
+        let mut d = boxed_array(0);
 
         /* The real histogram is created by using the histogram for this chunk, but
         all superfluous values of this chunk subtracted. */
@@ -321,10 +324,14 @@ impl Lz77Store {
     /// Gets the histogram of lit/len and dist symbols in the given range, using the
     /// cumulative histograms, so faster than adding one by one for large range. Does
     /// not add the one end symbol of value 256.
-    pub fn get_histogram(&self, lstart: usize, lend: usize) -> (Vec<usize>, Vec<usize>) {
+    pub fn get_histogram(
+        &self,
+        lstart: usize,
+        lend: usize,
+    ) -> (Box<[usize; ZOPFLI_NUM_LL]>, Box<[usize; ZOPFLI_NUM_D]>) {
         if lstart + ZOPFLI_NUM_LL * 3 > lend {
-            let mut ll_counts = vec![0; ZOPFLI_NUM_LL];
-            let mut d_counts = vec![0; ZOPFLI_NUM_D];
+            let mut ll_counts = boxed_array(0);
+            let mut d_counts = boxed_array(0);
             for i in lstart..lend {
                 ll_counts[self.ll_symbol[i] as usize] += 1;
                 if let LitLen::LengthDist(_, _) = self.litlens[i] {
@@ -344,11 +351,15 @@ impl Lz77Store {
                     ll.iter()
                         .zip(ll2.iter())
                         .map(|(&ll_item1, &ll_item2)| ll_item1 - ll_item2)
-                        .collect(),
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap(),
                     d.iter()
                         .zip(d2.iter())
                         .map(|(&d_item1, &d_item2)| d_item1 - d_item2)
-                        .collect(),
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap(),
                 )
             } else {
                 (ll, d)

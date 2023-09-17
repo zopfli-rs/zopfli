@@ -95,3 +95,11 @@ impl<R: Read, H: Hasher> Read for HashingAndCountingRead<'_, R, H> {
         }
     }
 }
+
+#[inline]
+pub fn boxed_array<T: Clone, const N: usize>(element: T) -> Box<[T; N]> {
+    match vec![element; N].into_boxed_slice().try_into() {
+        Ok(x) => x,
+        Err(_) => unreachable!(),
+    }
+}
