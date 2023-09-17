@@ -161,16 +161,8 @@ impl Lz77Store {
         while i < inend {
             h.update(arr, i);
 
-            let longest_match = find_longest_match(
-                lmc,
-                &mut h,
-                arr,
-                i,
-                inend,
-                instart,
-                ZOPFLI_MAX_MATCH,
-                &mut None,
-            );
+            let longest_match =
+                find_longest_match(lmc, &h, arr, i, inend, instart, ZOPFLI_MAX_MATCH, &mut None);
             dist = longest_match.distance;
             leng = longest_match.length;
             lengthscore = get_length_score(leng as i32, dist as i32);
@@ -269,7 +261,7 @@ impl Lz77Store {
                 // should match the length from the path.
                 let longest_match = find_longest_match(
                     lmc,
-                    &mut h,
+                    &h,
                     arr,
                     pos,
                     inend,
@@ -420,7 +412,7 @@ fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) 
 #[allow(clippy::too_many_arguments)]
 pub fn find_longest_match<C: Cache>(
     lmc: &mut C,
-    h: &mut ZopfliHash,
+    h: &ZopfliHash,
     array: &[u8],
     pos: usize,
     size: usize,
@@ -470,7 +462,7 @@ pub fn find_longest_match<C: Cache>(
 }
 
 fn find_longest_match_loop(
-    h: &mut ZopfliHash,
+    h: &ZopfliHash,
     array: &[u8],
     pos: usize,
     size: usize,
