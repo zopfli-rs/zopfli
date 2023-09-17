@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::io::{Error, ErrorKind, Read};
 
