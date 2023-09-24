@@ -12,8 +12,8 @@
 //! This crate exposes the following features. You can enable or disable them in your `Cargo.toml`
 //! as needed.
 //!
-//! - `gzip` (enabled by default): enables support for compression in the gzip format. Implies `std`.
-//! - `zlib` (enabled by default): enables support for compression in the Zlib format. Implies `std`.
+//! - `gzip` (enabled by default): enables support for compression in the gzip format.
+//! - `zlib` (enabled by default): enables support for compression in the Zlib format.
 //! - `std` (enabled by default): enables linking against the Rust standard library. When not enabled,
 //!                               the crate is built with the `#![no_std]` attribute and can be used
 //!                               in any environment where [`alloc`](https://doc.rust-lang.org/alloc/)
@@ -37,8 +37,12 @@
 extern crate alloc;
 
 pub use deflate::{BlockType, DeflateEncoder};
+#[cfg(feature = "gzip")]
+pub use gzip::GzipEncoder;
 #[cfg(all(test, feature = "std"))]
 use proptest::prelude::*;
+#[cfg(feature = "zlib")]
+pub use zlib::ZlibEncoder;
 
 mod blocksplitter;
 mod cache;
@@ -138,17 +142,30 @@ pub enum Format {
 /// options, and writes the result to a sink in the defined output format.
 #[cfg(feature = "std")]
 pub fn compress<R: std::io::Read, W: Write>(
-    options: &Options,
+    options: Options,
     output_format: Format,
-    in_data: R,
+    mut in_data: R,
     out: W,
 ) -> Result<(), Error> {
     match output_format {
         #[cfg(feature = "gzip")]
-        Format::Gzip => gzip::gzip_compress(*options, in_data, out),
+        Format::Gzip => {
+            let mut gzip_encoder = GzipEncoder::new_buffered(options, BlockType::Dynamic, out)?;
+            std::io::copy(&mut in_data, &mut gzip_encoder)?;
+            gzip_encoder.into_inner()?.finish().map(|_| ())
+        }
         #[cfg(feature = "zlib")]
-        Format::Zlib => zlib::zlib_compress(*options, in_data, out),
-        Format::Deflate => deflate::deflate(*options, BlockType::Dynamic, in_data, out),
+        Format::Zlib => {
+            let mut zlib_encoder = ZlibEncoder::new_buffered(options, BlockType::Dynamic, out)?;
+            std::io::copy(&mut in_data, &mut zlib_encoder)?;
+            zlib_encoder.into_inner()?.finish().map(|_| ())
+        }
+        Format::Deflate => {
+            let mut deflate_encoder =
+                DeflateEncoder::new_buffered(options, BlockType::Dynamic, out);
+            std::io::copy(&mut in_data, &mut deflate_encoder)?;
+            deflate_encoder.into_inner()?.finish().map(|_| ())
+        }
     }
 }
 

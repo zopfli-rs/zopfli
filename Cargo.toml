@@ -24,16 +24,16 @@ proptest-derive = "0.4.0"
 miniz_oxide = "0.7.1"
 
 [features]
-default = ["gzip", "zlib"]
-gzip = ["std", "dep:crc32fast"]
-zlib = ["std", "dep:simd-adler32"]
+default = ["std", "gzip", "zlib"]
+gzip = ["dep:crc32fast"]
+zlib = ["dep:simd-adler32"]
 
 std = ["crc32fast?/std", "simd-adler32?/std"]
 nightly = ["crc32fast?/nightly", "simd-adler32?/nightly"]
 
 [[bin]]
 name = "zopfli"
-required-features = ["gzip", "zlib"]
+required-features = ["std", "gzip", "zlib"]
 
 [profile.release]
 debug = true

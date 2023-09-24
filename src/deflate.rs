@@ -28,9 +28,10 @@ use crate::{
 /// backreference window. As a consequence, frequent short writes may cause more
 /// DEFLATE blocks to be emitted with less optimal Huffman trees, which can hurt
 /// compression and runtime. If they are a concern, short writes can be conveniently
-/// dealt with by wrapping this encoder with a [`BufWriter`](std::io::BufWriter). An
-/// adequate write size would be >32 KiB, which allows the second complete chunk to
-/// leverage a full-sized backreference window.
+/// dealt with by wrapping this encoder with a [`BufWriter`](std::io::BufWriter), as done
+/// by the [`new_buffered`](DeflateEncoder::new_buffered) method. An adequate write size
+/// would be >32 KiB, which allows the second complete chunk to leverage a full-sized
+/// backreference window.
 pub struct DeflateEncoder<W: Write> {
     options: Options,
     btype: BlockType,
@@ -54,6 +55,18 @@ impl<W: Write> DeflateEncoder<W> {
         }
     }
 
+    /// Creates a new Zopfli DEFLATE encoder that operates according to the
+    /// specified options and is wrapped with a buffer to guarantee that
+    /// data is compressed in large chunks, which is necessary for decent
+    /// performance and good compression ratio.
+    #[cfg(feature = "std")]
+    pub fn new_buffered(options: Options, btype: BlockType, sink: W) -> std::io::BufWriter<Self> {
+        std::io::BufWriter::with_capacity(
+            crate::util::ZOPFLI_MASTER_BLOCK_SIZE,
+            Self::new(options, btype, sink),
+        )
+    }
+
     /// Encodes any pending chunks of data and writes them to the sink,
     /// consuming the encoder and returning the wrapped sink. The sink
     /// will have received a complete DEFLATE stream when this method
@@ -63,7 +76,7 @@ impl<W: Write> DeflateEncoder<W> {
     /// dropped, but explicitly finishing it with this method allows
     /// handling I/O errors.
     pub fn finish(mut self) -> Result<W, Error> {
-        self._finish().map(|writer| writer.unwrap())
+        self._finish().map(|sink| sink.unwrap())
     }
 
     /// Compresses the chunk stored at `window_and_chunk`. This includes
@@ -146,36 +159,6 @@ impl<W: Write> Drop for DeflateEncoder<W> {
     fn drop(&mut self) {
         self._finish().ok();
     }
-}
-
-/// Convenience function to efficiently compress data in DEFLATE format
-/// from an arbitrary source to an arbitrary destination.
-#[cfg(feature = "std")]
-pub fn deflate<R: std::io::Read, W: Write>(
-    options: Options,
-    btype: BlockType,
-    mut in_data: R,
-    out: W,
-) -> Result<(), Error> {
-    /// A block structure of huge, non-smart, blocks to divide the input into, to allow
-    /// operating on huge files without exceeding memory, such as the 1GB wiki9 corpus.
-    /// The whole compression algorithm, including the smarter block splitting, will
-    /// be executed independently on each huge block.
-    /// Dividing into huge blocks hurts compression, but not much relative to the size.
-    /// This must be equal or greater than `ZOPFLI_WINDOW_SIZE`.
-    const ZOPFLI_MASTER_BLOCK_SIZE: usize = 1_000_000;
-
-    // Wrap the encoder with a buffer to guarantee the data is compressed in big chunks,
-    // which is necessary for decent performance and good compression ratio
-    let mut deflater = std::io::BufWriter::with_capacity(
-        ZOPFLI_MASTER_BLOCK_SIZE,
-        DeflateEncoder::new(options, btype, out),
-    );
-
-    std::io::copy(&mut in_data, &mut deflater)?;
-    deflater.into_inner()?.finish()?;
-
-    Ok(())
 }
 
 /// Deflate a part, to allow for chunked, streaming compression with [`DeflateEncoder`].
