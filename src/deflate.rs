@@ -161,6 +161,18 @@ impl<W: Write> Drop for DeflateEncoder<W> {
     }
 }
 
+// Boilerplate to make latest Rustdoc happy: https://github.com/rust-lang/rust/issues/117796
+#[cfg(doc)]
+impl<W: crate::io::Write> std::io::Write for DeflateEncoder<W> {
+    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+        unimplemented!()
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        unimplemented!()
+    }
+}
+
 /// Deflate a part, to allow for chunked, streaming compression with [`DeflateEncoder`].
 /// It is possible to call this function multiple times in a row, shifting
 /// instart and inend to next bytes of the data. If instart is larger than 0, then

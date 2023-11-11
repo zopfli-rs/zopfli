@@ -101,3 +101,15 @@ impl<W: Write> Drop for GzipEncoder<W> {
         self._finish().ok();
     }
 }
+
+// Boilerplate to make latest Rustdoc happy: https://github.com/rust-lang/rust/issues/117796
+#[cfg(doc)]
+impl<W: crate::io::Write> std::io::Write for GzipEncoder<W> {
+    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+        unimplemented!()
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        unimplemented!()
+    }
+}
