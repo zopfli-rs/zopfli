@@ -162,7 +162,7 @@ impl<W: Write> Drop for DeflateEncoder<W> {
 }
 
 // Boilerplate to make latest Rustdoc happy: https://github.com/rust-lang/rust/issues/117796
-#[cfg(doc)]
+#[cfg(all(doc, feature = "std"))]
 impl<W: crate::io::Write> std::io::Write for DeflateEncoder<W> {
     fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
         unimplemented!()
