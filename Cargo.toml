@@ -8,7 +8,14 @@ homepage = "https://github.com/zopfli-rs/zopfli"
 repository = "https://github.com/zopfli-rs/zopfli"
 readme = "README.md"
 categories = ["compression", "no-std"]
-exclude = ["test/*"]
+exclude = [
+    ".github/*",
+    ".gitignore",
+    "Makefile",
+    "benchmark-builds/*",
+    "rustfmt.toml",
+    "test/*",
+]
 edition = "2021"
 rust-version = "1.66"
 
