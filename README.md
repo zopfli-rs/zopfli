@@ -10,7 +10,7 @@ This is a reimplementation of the [Zopfli](https://github.com/google/zopfli) com
 
 Carol Nichols started the Rust implementation as an experiment in incrementally rewriting a C library in Rust, keeping the project compiling at every step. For more information about that experiment, see [the slides for a talk she gave about it](https://github.com/carols10cents/rust-out-your-c-talk) and [the repo as it was for the experiment](https://github.com/carols10cents/zopfli).
 
-The minimum supported Rust version (MSRV) for this crate is 1.62. Bumping this version is not considered a breaking change for semantic versioning purposes. We will try to do it only when we estimate that such a bump would not cause widespread inconvenience or breakage.
+The minimum supported Rust version (MSRV) for this crate is 1.66. Bumping this version is not considered a breaking change for semantic versioning purposes. We will try to do it only when we estimate that such a bump would not cause widespread inconvenience or breakage.
 
 ## How to build
 
@@ -28,7 +28,7 @@ You can also run `make zopfli`, which will run `cargo build` and then symlink `t
 
 ## Running the tests
 
-There are some unit tests, mostly around the boundary package merge algorithm implementation in katajainen.rs, that can be run with:
+There are some unit tests, mostly around the boundary package merge algorithm implementation in katajainen.rs, and a property-based test for compression reversibility. These tests can be run with:
 
 ```
 $ cargo test

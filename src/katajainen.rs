@@ -13,7 +13,7 @@ use typed_arena::Arena;
 struct Thing<'a> {
     node_arena: &'a Arena<Node<'a>>,
     leaves: Vec<Leaf>,
-    lists: Vec<List<'a>>,
+    lists: [List<'a>; 15],
 }
 
 struct Node<'a> {
@@ -43,7 +43,7 @@ impl PartialOrd for Leaf {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 struct List<'arena> {
     lookahead0: &'arena Node<'arena>,
     lookahead1: &'arena Node<'arena>,
@@ -53,6 +53,7 @@ struct List<'arena> {
 /// symbol.
 pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Vec<u32> {
     let num_freqs = frequencies.len();
+    assert!(num_freqs <= 288);
 
     // Count used symbols and place them in the leaves.
     let mut leaves = frequencies
@@ -90,6 +91,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     leaves.sort();
 
     let max_bits = cmp::min(num_symbols - 1, max_bits);
+    assert!(max_bits <= 15);
 
     let arena_capacity = max_bits * 2 * num_symbols;
     let node_arena: Arena<Node> = Arena::with_capacity(arena_capacity);
@@ -106,13 +108,10 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
         tail: Cell::new(None),
     });
 
-    let lists: Vec<List> = vec![
-        List {
-            lookahead0: node0,
-            lookahead1: node1,
-        };
-        max_bits
-    ];
+    let lists = [List {
+        lookahead0: node0,
+        lookahead1: node1,
+    }; 15];
 
     let mut thing = Thing {
         node_arena: &node_arena,

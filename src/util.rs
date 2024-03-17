@@ -1,5 +1,4 @@
-#[cfg(feature = "std")]
-use std::io::{Error, ErrorKind, Read};
+use alloc::boxed::Box;
 
 /// Number of distinct literal/length symbols in DEFLATE
 pub const ZOPFLI_NUM_LL: usize = 288;
@@ -10,6 +9,14 @@ pub const ZOPFLI_NUM_D: usize = 32;
 /// maximum possible by the deflate spec. Anything less hurts compression more than
 /// speed.
 pub const ZOPFLI_WINDOW_SIZE: usize = 32768;
+/// A block structure of huge, non-smart, blocks to divide the input into, to allow
+/// operating on huge files without exceeding memory, such as the 1GB wiki9 corpus.
+/// The whole compression algorithm, including the smarter block splitting, will
+/// be executed independently on each huge block.
+/// Dividing into huge blocks hurts compression, but not much relative to the size.
+/// This must be equal or greater than `ZOPFLI_WINDOW_SIZE`.
+#[cfg(feature = "std")]
+pub const ZOPFLI_MASTER_BLOCK_SIZE: usize = 1_000_000;
 
 /// The window mask used to wrap indices into the window. This is why the
 /// window size must be a power of two.
@@ -35,63 +42,10 @@ pub const ZOPFLI_CACHE_LENGTH: usize = 8;
 /// Good value: e.g. 8192.
 pub const ZOPFLI_MAX_CHAIN_HITS: usize = 8192;
 
-/// A hasher that may be used by [`HashingAndCountingRead`].
-#[cfg(feature = "std")]
-pub trait Hasher {
-    fn update(&mut self, data: &[u8]);
-}
-
-#[cfg(all(feature = "std", feature = "gzip"))]
-impl Hasher for &mut crc32fast::Hasher {
-    fn update(&mut self, data: &[u8]) {
-        crc32fast::Hasher::update(self, data)
-    }
-}
-
-#[cfg(all(feature = "std", feature = "zlib"))]
-impl Hasher for &mut simd_adler32::Adler32 {
-    fn update(&mut self, data: &[u8]) {
-        simd_adler32::Adler32::write(self, data)
-    }
-}
-
-/// A reader that wraps another reader, a hasher and an optional counter,
-/// updating the hasher state and incrementing a counter of bytes read so
-/// far for each block of data read.
-#[cfg(feature = "std")]
-pub struct HashingAndCountingRead<'counter, R: Read, H: Hasher> {
-    inner: R,
-    hasher: H,
-    bytes_read: Option<&'counter mut u32>,
-}
-
-#[cfg(feature = "std")]
-impl<'counter, R: Read, H: Hasher> HashingAndCountingRead<'counter, R, H> {
-    pub fn new(inner: R, hasher: H, bytes_read: Option<&'counter mut u32>) -> Self {
-        Self {
-            inner,
-            hasher,
-            bytes_read,
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl<R: Read, H: Hasher> Read for HashingAndCountingRead<'_, R, H> {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-        match self.inner.read(buf) {
-            Ok(bytes_read) => {
-                self.hasher.update(&buf[..bytes_read]);
-
-                if let Some(total_bytes_read) = &mut self.bytes_read {
-                    **total_bytes_read = total_bytes_read
-                        .checked_add(bytes_read.try_into().map_err(|_| ErrorKind::Other)?)
-                        .ok_or(ErrorKind::Other)?;
-                }
-
-                Ok(bytes_read)
-            }
-            Err(err) => Err(err),
-        }
+#[inline]
+pub fn boxed_array<T: Clone, const N: usize>(element: T) -> Box<[T; N]> {
+    match vec![element; N].into_boxed_slice().try_into() {
+        Ok(x) => x,
+        Err(_) => unreachable!(),
     }
 }
