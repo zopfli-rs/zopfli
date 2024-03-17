@@ -2,7 +2,7 @@ use alloc::{boxed::Box, vec::Vec};
 use core::cmp;
 
 use crate::{
-    cache::{Cache, NoCache, ZopfliLongestMatchCache},
+    cache::{Cache},
     hash::{Which, ZopfliHash, HASH_POOL},
     symbols::{get_dist_symbol, get_length_symbol},
     util::{

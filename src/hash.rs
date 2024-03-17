@@ -180,5 +180,5 @@ impl ZopfliHash {
     }
 }
 
-pub static HASH_POOL: Lazy<LinearObjectPool<ZopfliHash>> =
-    Lazy::new(|| LinearObjectPool::new(ZopfliHash::new, ZopfliHash::reset));
+pub static HASH_POOL: Lazy<LinearObjectPool<Box<ZopfliHash>>> =
+    Lazy::new(|| LinearObjectPool::new(ZopfliHash::new, |boxed| boxed.reset()));
