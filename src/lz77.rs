@@ -3,7 +3,7 @@ use core::cmp;
 
 use crate::{
     cache::Cache,
-    hash::{Which, ZopfliHash},
+    hash::{Which, ZopfliHash, HASH_POOL},
     symbols::{get_dist_symbol, get_length_symbol},
     util::{
         boxed_array, ZOPFLI_MAX_CHAIN_HITS, ZOPFLI_MAX_MATCH, ZOPFLI_MIN_MATCH, ZOPFLI_NUM_D,
@@ -139,7 +139,8 @@ impl Lz77Store {
             return;
         }
         let windowstart = instart.saturating_sub(ZOPFLI_WINDOW_SIZE);
-        let mut h = ZopfliHash::new();
+        let hash_pool = &*HASH_POOL;
+        let mut h = hash_pool.pull();
 
         let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);
@@ -239,7 +240,8 @@ impl Lz77Store {
             return;
         }
 
-        let mut h = ZopfliHash::new();
+        let hash_pool = &*HASH_POOL;
+        let mut h = hash_pool.pull();
 
         let arr = &in_data[..inend];
         h.warmup(arr, windowstart, inend);

@@ -4,6 +4,9 @@ use alloc::{
 };
 use core::ptr::{addr_of, addr_of_mut, NonNull};
 
+use lockfree_object_pool::LinearObjectPool;
+use once_cell::sync::Lazy;
+
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
 const HASH_SHIFT: i32 = 5;
@@ -176,3 +179,6 @@ impl ZopfliHash {
         }
     }
 }
+
+pub static HASH_POOL: Lazy<LinearObjectPool<Box<ZopfliHash>>> =
+    Lazy::new(|| LinearObjectPool::new(ZopfliHash::new, |boxed| boxed.reset()));
