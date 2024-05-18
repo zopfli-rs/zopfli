@@ -21,7 +21,7 @@ exclude = [
   "test/*",
 ]
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.73.0"
 
 [dependencies]
 crc32fast = { version = "1.4.0", default-features = false, optional = true }
