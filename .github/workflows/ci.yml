@@ -61,6 +61,8 @@ jobs:
         if: matrix.conf == 'nightly'
         run: cargo test --release --no-default-features --features nightly
 
+      # The documentation generation command should match what's defined on
+      # Cargo.toml's `package.metadata.docs.rs` section for docs.rs
       - name: Generate documentation
         if: matrix.conf == 'nightly'
-        run: cargo doc --no-deps
+        run: cargo doc --all-features
