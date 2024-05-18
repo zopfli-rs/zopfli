@@ -38,7 +38,7 @@ gzip = ["dep:crc32fast"]
 zlib = ["dep:simd-adler32"]
 
 std = ["crc32fast?/std", "simd-adler32?/std"]
-nightly = ["crc32fast?/nightly", "simd-adler32?/nightly"]
+nightly = ["crc32fast?/nightly"]
 
 [[bin]]
 name = "zopfli"

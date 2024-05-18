@@ -23,7 +23,10 @@
 //!                               enabling `nightly` due to dependencies on unstable language features.
 //! - `nightly`: enables performance optimizations that are specific to the nightly Rust toolchain.
 //!              Currently, this feature improves rustdoc generation and enables the namesake feature
-//!              on `crc32fast` and `simd-adler32`, but this may change in the future.
+//!              on `crc32fast`, but this may change in the future. This feature also used to enable
+//!              `simd-adler32`'s namesake feature, but it no longer does as the latest `simd-adler32`
+//!              release does not build with the latest nightlies (as of 2024-05-18) when that feature
+//!              is enabled.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(
