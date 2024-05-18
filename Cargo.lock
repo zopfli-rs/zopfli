@@ -412,7 +412,7 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[package]]
 name = "zopfli"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "bumpalo",
  "crc32fast",
