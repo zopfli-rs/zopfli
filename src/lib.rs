@@ -19,8 +19,7 @@
 //!                               in any environment where [`alloc`](https://doc.rust-lang.org/alloc/)
 //!                               (i.e., a memory allocator) is available. In addition, the crate
 //!                               exposes minimalist versions of the `std` I/O traits it needs to
-//!                               function, allowing users to implement them. Disabling `std` requires
-//!                               enabling `nightly` due to dependencies on unstable language features.
+//!                               function, allowing users to implement them.
 //! - `nightly`: enables performance optimizations that are specific to the nightly Rust toolchain.
 //!              Currently, this feature improves rustdoc generation and enables the namesake feature
 //!              on `crc32fast`, but this may change in the future. This feature also used to enable
