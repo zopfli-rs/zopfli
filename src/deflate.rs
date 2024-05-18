@@ -843,11 +843,11 @@ fn add_lz77_block<W: Write>(
             bitwise_writer.add_bit(1)?;
             let (_, ll_lengths, d_lengths) = get_dynamic_lengths(lz77, lstart, lend);
 
-            let detect_tree_size = bitwise_writer.bytes_written();
+            let _detect_tree_size = bitwise_writer.bytes_written();
             add_dynamic_tree(&ll_lengths, &d_lengths, bitwise_writer)?;
             debug!(
                 "treesize: {}",
-                bitwise_writer.bytes_written() - detect_tree_size
+                bitwise_writer.bytes_written() - _detect_tree_size
             );
             (ll_lengths, d_lengths)
         }
@@ -873,15 +873,15 @@ fn add_lz77_block<W: Write>(
     bitwise_writer.add_huffman_bits(ll_symbols[256], ll_lengths[256])?;
 
     if log_enabled!(log::Level::Debug) {
-        let uncompressed_size = lz77.litlens[lstart..lend]
+        let _uncompressed_size = lz77.litlens[lstart..lend]
             .iter()
             .fold(0, |acc, &x| acc + x.size());
-        let compressed_size = bitwise_writer.bytes_written() - detect_block_size;
+        let _compressed_size = bitwise_writer.bytes_written() - detect_block_size;
         debug!(
             "compressed block size: {} ({}k) (unc: {})",
-            compressed_size,
-            compressed_size / 1024,
-            uncompressed_size
+            _compressed_size,
+            _compressed_size / 1024,
+            _uncompressed_size
         );
     }
 
