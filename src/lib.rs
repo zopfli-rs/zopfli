@@ -138,7 +138,7 @@ pub enum Format {
     ///
     /// Raw DEFLATE streams are not meant to be stored as-is because
     /// they lack error detection and correction metadata. They
-    /// usually are embedded in other file formats, such as gzip
+    /// are usually embedded in other file formats, such as gzip
     /// and zlib.
     Deflate,
 }
