@@ -4,14 +4,14 @@ use core::{
     cmp::{self, Ordering},
 };
 
-use typed_arena::Arena;
+use bumpalo::Bump;
 
 // Bounded package merge algorithm, based on the paper
 // "A Fast and Space-Economical Algorithm for Length-Limited Coding
 // Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
 struct Thing<'a> {
-    node_arena: &'a Arena<Node<'a>>,
+    node_arena: &'a Bump,
     leaves: Vec<Leaf>,
     lists: [List<'a>; 15],
 }
@@ -94,7 +94,7 @@ pub fn length_limited_code_lengths(frequencies: &[usize], max_bits: usize) -> Ve
     assert!(max_bits <= 15);
 
     let arena_capacity = max_bits * 2 * num_symbols;
-    let node_arena: Arena<Node> = Arena::with_capacity(arena_capacity);
+    let node_arena = Bump::with_capacity(arena_capacity);
 
     let node0 = node_arena.alloc(Node {
         weight: leaves[0].weight,

@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 use core::{cmp, iter};
 
+#[cfg(feature = "std")]
 use log::{debug, log_enabled};
 
 use crate::{

@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+#[cfg(feature = "std")]
 use log::{debug, log_enabled};
 
 use crate::{cache::NoCache, deflate::calculate_block_size_auto_type, lz77::Lz77Store};

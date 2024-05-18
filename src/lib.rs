@@ -36,6 +36,22 @@
     feature(core_intrinsics)
 )]
 
+// No-op log implementation for no-std targets
+#[cfg(not(feature = "std"))]
+macro_rules! debug {
+    ( $( $_:expr ),* ) => {};
+}
+#[cfg(not(feature = "std"))]
+macro_rules! trace {
+    ( $( $_:expr ),* ) => {};
+}
+#[cfg(not(feature = "std"))]
+macro_rules! log_enabled {
+    ( $( $_:expr ),* ) => {
+        false
+    };
+}
+
 #[cfg_attr(not(feature = "std"), macro_use)]
 extern crate alloc;
 
@@ -73,8 +89,6 @@ use std::io::{Error, Write};
 
 #[cfg(any(doc, not(feature = "std")))]
 pub use io::{Error, ErrorKind, Write};
-
-use crate::hash::HASH_POOL;
 
 /// Options for the Zopfli compression algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -176,8 +190,9 @@ pub fn compress<R: std::io::Read, W: Write>(
 
 /// Populates object pools for expensive objects that Zopfli uses. Call this on a background thread
 /// when you know ahead of time that compression will be needed.
+#[cfg(feature = "std")]
 pub fn prewarm_object_pools() {
-    HASH_POOL.pull();
+    hash::HASH_POOL.pull();
 }
 
 #[cfg(all(test, feature = "std"))]

@@ -4,6 +4,7 @@ use std::{
     io::{self, prelude::*},
 };
 
+#[cfg(feature = "std")]
 use log::info;
 
 fn main() {
