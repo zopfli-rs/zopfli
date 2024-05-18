@@ -1,3 +1,7 @@
+# The binary target must be set in a single line like this to make it easily
+# removable by the CI "Check effective no_std compatibility" step
+bin = [{ name = "zopfli", required-features = ["std", "gzip", "zlib"] }]
+
 [package]
 name = "zopfli"
 version = "0.8.1"
@@ -45,10 +49,6 @@ std = [
   "simd-adler32?/std",
 ]
 nightly = ["crc32fast?/nightly"]
-
-[[bin]]
-name = "zopfli"
-required-features = ["std", "gzip", "zlib"]
 
 [profile.release]
 debug = true

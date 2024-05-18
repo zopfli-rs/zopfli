@@ -46,6 +46,12 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install cargo-nono
+        if: matrix.conf == 'nightly'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nono
+
       - name: Run rustfmt
         if: matrix.conf == 'nightly'
         run: cargo fmt --check --verbose -- --color=always
@@ -66,3 +72,13 @@ jobs:
       - name: Generate documentation
         if: matrix.conf == 'nightly'
         run: cargo doc --all-features
+
+      - name: Check effective no_std compatibility
+        if: matrix.conf == 'nightly'
+        run: |
+          # Temporarily drop the binary crate so that cargo nono does not
+          # get confused about what crate to analyze: we are only interested
+          # in the library one
+          sed -i 's;^bin = ;#&;' Cargo.toml
+          rm src/main.rs
+          cargo nono check --no-default-features --features gzip,zlib
