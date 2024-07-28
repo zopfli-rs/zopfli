@@ -78,6 +78,7 @@ jobs:
       - name: Run linter for all feature combinations
         if: matrix.conf == 'nightly'
         run: >
+          set -o pipefail;
           cargo hack clippy --no-deps --all-targets --feature-powerset --message-format=json -- -D warnings
           | clippy-sarif
           | tee clippy-results.sarif
