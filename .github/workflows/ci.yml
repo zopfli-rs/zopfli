@@ -95,6 +95,7 @@ jobs:
         run: cargo doc --all-features
 
       - name: Check effective no_std compatibility
+        if: matrix.conf == 'nightly'
         run: |
           # Temporarily drop the binary crate so that cargo nono does not
           # get confused about what crate to analyze: we are only interested
