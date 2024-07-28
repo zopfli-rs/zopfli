@@ -86,7 +86,7 @@ jobs:
         run: make zopfli && make test
 
       - name: Run tests (no-std)
-        run: cargo test --release --no-default-features --features nightly
+        run: cargo test --release --no-default-features
 
       # The documentation generation command should match what's defined on
       # Cargo.toml's `package.metadata.docs.rs` section for docs.rs
