@@ -52,19 +52,40 @@ jobs:
         with:
           tool: cargo-nono
 
+      - name: Install cargo-hack
+        if: matrix.conf == 'nightly'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      - name: Install clippy-sarif
+        if: matrix.conf == 'nightly'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: clippy-sarif
+
+      - name: Install sarif-fmt
+        if: matrix.conf == 'nightly'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: sarif-fmt
+
       - name: Run rustfmt
         if: matrix.conf == 'nightly'
         run: cargo fmt --check --verbose -- --color=always
 
-      - name: Run linter
+      - name: Run linter for all feature combinations
         if: matrix.conf == 'nightly'
-        run: cargo clippy
+        run: >
+          cargo hack clippy --no-deps --all-targets --feature-powerset --message-format=json -- -D warnings
+          | clippy-sarif
+          | tee clippy-results.sarif
+          | sarif-fmt
 
       - name: Run tests
         run: make zopfli && make test
 
       - name: Run tests (no-std)
-        if: matrix.conf == 'nightly'
         run: cargo test --release --no-default-features --features nightly
 
       # The documentation generation command should match what's defined on
@@ -74,7 +95,6 @@ jobs:
         run: cargo doc --all-features
 
       - name: Check effective no_std compatibility
-        if: matrix.conf == 'nightly'
         run: |
           # Temporarily drop the binary crate so that cargo nono does not
           # get confused about what crate to analyze: we are only interested
@@ -82,3 +102,11 @@ jobs:
           sed -i 's;^bin = ;#&;' Cargo.toml
           rm src/main.rs
           cargo nono check --no-default-features --features gzip,zlib
+
+      - name: Upload analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && matrix.conf == 'nightly'
+        continue-on-error: true
+        with:
+          sarif_file: clippy-results.sarif
+          category: clippy
