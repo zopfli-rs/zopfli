@@ -28,7 +28,7 @@
 //!              is enabled.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "nightly", feature(doc_auto_cfg), feature(error_in_core))]
+#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
 
 // No-op log implementation for no-std targets
 #[cfg(not(feature = "std"))]
