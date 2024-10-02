@@ -1,4 +1,5 @@
-#[allow(dead_code)] // False positive
+#![cfg(not(feature = "std"))]
+#![allow(dead_code)] // False-positive
 
 /// Provides math operations for doubles on `no_std` targets that are not available on `core`.
 pub trait F64MathExt {
