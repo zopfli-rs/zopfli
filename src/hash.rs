@@ -64,10 +64,10 @@ pub struct ZopfliHash {
 }
 
 impl ZopfliHash {
-    pub fn new() -> Box<ZopfliHash> {
+    pub fn new() -> Box<Self> {
         const LAYOUT: Layout = Layout::new::<ZopfliHash>();
 
-        let ptr = NonNull::new(unsafe { alloc(LAYOUT) } as *mut ZopfliHash)
+        let ptr = NonNull::new(unsafe { alloc(LAYOUT) }.cast::<Self>())
             .unwrap_or_else(|| handle_alloc_error(LAYOUT));
 
         unsafe {
@@ -133,11 +133,11 @@ impl ZopfliHash {
     /// must be made on consecutive input characters. Since the hash value exists out
     /// of multiple input bytes, a few warmups with this function are needed initially.
     fn update_val(&mut self, c: u8) {
-        self.hash1.val = ((self.hash1.val << HASH_SHIFT) ^ c as u16) & HASH_MASK;
+        self.hash1.val = ((self.hash1.val << HASH_SHIFT) ^ u16::from(c)) & HASH_MASK;
     }
 
     pub fn update(&mut self, array: &[u8], pos: usize) {
-        let hash_value = array.get(pos + ZOPFLI_MIN_MATCH - 1).cloned().unwrap_or(0);
+        let hash_value = array.get(pos + ZOPFLI_MIN_MATCH - 1).copied().unwrap_or(0);
         self.update_val(hash_value);
 
         let hpos = pos & ZOPFLI_WINDOW_MASK;
@@ -171,7 +171,7 @@ impl ZopfliHash {
             Which::Hash1 => self.hash1.prev_and_hashval[index].hashval,
             Which::Hash2 => self.hash2.prev_and_hashval[index].hashval,
         };
-        hashval.map_or(-1, |hv| hv as i32)
+        hashval.map_or(-1, i32::from)
     }
 
     pub fn val(&self, which: Which) -> u16 {

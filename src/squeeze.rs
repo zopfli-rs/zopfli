@@ -41,7 +41,7 @@ fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
         let lbits = get_length_extra_bits(litlen);
         let lsym = get_length_symbol(litlen);
         // Every dist symbol has length 5.
-        7 + (lsym > 279) as usize + 5 + dbits + lbits
+        7 + usize::from(lsym > 279) + 5 + dbits + lbits
     };
     result as f64
 }
@@ -66,8 +66,8 @@ struct RanState {
 }
 
 impl RanState {
-    fn new() -> RanState {
-        RanState { m_w: 1, m_z: 2 }
+    const fn new() -> Self {
+        Self { m_w: 1, m_z: 2 }
     }
 
     /// Get random number: "Multiply-With-Carry" generator of G. Marsaglia
@@ -92,8 +92,8 @@ struct SymbolStats {
 }
 
 impl Default for SymbolStats {
-    fn default() -> SymbolStats {
-        SymbolStats {
+    fn default() -> Self {
+        Self {
             litlens: [0; ZOPFLI_NUM_LL],
             dists: [0; ZOPFLI_NUM_D],
             ll_symbols: [0.0; ZOPFLI_NUM_LL],
@@ -123,7 +123,7 @@ impl SymbolStats {
     }
 
     /// Calculates the entropy of each symbol, based on the counts of each symbol. The
-    /// result is similar to the result of length_limited_code_lengths, but with the
+    /// result is similar to the result of `length_limited_code_lengths`, but with the
     /// actual theoretical bit lengths according to the entropy. Since the resulting
     /// values are fractional, they cannot be used to encode the tree specified by
     /// DEFLATE.
@@ -322,27 +322,27 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
 
         // Literal.
         if i < inend {
-            let new_cost = costmodel(arr[i] as usize, 0) + costs[j] as f64;
+            let new_cost = costmodel(arr[i] as usize, 0) + f64::from(costs[j]);
             debug_assert!(new_cost >= 0.0);
-            if new_cost < costs[j + 1] as f64 {
+            if new_cost < f64::from(costs[j + 1]) {
                 costs[j + 1] = new_cost as f32;
                 length_array[j + 1] = 1;
             }
         }
         // Lengths.
         let kend = cmp::min(leng as usize, inend - i);
-        let mincostaddcostj = mincost + costs[j] as f64;
+        let mincostaddcostj = mincost + f64::from(costs[j]);
 
         for (k, &sublength) in sublen.iter().enumerate().take(kend + 1).skip(3) {
             // Calling the cost model is expensive, avoid this if we are already at
             // the minimum possible cost that it can return.
-            if costs[j + k] as f64 <= mincostaddcostj {
+            if f64::from(costs[j + k]) <= mincostaddcostj {
                 continue;
             }
 
-            let new_cost = costmodel(k, sublength) + costs[j] as f64;
+            let new_cost = costmodel(k, sublength) + f64::from(costs[j]);
             debug_assert!(new_cost >= 0.0);
-            if new_cost < costs[j + k] as f64 {
+            if new_cost < f64::from(costs[j + k]) {
                 debug_assert!(k <= ZOPFLI_MAX_MATCH);
                 costs[j + k] = new_cost as f32;
                 length_array[j + k] = k as u16;
@@ -352,7 +352,7 @@ fn get_best_lengths<F: Fn(usize, u16) -> f64, C: Cache>(
     }
 
     debug_assert!(costs[blocksize] >= 0.0);
-    (costs[blocksize] as f64, length_array)
+    (f64::from(costs[blocksize]), length_array)
 }
 
 /// Calculates the optimal path of lz77 lengths to use, from the calculated
