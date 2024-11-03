@@ -114,8 +114,8 @@ pub struct Options {
 }
 
 impl Default for Options {
-    fn default() -> Options {
-        Options {
+    fn default() -> Self {
+        Self {
             iteration_count: NonZeroU64::new(15).unwrap(),
             iterations_without_improvement: NonZeroU64::new(u64::MAX).unwrap(),
             maximum_block_splits: 15,

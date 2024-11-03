@@ -18,10 +18,10 @@ pub enum LitLen {
 }
 
 impl LitLen {
-    pub fn size(&self) -> usize {
+    pub const fn size(&self) -> usize {
         match *self {
-            LitLen::Literal(_) => 1,
-            LitLen::LengthDist(len, _) => len as usize,
+            Self::Literal(_) => 1,
+            Self::LengthDist(len, _) => len as usize,
         }
     }
 }
@@ -45,8 +45,8 @@ pub struct Lz77Store {
 }
 
 impl Lz77Store {
-    pub fn new() -> Lz77Store {
-        Lz77Store {
+    pub const fn new() -> Self {
+        Self {
             litlens: vec![],
 
             pos: vec![],
@@ -131,7 +131,7 @@ impl Lz77Store {
 
     /// Does LZ77 using an algorithm similar to gzip, with lazy matching, rather than
     /// with the slow but better "squeeze" implementation.
-    /// The result is placed in the Lz77Store.
+    /// The result is placed in the `Lz77Store`.
     /// If instart is larger than 0, it uses values before instart as starting
     /// dictionary.
     pub fn greedy<C: Cache>(&mut self, lmc: &mut C, in_data: &[u8], instart: usize, inend: usize) {
@@ -165,20 +165,20 @@ impl Lz77Store {
                 find_longest_match(lmc, &h, arr, i, inend, instart, ZOPFLI_MAX_MATCH, &mut None);
             dist = longest_match.distance;
             leng = longest_match.length;
-            lengthscore = get_length_score(leng as i32, dist as i32);
+            lengthscore = get_length_score(i32::from(leng), i32::from(dist));
 
             /* Lazy matching. */
             prevlengthscore = get_length_score(prev_length as i32, prev_match as i32);
             if match_available {
                 match_available = false;
                 if lengthscore > prevlengthscore + 1 {
-                    self.lit_len_dist(arr[i - 1] as u16, 0, i - 1);
+                    self.lit_len_dist(u16::from(arr[i - 1]), 0, i - 1);
                     if (lengthscore as usize) >= ZOPFLI_MIN_MATCH
                         && (leng as usize) < ZOPFLI_MAX_MATCH
                     {
                         match_available = true;
-                        prev_length = leng as u32;
-                        prev_match = dist as u32;
+                        prev_length = u32::from(leng);
+                        prev_match = u32::from(dist);
                         i += 1;
                         continue;
                     }
@@ -201,8 +201,8 @@ impl Lz77Store {
                 && (leng as usize) < ZOPFLI_MAX_MATCH
             {
                 match_available = true;
-                prev_length = leng as u32;
-                prev_match = dist as u32;
+                prev_length = u32::from(leng);
+                prev_match = u32::from(dist);
                 i += 1;
                 continue;
             }
@@ -214,7 +214,7 @@ impl Lz77Store {
                 self.lit_len_dist(leng, dist, i);
             } else {
                 leng = 1;
-                self.lit_len_dist(arr[i] as u16, 0, i);
+                self.lit_len_dist(u16::from(arr[i]), 0, i);
             }
             for _ in 1..leng {
                 debug_assert!(i < inend);
@@ -276,7 +276,7 @@ impl Lz77Store {
                 self.lit_len_dist(length, dist, pos);
             } else {
                 length = 1;
-                self.lit_len_dist(arr[pos] as u16, 0, pos);
+                self.lit_len_dist(u16::from(arr[pos]), 0, pos);
             }
 
             debug_assert!(pos + (length as usize) <= inend);
@@ -385,8 +385,8 @@ pub struct LongestMatch {
 }
 
 impl LongestMatch {
-    pub fn new(limit: usize) -> Self {
-        LongestMatch {
+    pub const fn new(limit: usize) -> Self {
+        Self {
             distance: 0,
             length: 0,
             from_cache: false,
@@ -401,7 +401,7 @@ impl LongestMatch {
 /// `scan` is the position to compare; `match` is the earlier position to compare.
 /// `end` is the last possible byte, beyond which to stop looking.
 /// `safe_end` is a few (8) bytes before end, for comparing multiple bytes at once.
-fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) -> usize {
+const fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) -> usize {
     let mut scan_offset = scan_offset;
     let mut match_offset = match_offset;
     // /* 8 checks at once per array bounds check (usize is 64-bit). */
@@ -505,7 +505,7 @@ fn find_longest_match_loop(
 
         debug_assert!(p < ZOPFLI_WINDOW_SIZE);
         debug_assert_eq!(p, h.prev_at(pp, which_hash));
-        debug_assert_eq!(h.hash_val_at(p, which_hash), h.val(which_hash) as i32);
+        debug_assert_eq!(h.hash_val_at(p, which_hash), i32::from(h.val(which_hash)));
 
         if dist > 0 {
             debug_assert!(pos < size);
@@ -545,7 +545,7 @@ fn find_longest_match_loop(
         /* Switch to the other hash once this will be more efficient. */
         if which_hash == Which::Hash1
             && bestlength >= h.same[hpos] as usize
-            && h.val(Which::Hash2) as i32 == h.hash_val_at(p, Which::Hash2)
+            && i32::from(h.val(Which::Hash2)) == h.hash_val_at(p, Which::Hash2)
         {
             /* Now use the hash that encodes the length and first byte. */
             which_hash = Which::Hash2;
@@ -587,7 +587,7 @@ fn find_longest_match_loop(
 ///  rather unpredictable way
 /// -the first zopfli run, so it affects the chance of the first run being closer
 ///  to the optimal output
-fn get_length_score(length: i32, distance: i32) -> i32 {
+const fn get_length_score(length: i32, distance: i32) -> i32 {
     // At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
     // on tested files.
     if distance > 1024 {

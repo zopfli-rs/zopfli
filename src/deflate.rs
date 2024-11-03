@@ -46,7 +46,7 @@ impl<W: Write> DeflateEncoder<W> {
     /// Creates a new Zopfli DEFLATE encoder that will operate according to the
     /// specified options.
     pub fn new(options: Options, btype: BlockType, sink: W) -> Self {
-        DeflateEncoder {
+        Self {
             options,
             btype,
             have_chunk: false,
@@ -399,7 +399,7 @@ fn calculate_block_symbol_size_small(
         match item {
             LitLen::Literal(litlens_i) => {
                 debug_assert!(litlens_i < 259);
-                result += ll_lengths[litlens_i as usize]
+                result += ll_lengths[litlens_i as usize];
             }
             LitLen::LengthDist(litlens_i, dists_i) => {
                 debug_assert!(litlens_i < 259);
@@ -829,7 +829,7 @@ fn add_lz77_block<W: Write>(
         return add_non_compressed_block(final_block, in_data, pos, end, bitwise_writer);
     }
 
-    bitwise_writer.add_bit(final_block as u8)?;
+    bitwise_writer.add_bit(u8::from(final_block))?;
 
     let (ll_lengths, d_lengths) = match btype {
         BlockType::Uncompressed => unreachable!(),
@@ -1034,7 +1034,7 @@ fn add_lz77_data<W: Write>(
                 )?;
                 bitwise_writer.add_huffman_bits(d_symbols[ds], d_lengths[ds])?;
                 bitwise_writer.add_bits(
-                    get_dist_extra_bits_value(dist) as u32,
+                    u32::from(get_dist_extra_bits_value(dist)),
                     get_dist_extra_bits(dist) as u32,
                 )?;
                 testlength += litlen;
@@ -1067,7 +1067,7 @@ fn add_lz77_block_auto_type<W: Write>(
     let mut fixedstore = Lz77Store::new();
     if lstart == lend {
         /* Smallest empty block is represented by fixed block */
-        bitwise_writer.add_bits(final_block as u32, 1)?;
+        bitwise_writer.add_bits(u32::from(final_block), 1)?;
         bitwise_writer.add_bits(1, 2)?; /* btype 01 */
         bitwise_writer.add_bits(0, 7)?; /* end symbol has code 0000000 */
         return Ok(());
@@ -1158,7 +1158,7 @@ fn add_all_blocks<W: Write>(
     bitwise_writer: &mut BitwiseWriter<W>,
 ) -> Result<(), Error> {
     let mut last = 0;
-    for &item in splitpoints.iter() {
+    for &item in splitpoints {
         add_lz77_block_auto_type(false, in_data, lz77, last, item, 0, bitwise_writer)?;
         last = item;
     }
@@ -1285,7 +1285,7 @@ fn add_non_compressed_block<W: Write>(
         let blocksize = chunk.len();
         let nlen = !blocksize;
 
-        bitwise_writer.add_bit((final_block && is_final) as u8)?;
+        bitwise_writer.add_bit(u8::from(final_block && is_final))?;
         /* BTYPE 00 */
         bitwise_writer.add_bit(0)?;
         bitwise_writer.add_bit(0)?;
@@ -1311,8 +1311,8 @@ struct BitwiseWriter<W> {
 }
 
 impl<W: Write> BitwiseWriter<W> {
-    fn new(out: W) -> BitwiseWriter<W> {
-        BitwiseWriter {
+    const fn new(out: W) -> Self {
+        Self {
             bit: 0,
             bp: 0,
             len: 0,
@@ -1320,7 +1320,7 @@ impl<W: Write> BitwiseWriter<W> {
         }
     }
 
-    fn bytes_written(&self) -> usize {
+    const fn bytes_written(&self) -> usize {
         self.len + if self.bp > 0 { 1 } else { 0 }
     }
 
@@ -1399,7 +1399,7 @@ mod test {
 
         set_counts_to_count(&mut counts, count, i, stride);
 
-        assert_eq!(counts, vec![0, 1, 2, 100, 100, 100, 100, 100, 8, 9])
+        assert_eq!(counts, vec![0, 1, 2, 100, 100, 100, 100, 100, 8, 9]);
     }
 
     #[test]
