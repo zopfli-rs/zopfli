@@ -39,9 +39,7 @@ impl HashThing {
         let index = self.val as usize;
         let head_index = self.head[index];
         let prev = if head_index >= 0
-            && self.prev_and_hashval[head_index as usize]
-                .hashval
-                .map_or(false, |hv| hv == self.val)
+            && self.prev_and_hashval[head_index as usize].hashval == Some(self.val)
         {
             head_index as u16
         } else {
