@@ -24,17 +24,17 @@ edition = "2021"
 rust-version = "1.73.0"
 
 [dependencies]
-crc32fast = { version = "1.4.0", default-features = false, optional = true }
+crc32fast = { version = "1.4.2", default-features = false, optional = true }
 simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
-bumpalo = "3.16.0"
-log = { version = "0.4.21", optional = true }
-lockfree-object-pool = { version = "0.1.5", optional = true }
-once_cell = { version = "1.19.0", optional = true }
+bumpalo = "3.17.0"
+log = { version = "0.4.25", optional = true }
+lockfree-object-pool = { version = "0.1.6", optional = true }
+once_cell = { version = "1.20.2", optional = true }
 
 [dev-dependencies]
-proptest = "1.4.0"
-proptest-derive = "0.5.0"
-miniz_oxide = "0.8.0"
+proptest = "1.6.0"
+proptest-derive = "0.5.1"
+miniz_oxide = "0.8.3"
 
 [features]
 default = ["std", "gzip", "zlib"]
