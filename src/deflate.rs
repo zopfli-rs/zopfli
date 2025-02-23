@@ -404,7 +404,7 @@ fn calculate_block_symbol_size_small(
             LitLen::LengthDist(litlens_i, dists_i) => {
                 debug_assert!(litlens_i < 259);
                 let ll_symbol = get_length_symbol(litlens_i as usize);
-                let d_symbol = get_dist_symbol(dists_i);
+                let d_symbol = get_dist_symbol(dists_i) as usize;
                 result += ll_lengths[ll_symbol];
                 result += d_lengths[d_symbol];
                 result += get_length_symbol_extra_bits(ll_symbol);
@@ -1022,20 +1022,20 @@ fn add_lz77_data<W: Write>(
             }
             LitLen::LengthDist(len, dist) => {
                 let litlen = len as usize;
+                assert!((3..=288).contains(&litlen)); // Eases inlining and gets rid of index bound checks below
                 let lls = get_length_symbol(litlen);
-                let ds = get_dist_symbol(dist);
-                debug_assert!((3..=288).contains(&litlen));
+                let ds = get_dist_symbol(dist) as usize;
                 debug_assert!(ll_lengths[lls] > 0);
                 debug_assert!(d_lengths[ds] > 0);
                 bitwise_writer.add_huffman_bits(ll_symbols[lls], ll_lengths[lls])?;
                 bitwise_writer.add_bits(
                     get_length_extra_bits_value(litlen),
-                    get_length_extra_bits(litlen) as u32,
+                    get_length_extra_bits(litlen),
                 )?;
                 bitwise_writer.add_huffman_bits(d_symbols[ds], d_lengths[ds])?;
                 bitwise_writer.add_bits(
                     u32::from(get_dist_extra_bits_value(dist)),
-                    get_dist_extra_bits(dist) as u32,
+                    get_dist_extra_bits(dist),
                 )?;
                 testlength += litlen;
             }

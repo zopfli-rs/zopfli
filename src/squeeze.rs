@@ -41,19 +41,20 @@ fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
         let lbits = get_length_extra_bits(litlen);
         let lsym = get_length_symbol(litlen);
         // Every dist symbol has length 5.
-        7 + usize::from(lsym > 279) + 5 + dbits + lbits
+        7 + u32::from(lsym > 279) + 5 + dbits + lbits
     };
     result as f64
 }
 
 /// Cost model based on symbol statistics.
 fn get_cost_stat(litlen: usize, dist: u16, stats: &SymbolStats) -> f64 {
+    assert!(litlen < ZOPFLI_NUM_LL); // Eases inlining and gets rid of index bound checks below
     if dist == 0 {
         stats.ll_symbols[litlen]
     } else {
         let lsym = get_length_symbol(litlen);
         let lbits = get_length_extra_bits(litlen) as f64;
-        let dsym = get_dist_symbol(dist);
+        let dsym = get_dist_symbol(dist) as usize;
         let dbits = get_dist_extra_bits(dist) as f64;
         lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
     }
@@ -168,7 +169,7 @@ impl SymbolStats {
                 LitLen::Literal(lit) => self.litlens[lit as usize] += 1,
                 LitLen::LengthDist(len, dist) => {
                     self.litlens[get_length_symbol(len as usize)] += 1;
-                    self.dists[get_dist_symbol(dist)] += 1;
+                    self.dists[get_dist_symbol(dist) as usize] += 1;
                 }
             }
         }
