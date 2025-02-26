@@ -51,6 +51,8 @@ std = [
 nightly = ["crc32fast?/nightly"]
 
 [profile.release]
+# Generate full debug information for release builds anyway for ease of profiling.
+# This does not affect packages that depend on the Zopfli library package
 debug = true
 
 # docs.rs uses a nightly toolchain, so it can leverage unstable rustdoc features.

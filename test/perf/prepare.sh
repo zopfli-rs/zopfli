@@ -9,7 +9,8 @@ then
 fi
 
 # Build Google/zopfli
-cd zopfli && make && cd -
+CFLAGS='-fno-omit-frame-pointer' CXXFLAGS='-fno-omit-frame-pointer' \
+  make -C zopfli
 
 # Build zopfli-rs
-cd .. && cargo build --release && cd -
+cargo build --release
