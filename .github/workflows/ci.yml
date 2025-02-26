@@ -85,7 +85,9 @@ jobs:
           | sarif-fmt
 
       - name: Run tests
-        run: make zopfli && make test
+        run: |
+          cargo test --release
+          cargo build --release && ./test/run.sh
 
       - name: Run tests (no-std)
         run: cargo test --release --no-default-features
