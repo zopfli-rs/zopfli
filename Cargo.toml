@@ -27,14 +27,14 @@ rust-version = "1.73.0"
 crc32fast = { version = "1.4.2", default-features = false, optional = true }
 simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
 bumpalo = "3.17.0"
-log = { version = "0.4.25", optional = true }
+log = { version = "0.4.26", optional = true }
 lockfree-object-pool = { version = "0.1.6", optional = true }
-once_cell = { version = "1.20.2", optional = true }
+once_cell = { version = "1.20.3", optional = true }
 
 [dev-dependencies]
 proptest = "1.6.0"
 proptest-derive = "0.5.1"
-miniz_oxide = "0.8.3"
+miniz_oxide = "0.8.5"
 
 [features]
 default = ["std", "gzip", "zlib"]
