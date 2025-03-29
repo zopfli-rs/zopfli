@@ -28,8 +28,6 @@ crc32fast = { version = "1.4.2", default-features = false, optional = true }
 simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
 bumpalo = "3.17.0"
 log = { version = "0.4.26", optional = true }
-lockfree-object-pool = { version = "0.1.6", optional = true }
-once_cell = { version = "1.20.3", optional = true }
 
 [dev-dependencies]
 proptest = "1.6.0"
@@ -41,13 +39,7 @@ default = ["std", "gzip", "zlib"]
 gzip = ["dep:crc32fast"]
 zlib = ["dep:simd-adler32"]
 
-std = [
-  "dep:log",
-  "dep:lockfree-object-pool",
-  "dep:once_cell",
-  "crc32fast?/std",
-  "simd-adler32?/std",
-]
+std = ["dep:log", "crc32fast?/std", "simd-adler32?/std"]
 nightly = ["crc32fast?/nightly"]
 
 [profile.release]

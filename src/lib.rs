@@ -180,12 +180,13 @@ pub fn compress<R: std::io::Read, W: Write>(
     }
 }
 
-/// Populates object pools for expensive objects that Zopfli uses. Call this on a background thread
-/// when you know ahead of time that compression will be needed.
-#[cfg(feature = "std")]
-pub fn prewarm_object_pools() {
-    hash::HASH_POOL.pull();
-}
+#[doc(hidden)]
+#[deprecated(
+    since = "0.8.2",
+    note = "Object pools are no longer used. This function is now a no-op and will be removed in version 0.9.0."
+)]
+#[cfg(feature = "std")] // TODO remove for 0.9.0
+pub fn prewarm_object_pools() {}
 
 #[cfg(all(test, feature = "std"))]
 mod test {

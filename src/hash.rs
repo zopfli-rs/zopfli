@@ -4,11 +4,6 @@ use alloc::{
 };
 use core::ptr::{addr_of, addr_of_mut, NonNull};
 
-#[cfg(feature = "std")]
-use lockfree_object_pool::LinearObjectPool;
-#[cfg(feature = "std")]
-use once_cell::sync::Lazy;
-
 use crate::util::{ZOPFLI_MIN_MATCH, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE};
 
 const HASH_SHIFT: i32 = 5;
@@ -186,21 +181,3 @@ impl ZopfliHash {
         }
     }
 }
-
-#[cfg(feature = "std")]
-pub static HASH_POOL: Lazy<LinearObjectPool<Box<ZopfliHash>>> =
-    Lazy::new(|| LinearObjectPool::new(ZopfliHash::new, |boxed| boxed.reset()));
-
-#[cfg(not(feature = "std"))]
-#[derive(Copy, Clone)]
-pub struct ZopfliHashFactory;
-
-#[cfg(not(feature = "std"))]
-impl ZopfliHashFactory {
-    pub fn pull(self) -> Box<ZopfliHash> {
-        ZopfliHash::new()
-    }
-}
-
-#[cfg(not(feature = "std"))]
-pub static HASH_POOL: ZopfliHashFactory = ZopfliHashFactory;

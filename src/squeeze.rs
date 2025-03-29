@@ -16,7 +16,7 @@ use log::{debug, trace};
 use crate::{
     cache::Cache,
     deflate::{calculate_block_size, BlockType},
-    hash::{ZopfliHash, HASH_POOL},
+    hash::ZopfliHash,
     lz77::{find_longest_match, LitLen, Lz77Store},
     symbols::{get_dist_extra_bits, get_dist_symbol, get_length_extra_bits, get_length_symbol},
     util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE},
@@ -423,7 +423,6 @@ pub fn lz77_optimal_fixed<C: Cache>(
     inend: usize,
     store: &mut Lz77Store,
 ) {
-    let mut h = HASH_POOL.pull();
     let mut costs = Vec::with_capacity(inend - instart);
     lz77_optimal_run(
         lmc,
@@ -432,7 +431,7 @@ pub fn lz77_optimal_fixed<C: Cache>(
         inend,
         get_cost_fixed,
         store,
-        &mut h,
+        &mut ZopfliHash::new(),
         &mut costs,
     );
 }
@@ -457,7 +456,7 @@ pub fn lz77_optimal<C: Cache>(
     let mut stats = SymbolStats::default();
     stats.get_statistics(&currentstore);
 
-    let mut h = HASH_POOL.pull();
+    let mut h = ZopfliHash::new();
     let mut costs = Vec::with_capacity(inend - instart + 1);
 
     let mut beststats = SymbolStats::default();
