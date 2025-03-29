@@ -143,18 +143,10 @@ impl SymbolStats {
                 if count[i] == 0 {
                     bitlengths[i] = log2sum;
                 } else {
-                    bitlengths[i] = log2sum - (count[i] as f64).ln() * K_INV_LOG2;
+                    // Clamp to zero to avoid negative bitlengths due to varying precision in
+                    // floating point operations.
+                    bitlengths[i] = (log2sum - (count[i] as f64).ln() * K_INV_LOG2).max(0.0);
                 }
-
-                // Depending on compiler and architecture, the above subtraction of two
-                // floating point numbers may give a negative result very close to zero
-                // instead of zero (e.g. -5.973954e-17 with gcc 4.1.2 on Ubuntu 11.4). Clamp
-                // it to zero. These floating point imprecisions do not affect the cost model
-                // significantly so this is ok.
-                if bitlengths[i] < 0.0 && bitlengths[i] > -1E-5 {
-                    bitlengths[i] = 0.0;
-                }
-                debug_assert!(bitlengths[i] >= 0.0);
             }
         }
 
