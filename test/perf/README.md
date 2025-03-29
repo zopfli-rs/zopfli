@@ -9,5 +9,5 @@ The measurement is done using [hyperfine](https://github.com/sharkdp/hyperfine).
 To bench, run: (requires `git` and [zopfli requirements](https://github.com/google/zopfli/blob/master/README))
 
 ```
-$ cd benchmark-builds && ./bench.sh
+$ cd test/perf && ./bench.sh
 ```

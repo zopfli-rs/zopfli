@@ -23,7 +23,7 @@ for input in $(ls ../data | grep -v '\.gz$'); do
 	command_name="Google zopfli with '${input}'"
 	command="zopfli/zopfli data_google/${input}" 
 	command_name1="Rust zopfli with '${input}'"
-	command1="../target/release/zopfli data_rust/${input}"
+	command1="../../target/release/zopfli data_rust/${input}"
 	hyperfine \
 		--ignore-failure \
 		-N \
