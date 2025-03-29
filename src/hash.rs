@@ -144,10 +144,17 @@ impl ZopfliHash {
 
         // Update "same".
         let mut amount = 0;
-        let same_index = pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK;
-        let same = self.same[same_index];
+        let same = self.same[pos.wrapping_sub(1) & ZOPFLI_WINDOW_MASK];
         if same > 1 {
             amount = same - 1;
+        }
+
+        let mut another_index = pos + amount as usize + 1;
+        let array_pos = array[pos];
+        while another_index < array.len() && array_pos == array[another_index] && amount < u16::MAX
+        {
+            amount += 1;
+            another_index += 1;
         }
 
         self.same[hpos] = amount;
