@@ -56,10 +56,10 @@ impl<W: Write> ZlibEncoder<W> {
     /// dropped, but explicitly finishing it with this method allows
     /// handling I/O errors.
     pub fn finish(mut self) -> Result<W, Error> {
-        self._finish().map(|sink| sink.unwrap())
+        self.__finish().map(|sink| sink.unwrap())
     }
 
-    fn _finish(&mut self) -> Result<Option<W>, Error> {
+    fn __finish(&mut self) -> Result<Option<W>, Error> {
         if self.deflate_encoder.is_none() {
             return Ok(None);
         }
@@ -91,7 +91,7 @@ impl<W: Write> Write for ZlibEncoder<W> {
 
 impl<W: Write> Drop for ZlibEncoder<W> {
     fn drop(&mut self) {
-        self._finish().ok();
+        self.__finish().ok();
     }
 }
 

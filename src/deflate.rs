@@ -77,7 +77,7 @@ impl<W: Write> DeflateEncoder<W> {
     /// dropped, but explicitly finishing it with this method allows
     /// handling I/O errors.
     pub fn finish(mut self) -> Result<W, Error> {
-        self._finish().map(|sink| sink.unwrap())
+        self.__finish().map(|sink| sink.unwrap())
     }
 
     /// Compresses the chunk stored at `window_and_chunk`. This includes
@@ -122,7 +122,7 @@ impl<W: Write> DeflateEncoder<W> {
     /// after this method returns. This is intended to be an
     /// implementation detail of the `Drop` trait and
     /// [`finish`](Self::finish) method.
-    fn _finish(&mut self) -> Result<Option<W>, Error> {
+    fn __finish(&mut self) -> Result<Option<W>, Error> {
         if self.bitwise_writer.is_none() {
             return Ok(None);
         }
@@ -158,7 +158,7 @@ impl<W: Write> Write for DeflateEncoder<W> {
 
 impl<W: Write> Drop for DeflateEncoder<W> {
     fn drop(&mut self) {
-        self._finish().ok();
+        self.__finish().ok();
     }
 }
 
@@ -302,7 +302,9 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
     let mut symbol = counts[0];
     let mut stride = 0;
     for (i, &count) in counts.iter().enumerate().take(length) {
-        if count != symbol {
+        if count == symbol {
+            stride += 1;
+        } else {
             if (symbol == 0 && stride >= 5) || (symbol != 0 && stride >= 7) {
                 for k in 0..stride {
                     good_for_rle[i - k - 1] = true;
@@ -310,8 +312,6 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
             }
             stride = 1;
             symbol = count;
-        } else {
-            stride += 1;
         }
     }
 
@@ -319,7 +319,7 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
     stride = 0;
     let mut limit = counts[0];
     let mut sum = 0;
-    for i in 0..(length + 1) {
+    for i in 0..=length {
         // Heuristic for selecting the stride ranges to collapse.
         if i == length || good_for_rle[i] || (counts[i] as i32 - limit as i32).abs() >= 4 {
             if stride >= 4 || (stride >= 3 && sum == 0) {
@@ -375,7 +375,7 @@ fn patch_distance_codes_for_buggy_decoders(d_lengths: &mut [u32]) {
             d_lengths[1] = 1;
         }
         1 => {
-            let index = if d_lengths[0] == 0 { 0 } else { 1 };
+            let index = usize::from(d_lengths[0] != 0);
             d_lengths[index] = 1;
         }
         _ => {} // Two or more codes is fine.
@@ -898,7 +898,7 @@ pub fn calculate_block_size(lz77: &Lz77Store, lstart: usize, lend: usize, btype:
         BlockType::Uncompressed => {
             let length = lz77.get_byte_range(lstart, lend);
             let rem = length % 65535;
-            let blocks = length / 65535 + (if rem > 0 { 1 } else { 0 });
+            let blocks = length / 65535 + usize::from(rem > 0);
             /* An uncompressed block must actually be split into multiple blocks if it's
             larger than 65535 bytes long. Eeach block header is 5 bytes: 3 bits,
             padding, LEN and NLEN (potential less padding for first one ignored). */

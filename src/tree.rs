@@ -17,7 +17,7 @@ pub fn lengths_to_symbols(lengths: &[u32], max_bits: u32) -> Vec<u32> {
     // 2) Find the numerical value of the smallest code for each code length.
     let mut code = 0;
     bl_count[0] = 0;
-    for bits in 1..(max_bits + 1) {
+    for bits in 1..=max_bits {
         code = (code + bl_count[(bits - 1) as usize]) << 1;
         next_code[bits as usize] = code;
     }

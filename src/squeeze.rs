@@ -43,7 +43,7 @@ fn get_cost_fixed(litlen: usize, dist: u16) -> f64 {
         // Every dist symbol has length 5.
         7 + u32::from(lsym > 279) + 5 + dbits + lbits
     };
-    result as f64
+    f64::from(result)
 }
 
 /// Cost model based on symbol statistics.
@@ -53,9 +53,9 @@ fn get_cost_stat(litlen: usize, dist: u16, stats: &SymbolStats) -> f64 {
         stats.ll_symbols[litlen]
     } else {
         let lsym = get_length_symbol(litlen);
-        let lbits = get_length_extra_bits(litlen) as f64;
+        let lbits = f64::from(get_length_extra_bits(litlen));
         let dsym = get_dist_symbol(dist) as usize;
-        let dbits = get_dist_extra_bits(dist) as f64;
+        let dbits = f64::from(get_dist_extra_bits(dist));
         lbits + dbits + stats.ll_symbols[lsym] + stats.d_symbols[dsym]
     }
 }
