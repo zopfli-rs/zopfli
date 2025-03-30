@@ -27,7 +27,7 @@ case "$1" in
     # Run the prepare.sh script first to get the Zopfli sources
     readonly BINARY_PATH='zopfli/zopfli'
     readonly PROFILE_FILE_PREFIX='c'
-    make -C zopfli;;
+    CFLAGS='-fno-omit-frame-pointer' CXXFLAGS='-fno-omit-frame-pointer' make -C zopfli;;
   *)
     echo 'Invalid Zopfli flavor specified, expected either "rust" or "c"' >&2
     exit 1;;
