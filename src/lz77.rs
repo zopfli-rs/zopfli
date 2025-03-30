@@ -418,12 +418,18 @@ fn get_match(scan_arr: &[u8], match_arr: &[u8]) -> usize {
     // adding CHUNK_SIZE to i, allowing the compiler to not emit bound checks panic code
     const CHUNK_SIZE: usize = core::mem::size_of::<u128>();
     while i + CHUNK_SIZE < max_prefix_len && i + CHUNK_SIZE <= usize::MAX - CHUNK_SIZE {
-        let scan_chunk = u128::from_be_bytes(scan_arr[i..i + CHUNK_SIZE].try_into().unwrap());
-        let match_chunk = u128::from_be_bytes(match_arr[i..i + CHUNK_SIZE].try_into().unwrap());
+        let scan_chunk = u128::from_le_bytes(scan_arr[i..i + CHUNK_SIZE].try_into().unwrap());
+        let match_chunk = u128::from_le_bytes(match_arr[i..i + CHUNK_SIZE].try_into().unwrap());
 
-        let equal_bits = (scan_chunk ^ match_chunk).leading_zeros();
-        if equal_bits < u128::BITS {
-            return i + equal_bits as usize / 8; // Different bit in chunk found
+        let bit_diff_mask = scan_chunk ^ match_chunk;
+        if bit_diff_mask != 0 {
+            // Different bit in chunk found. Note that due to chunks being loaded as
+            // little-endian for better performance on little-endian CPUs, the number
+            // of trailing zeros represents the position of the first differing bit
+            // accurate only up to the byte boundary. Precise bit offsets would
+            // require reading big-endian integers and counting the leading zeros
+            // instead
+            return i + bit_diff_mask.trailing_zeros() as usize / 8;
         }
 
         i += CHUNK_SIZE;
