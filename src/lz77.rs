@@ -416,7 +416,7 @@ fn get_match(scan_arr: &[u8], match_arr: &[u8]) -> usize {
     //
     // The second condition in the while loop is there to guard against overflow when
     // adding CHUNK_SIZE to i, allowing the compiler to not emit bound checks panic code
-    const CHUNK_SIZE: usize = size_of::<u128>();
+    const CHUNK_SIZE: usize = core::mem::size_of::<u128>();
     while i + CHUNK_SIZE < max_prefix_len && i + CHUNK_SIZE <= usize::MAX - CHUNK_SIZE {
         let scan_chunk = u128::from_be_bytes(scan_arr[i..i + CHUNK_SIZE].try_into().unwrap());
         let match_chunk = u128::from_be_bytes(match_arr[i..i + CHUNK_SIZE].try_into().unwrap());
