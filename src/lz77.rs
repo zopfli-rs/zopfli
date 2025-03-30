@@ -400,24 +400,45 @@ impl LongestMatch {
 /// after `scan`, which is still equal to the corresponding byte after `match`.
 /// `scan` is the position to compare; `match` is the earlier position to compare.
 /// `end` is the last possible byte, beyond which to stop looking.
-/// `safe_end` is a few (8) bytes before end, for comparing multiple bytes at once.
-const fn get_match(array: &[u8], scan_offset: usize, match_offset: usize, end: usize) -> usize {
-    let mut scan_offset = scan_offset;
-    let mut match_offset = match_offset;
-    // /* 8 checks at once per array bounds check (usize is 64-bit). */
-    // // C code has other options if usize is not 64-bit, but this is all I'm supporting
-    // while scan_offset < safe_end && array[scan_offset] as *const u64 == array[match_offset] as *const u64 {
-    //     scan_offset += 8;
-    //     match_offset += 8;
-    // }
+fn get_match(scan_arr: &[u8], match_arr: &[u8]) -> usize {
+    let max_prefix_len = cmp::min(scan_arr.len(), match_arr.len()); // The prefix won't be longer than the shortest array
+    let mut i = 0;
 
-    /* The remaining few bytes. */
-    while scan_offset != end && array[scan_offset] == array[match_offset] {
-        scan_offset += 1;
-        match_offset += 1;
+    // This is a fairly hot function, and Rust's LLVM backend cannot autovectorize
+    // a comparison loop over bytes yet. To make it faster, we bring back the
+    // "several bytes at a time" optimization present in the original Zopfli code,
+    // but with a twist: instead of working with up to 64 bits at a time, let's
+    // always do the bulk of the work 128 bits at a time, using Rust's `u128` type.
+    // On x64, LLVM optimizes this function excellently, using SSE SIMD instructions
+    // such as `pcmpeqb` and `pmovmskb`, and it's likely such gains also translate to
+    // other architectures with baseline SIMD support for 128 bit vectors. This is
+    // even faster than the original Zopfli C code, while being more portable!
+    //
+    // The second condition in the while loop is there to guard against overflow when
+    // adding CHUNK_SIZE to i, allowing the compiler to not emit bound checks panic code
+    const CHUNK_SIZE: usize = size_of::<u128>();
+    while i + CHUNK_SIZE < max_prefix_len && i + CHUNK_SIZE <= usize::MAX - CHUNK_SIZE {
+        let scan_chunk = u128::from_be_bytes(scan_arr[i..i + CHUNK_SIZE].try_into().unwrap());
+        let match_chunk = u128::from_be_bytes(match_arr[i..i + CHUNK_SIZE].try_into().unwrap());
+
+        let equal_bits = (scan_chunk ^ match_chunk).leading_zeros();
+        if equal_bits < u128::BITS {
+            return i + equal_bits as usize / 8; // Different bit in chunk found
+        }
+
+        i += CHUNK_SIZE;
     }
 
-    scan_offset
+    // Now handle up to 15 remaining bytes naively, one at a time. Any performance
+    // gains from smaller chunks are likely to be negligible
+    for j in i..max_prefix_len {
+        if scan_arr[j] != match_arr[j] {
+            return j; // Different byte found
+        }
+    }
+
+    // All compared bytes are equal, so the common prefix is as long as it can be
+    max_prefix_len
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -524,7 +545,10 @@ fn find_longest_match_loop(
                     scan_offset += same;
                     match_offset += same;
                 }
-                scan_offset = get_match(array, scan_offset, match_offset, arrayend);
+                scan_offset = get_match(
+                    &array[scan_offset..arrayend],
+                    &array[match_offset..arrayend],
+                ) + scan_offset;
                 currentlength = scan_offset - pos; /* The found length. */
             }
 
