@@ -89,8 +89,9 @@ impl ZopfliHash {
             // Therefore, a pointer to an array has the same address as the pointer to its first
             // element, and adding size_of::<N>() bytes to that address yields the address of the
             // second element, and so on.
-            let prev_and_hashval =
-                (addr_of_mut!((*hash).hash1.prev_and_hashval) as *mut SmallerHashThing).add(i);
+            let prev_and_hashval = addr_of_mut!((*hash).hash1.prev_and_hashval)
+                .cast::<SmallerHashThing>()
+                .add(i);
             addr_of_mut!((*prev_and_hashval).prev).write(i as u16);
             addr_of_mut!((*prev_and_hashval).hashval).write(None);
         }

@@ -22,8 +22,6 @@ use crate::{
     util::{ZOPFLI_MAX_MATCH, ZOPFLI_NUM_D, ZOPFLI_NUM_LL, ZOPFLI_WINDOW_MASK, ZOPFLI_WINDOW_SIZE},
 };
 
-const K_INV_LOG2: f64 = core::f64::consts::LOG2_E; // 1.0 / log(2.0)
-
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)] // False-positive
 use crate::math::F64MathExt;
@@ -134,7 +132,7 @@ impl SymbolStats {
 
             let sum = count.iter().sum();
 
-            let log2sum = (if sum == 0 { n } else { sum } as f64).ln() * K_INV_LOG2;
+            let log2sum = (if sum == 0 { n } else { sum } as f64).log2();
 
             for i in 0..n {
                 // When the count of the symbol is 0, but its cost is requested anyway, it
@@ -143,9 +141,7 @@ impl SymbolStats {
                 if count[i] == 0 {
                     bitlengths[i] = log2sum;
                 } else {
-                    // Clamp to zero to avoid negative bitlengths due to varying precision in
-                    // floating point operations.
-                    bitlengths[i] = (log2sum - (count[i] as f64).ln() * K_INV_LOG2).max(0.0);
+                    bitlengths[i] = log2sum - (count[i] as f64).log2();
                 }
             }
         }

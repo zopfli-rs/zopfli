@@ -590,19 +590,19 @@ fn encode_tree_no_output(
     result_size
 }
 
-static TRUTH_TABLE: [(bool, bool, bool); 8] = [
-    (false, false, false),
-    (true, false, false),
-    (false, true, false),
-    (true, true, false),
-    (false, false, true),
-    (true, false, true),
-    (false, true, true),
-    (true, true, true),
-];
-
 /// Gives the exact size of the tree, in bits, as it will be encoded in DEFLATE.
 fn calculate_tree_size(ll_lengths: &[u32], d_lengths: &[u32]) -> usize {
+    static TRUTH_TABLE: [(bool, bool, bool); 8] = [
+        (false, false, false),
+        (true, false, false),
+        (false, true, false),
+        (true, true, false),
+        (false, false, true),
+        (true, false, true),
+        (false, true, true),
+        (true, true, true),
+    ];
+
     TRUTH_TABLE
         .iter()
         .map(|&(use_16, use_17, use_18)| {
