@@ -1,16 +1,18 @@
 # The binary target must be set in a single line like this to make it easily
 # removable by the CI "Check effective no_std compatibility" step
-bin = [{ name = "zopfli", required-features = ["std", "gzip", "zlib"] }]
+bin = [{ name = "zopfli", required-features = ["gzip", "std", "zlib"] }]
 
 [package]
 name = "zopfli"
 version = "0.8.1"
+edition = "2021"
+rust-version = "1.73.0"
 description = "A Rust implementation of the Zopfli compression algorithm."
-license = "Apache-2.0"
-keywords = ["compression"]
+readme = "README.md"
 homepage = "https://github.com/zopfli-rs/zopfli"
 repository = "https://github.com/zopfli-rs/zopfli"
-readme = "README.md"
+license = "Apache-2.0"
+keywords = ["compression"]
 categories = ["compression", "no-std"]
 exclude = [
   ".github/*",
@@ -20,34 +22,31 @@ exclude = [
   "rustfmt.toml",
   "test/*",
 ]
-edition = "2021"
-rust-version = "1.73.0"
-
-[dependencies]
-crc32fast = { version = "1.4.2", default-features = false, optional = true }
-simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
-bumpalo = "3.17.0"
-log = { version = "0.4.26", optional = true }
-
-[dev-dependencies]
-proptest = "1.6.0"
-proptest-derive = "0.5.1"
-miniz_oxide = "0.8.5"
-
-[features]
-default = ["std", "gzip", "zlib"]
-gzip = ["dep:crc32fast"]
-zlib = ["dep:simd-adler32"]
-
-std = ["dep:log", "crc32fast?/std", "simd-adler32?/std"]
-nightly = ["crc32fast?/nightly"]
-
-[profile.release]
-# Generate full debug information for release builds anyway for ease of profiling.
-# This does not affect packages that depend on the Zopfli library package
-debug = true
 
 # docs.rs uses a nightly toolchain, so it can leverage unstable rustdoc features.
 # Reference: https://docs.rs/about/builds
 [package.metadata.docs.rs]
 cargo-args = ["--all-features"]
+
+[dependencies]
+bumpalo = "3.17.0"
+crc32fast = { version = "1.4.2", default-features = false, optional = true }
+log = { version = "0.4.26", optional = true }
+simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
+
+[dev-dependencies]
+miniz_oxide = "0.8.5"
+proptest = "1.6.0"
+proptest-derive = "0.5.1"
+
+[features]
+default = ["gzip", "std", "zlib"]
+gzip = ["dep:crc32fast"]
+nightly = ["crc32fast?/nightly"]
+std = ["crc32fast?/std", "dep:log", "simd-adler32?/std"]
+zlib = ["dep:simd-adler32"]
+
+[profile.release]
+# Generate full debug information for release builds anyway for ease of profiling.
+# This does not affect packages that depend on the Zopfli library package
+debug = true
