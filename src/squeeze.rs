@@ -482,10 +482,10 @@ pub fn lz77_optimal<C: Cache>(
             beststats = stats;
             bestcost = cost;
 
-            debug!("Iteration {}: {} bit", current_iteration, cost);
+            debug!("Iteration {current_iteration}: {cost} bit");
         } else {
             iterations_without_improvement += 1;
-            trace!("Iteration {}: {} bit", current_iteration, cost);
+            trace!("Iteration {current_iteration}: {cost} bit");
             if iterations_without_improvement >= max_iterations_without_improvement {
                 break;
             }
