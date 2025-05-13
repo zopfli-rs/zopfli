@@ -31,11 +31,11 @@ cargo-args = ["--all-features"]
 [dependencies]
 bumpalo = "3.17.0"
 crc32fast = { version = "1.4.2", default-features = false, optional = true }
-log = { version = "0.4.26", optional = true }
+log = { version = "0.4.27", optional = true }
 simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
 
 [dev-dependencies]
-miniz_oxide = "0.8.5"
+miniz_oxide = "0.8.8"
 proptest = "1.6.0"
 proptest-derive = "0.5.1"
 
