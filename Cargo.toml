@@ -1,7 +1,3 @@
-# The binary target must be set in a single line like this to make it easily
-# removable by the CI "Check effective no_std compatibility" step
-bin = [{ name = "zopfli", required-features = ["gzip", "std", "zlib"] }]
-
 [package]
 name = "zopfli"
 version = "0.8.2"
@@ -27,6 +23,10 @@ exclude = [
 # Reference: https://docs.rs/about/builds
 [package.metadata.docs.rs]
 cargo-args = ["--all-features"]
+
+[[bin]]
+name = "zopfli"
+required-features = ["gzip", "std", "zlib"]
 
 [dependencies]
 bumpalo = "3.17.0"

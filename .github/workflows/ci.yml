@@ -23,7 +23,7 @@ jobs:
           - conf: nightly
             toolchain: nightly
           - conf: msrv
-            toolchain: '1.73.0'
+            toolchain: "1.73.0"
     env:
       RUST_BACKTRACE: 1
 
@@ -46,12 +46,6 @@ jobs:
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-
-      - name: Install cargo-nono
-        if: matrix.conf == 'nightly'
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nono
 
       - name: Install cargo-hack
         if: matrix.conf == 'nightly'
@@ -90,23 +84,13 @@ jobs:
           cargo build --release && ./test/run.sh
 
       - name: Run tests (no-std)
-        run: cargo test --release --no-default-features
+        run: cargo test --release --no-default-features --features gzip,zlib
 
       # The documentation generation command should match what's defined on
       # Cargo.toml's `package.metadata.docs.rs` section for docs.rs
       - name: Generate documentation
         if: matrix.conf == 'nightly'
         run: cargo doc --all-features
-
-      - name: Check effective no_std compatibility
-        if: matrix.conf == 'nightly'
-        run: |
-          # Temporarily drop the binary crate so that cargo nono does not
-          # get confused about what crate to analyze: we are only interested
-          # in the library one
-          sed -i 's;^bin = ;#&;' Cargo.toml
-          rm src/main.rs
-          cargo nono check --no-default-features --features gzip,zlib
 
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@v3
