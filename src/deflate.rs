@@ -234,6 +234,7 @@ fn deflate_part<W: Write>(
 /// The type of data blocks to generate for a DEFLATE stream.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
+#[derive(Default)]
 pub enum BlockType {
     /// Non-compressed blocks (BTYPE=00).
     ///
@@ -255,13 +256,8 @@ pub enum BlockType {
     /// types that minimizes data size. The emitted block types may be
     /// [`Uncompressed`](Self::Uncompressed) or [`Fixed`](Self::Fixed), in
     /// addition to compressed with dynamic Huffman codes (BTYPE=10).
+    #[default]
     Dynamic,
-}
-
-impl Default for BlockType {
-    fn default() -> Self {
-        Self::Dynamic
-    }
 }
 
 fn fixed_tree() -> (Vec<u32>, Vec<u32>) {
