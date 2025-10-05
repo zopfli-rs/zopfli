@@ -26,7 +26,7 @@
 //!   latest nightlies (as of 2024-05-18) when that feature is enabled.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
+#![cfg_attr(feature = "nightly", feature(doc_cfg))]
 
 // No-op log implementation for no-std targets
 #[cfg(not(feature = "std"))]
