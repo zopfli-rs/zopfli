@@ -134,6 +134,19 @@ impl<W: Write> DeflateEncoder<W> {
 
         Ok(Some(bitwise_writer.out))
     }
+
+    /// Gets a reference to the underlying writer.
+    pub fn get_ref(&self) -> &W {
+        &self.bitwise_writer.as_ref().unwrap().out
+    }
+
+    /// Gets a mutable reference to the underlying writer.
+    ///
+    /// Note that mutating the output/input state of the stream may corrupt
+    /// this object, so care must be taken when using this method.
+    pub fn get_mut(&mut self) -> &mut W {
+        &mut self.bitwise_writer.as_mut().unwrap().out
+    }
 }
 
 impl<W: Write> Write for DeflateEncoder<W> {
