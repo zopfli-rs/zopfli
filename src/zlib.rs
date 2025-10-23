@@ -70,6 +70,19 @@ impl<W: Write> ZlibEncoder<W> {
 
         Ok(Some(sink))
     }
+
+    /// Gets a reference to the underlying writer.
+    pub fn get_ref(&self) -> &W {
+        self.deflate_encoder.as_ref().unwrap().get_ref()
+    }
+
+    /// Gets a mutable reference to the underlying writer.
+    ///
+    /// Note that mutating the output/input state of the stream may corrupt
+    /// this object, so care must be taken when using this method.
+    pub fn get_mut(&mut self) -> &mut W {
+        self.deflate_encoder.as_mut().unwrap().get_mut()
+    }
 }
 
 impl<W: Write> Write for ZlibEncoder<W> {
