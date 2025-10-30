@@ -19,11 +19,11 @@
 //!   [`alloc`](https://doc.rust-lang.org/alloc/) (i.e., a memory allocator) is available. In addition,
 //!   the crate exposes minimalist versions of the `std` I/O traits it needs to function, allowing users
 //!   to implement them.
-//! - `nightly`: enables performance optimizations that are specific to the nightly Rust toolchain.
-//!   Currently, this feature improves rustdoc generation and enables the namesake feature on `crc32fast`,
-//!   but this may change in the future. This feature also used to enable `simd-adler32`'s namesake
-//!   feature, but it no longer does as the latest `simd-adler32` release does not build with the
-//!   latest nightlies (as of 2024-05-18) when that feature is enabled.
+//! - `nightly`: enables code constructs and features specific to the nightly Rust toolchain. Currently,
+//!   this feature improves rustdoc generation and enables the namesake feature on `crc32fast`, but this
+//!   may change in the future. This feature also used to enable `simd-adler32`'s namesake feature, but
+//!   it no longer does as the latest `simd-adler32` release does not build with the latest nightlies
+//!   (as of 2024-05-18) when that feature is enabled.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
