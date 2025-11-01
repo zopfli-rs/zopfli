@@ -37,7 +37,7 @@ simd-adler32 = { version = "0.3.7", default-features = false, optional = true }
 [dev-dependencies]
 miniz_oxide = "0.8.9"
 proptest = "1.7.0"
-proptest-derive = "0.6.0"
+proptest-derive = "0.7.0"
 
 [features]
 default = ["gzip", "std", "zlib"]
