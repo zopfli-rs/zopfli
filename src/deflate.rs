@@ -1379,9 +1379,10 @@ impl<W: Write> BitwiseWriter<W> {
     fn finish_partial_bits(&mut self) -> Result<(), Error> {
         if self.bp != 0 {
             let bytes = &[self.bit];
-            self.add_bytes(bytes)?;
+            let result = self.add_bytes(bytes);
             self.bit = 0;
             self.bp = 0;
+            result?
         }
         Ok(())
     }

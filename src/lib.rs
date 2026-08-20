@@ -197,6 +197,20 @@ mod test {
 
     use super::*;
 
+    #[test]
+    fn writezero_drops_cleanly() {
+        let data = b"test datat which won't compress into a very tiny buffer.";
+        let mut small_buf = [0u8; 4];
+        let mut cursor = std::io::Cursor::new(&mut small_buf[..]);
+
+        let result = compress(
+            Options::default(),
+            Format::Zlib,
+            &data[..],
+            &mut cursor,
+        );
+        assert!(result.is_err());
+    }
     proptest! {
         #[test]
         fn deflating_is_reversible(
