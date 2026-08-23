@@ -158,7 +158,7 @@ impl<W: Write> Write for DeflateEncoder<W> {
         }
 
         // Set the chunk to be used for the next compression operation
-        // to this chunk. We don't know whether it's last or not yet
+        // to this chunk. We don't know whether it's last yet
         self.set_chunk(buf);
 
         Ok(buf.len())
