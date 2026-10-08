@@ -490,6 +490,7 @@ pub fn lz77_optimal<C: Cache>(
                 break;
             }
         }
+        let iteration = current_iteration;
         current_iteration += 1;
         if current_iteration >= max_iterations {
             break;
@@ -504,11 +505,11 @@ pub fn lz77_optimal<C: Cache>(
             stats = add_weighed_stat_freqs(&stats, 1.0, &laststats, 0.5);
             stats.calculate_entropy();
         }
-        if current_iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
+        if iteration > 5 && (cost - lastcost).abs() < f64::EPSILON {
             stats = beststats;
             stats.randomize_stat_freqs(&mut ran_state);
             stats.calculate_entropy();
-            lastrandomstep = current_iteration;
+            lastrandomstep = iteration;
         }
         lastcost = cost;
     }
