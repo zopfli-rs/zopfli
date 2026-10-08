@@ -308,24 +308,17 @@ fn optimize_huffman_for_rle(counts: &mut [usize]) {
     // Let's not spoil any of the existing good rle codes.
     // Mark any seq of 0's that is longer than 5 as a good_for_rle.
     // Mark any seq of non-0's that is longer than 7 as a good_for_rle.
-    let mut symbol = counts[0];
-    let mut stride = 0;
-    for (i, &count) in counts.iter().enumerate().take(length) {
-        if count == symbol {
-            stride += 1;
-        } else {
-            if (symbol == 0 && stride >= 5) || (symbol != 0 && stride >= 7) {
-                for k in 0..stride {
-                    good_for_rle[i - k - 1] = true;
-                }
-            }
-            stride = 1;
-            symbol = count;
+    let mut start = 0;
+    for run in counts[..length].chunk_by(|a, b| a == b) {
+        let symbol = run[0];
+        if (symbol == 0 && run.len() >= 5) || (symbol != 0 && run.len() >= 7) {
+            good_for_rle[start..start + run.len()].fill(true);
         }
+        start += run.len();
     }
 
     // 3) Let's replace those population counts that lead to more rle codes.
-    stride = 0;
+    let mut stride = 0;
     let mut limit = counts[0];
     let mut sum = 0;
     for i in 0..=length {
@@ -1412,6 +1405,16 @@ mod test {
         set_counts_to_count(&mut counts, count, i, stride);
 
         assert_eq!(counts, vec![0, 1, 2, 100, 100, 100, 100, 100, 8, 9]);
+    }
+
+    #[test]
+    fn optimize_huffman_for_rle_keeps_a_run_at_the_end() {
+        // Seven equal counts at the end are a run that RLE codes already
+        // cover, as in Zopfli: they stay, and the 7 and 8 are not merged
+        // into them.
+        let mut counts = [7, 8, 9, 9, 9, 9, 9, 9, 9];
+        optimize_huffman_for_rle(&mut counts);
+        assert_eq!(counts, [7, 8, 9, 9, 9, 9, 9, 9, 9]);
     }
 
     #[test]
