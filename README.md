@@ -16,8 +16,8 @@ The minimum supported Rust version (MSRV) for this crate is 1.88. Bumping this v
 
 To build the code, run:
 
-```
-$ cargo build --release
+```sh
+cargo build --release
 ```
 
 and the executable will be in `target/release/zopfli`.
@@ -28,12 +28,12 @@ This should work on stable or beta Rust.
 
 There are some unit tests, mostly around the boundary package merge algorithm implementation in katajainen.rs, and a property-based test for compression reversibility. These tests can be run with:
 
-```
-$ cargo test
+```sh
+cargo test
 ```
 
 Golden master tests, to check that compressed files are exactly the same as the C implementation would generate, can be run using:
 
-```
-$ ./test/run.sh
+```sh
+./test/run.sh
 ```
