@@ -109,7 +109,7 @@ impl SymbolStats {
             let end = n;
 
             while i < end {
-                if (state.random_marsaglia() >> 4) % 3 == 0 {
+                if (state.random_marsaglia() >> 4).is_multiple_of(3) {
                     let index = state.random_marsaglia() as usize % n;
                     freqs[i] = freqs[index];
                 }
