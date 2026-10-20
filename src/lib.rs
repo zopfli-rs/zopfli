@@ -213,5 +213,26 @@ mod test {
             let decompressed_data = inflate::decompress_to_vec(&compressed_data).expect("Could not inflate compressed stream");
             prop_assert_eq!(data, decompressed_data, "Decompressed data should match input data");
         }
+
+        #[test]
+        fn flushed_parts_join_into_one_stream(
+            options: Options,
+            btype: BlockType,
+            first in prop::collection::vec(any::<u8>(), 0..32 * 1024),
+            second in prop::collection::vec(any::<u8>(), 0..32 * 1024)
+        ) {
+            let mut compressed_data = Vec::with_capacity(first.len() + second.len());
+
+            let mut encoder = DeflateEncoder::new(options, btype, &mut compressed_data);
+            io::copy(&mut &*first, &mut encoder).unwrap();
+            encoder.flush_finish().unwrap();
+
+            let mut encoder = DeflateEncoder::new(options, btype, &mut compressed_data);
+            io::copy(&mut &*second, &mut encoder).unwrap();
+            encoder.finish().unwrap();
+
+            let decompressed_data = inflate::decompress_to_vec(&compressed_data).expect("Could not inflate compressed stream");
+            prop_assert_eq!([first, second].concat(), decompressed_data, "Decompressed data should match the joined input data");
+        }
     }
 }
