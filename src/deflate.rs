@@ -80,6 +80,33 @@ impl<W: Write> DeflateEncoder<W> {
         self.__finish().map(|sink| sink.unwrap())
     }
 
+    /// Encodes any pending chunks of data as non-final blocks, ends them
+    /// with an empty stored block that aligns the output to a byte boundary,
+    /// and returns the wrapped sink. Unlike [`finish`](Self::finish), no
+    /// final block is written, so the sink receives a DEFLATE stream that
+    /// can be extended by another, such as when joining independently
+    /// compressed parts. Writing the bytes `0x03 0x00` after it terminates
+    /// the stream.
+    pub fn flush_finish(mut self) -> Result<W, Error> {
+        if self.have_chunk {
+            self.compress_chunk(false)?;
+        }
+
+        let mut bitwise_writer = self.bitwise_writer.take().unwrap();
+
+        /* BFINAL 0, BTYPE 00 */
+        bitwise_writer.add_bit(0)?;
+        bitwise_writer.add_bit(0)?;
+        bitwise_writer.add_bit(0)?;
+
+        bitwise_writer.finish_partial_bits()?;
+
+        /* LEN 0, NLEN 0xffff */
+        bitwise_writer.add_bytes(&[0, 0, 0xff, 0xff])?;
+
+        Ok(bitwise_writer.out)
+    }
+
     /// Compresses the chunk stored at `window_and_chunk`. This includes
     /// a rolling window of the last `ZOPFLI_WINDOW_SIZE` data bytes, if
     /// available.
@@ -1440,6 +1467,45 @@ mod test {
             decompressed_data,
             "Decompressed data should match input data"
         );
+    }
+
+    #[test]
+    fn flush_finish_ends_on_byte_aligned_stored_block() {
+        let mut compressed_data = vec![];
+
+        let mut encoder = DeflateEncoder::new(
+            Options::default(),
+            BlockType::default(),
+            &mut compressed_data,
+        );
+
+        encoder
+            .write_all(b"data to flush without a final block")
+            .unwrap();
+        encoder.flush_finish().unwrap();
+
+        assert!(
+            compressed_data.ends_with(&[0, 0, 0xff, 0xff]),
+            "Flushed stream should end with an empty stored block"
+        );
+
+        compressed_data.extend_from_slice(&[0x03, 0x00]);
+
+        let decompressed_data = inflate::decompress_to_vec(&compressed_data)
+            .expect("Could not inflate compressed stream");
+
+        assert_eq!(
+            &b"data to flush without a final block"[..],
+            decompressed_data,
+            "Decompressed data should match input data"
+        );
+    }
+
+    #[test]
+    fn flush_finish_without_data_writes_only_stored_block() {
+        let encoder = DeflateEncoder::new(Options::default(), BlockType::default(), vec![]);
+
+        assert_eq!(encoder.flush_finish().unwrap(), [0, 0, 0, 0xff, 0xff]);
     }
 
     #[test]
